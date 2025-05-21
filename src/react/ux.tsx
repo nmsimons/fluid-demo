@@ -6,7 +6,7 @@
 import React, { JSX, useContext, useEffect, useState } from "react";
 import { App } from "../schema/app_schema.js";
 import "../output.css";
-import { ConnectionState, IFluidContainer } from "fluid-framework";
+import { ConnectionState, IFluidContainer, TreeView } from "fluid-framework";
 import { Canvas } from "./canvasux.js";
 import type { SelectionManager } from "../utils/Interfaces/SelectionManager.js";
 import { undoRedo } from "../utils/undo.js";
@@ -43,23 +43,16 @@ import { CommentPane } from "./commentux.js";
 import {
 	ArrowRedoFilled,
 	ArrowUndoFilled,
-	BotFilled,
-	BotRegular,
-	BranchFilled,
-	BranchRegular,
 	ColorFilled,
 	CommentFilled,
 	CommentRegular,
 	DeleteRegular,
-	MergeRegular,
 } from "@fluentui/react-icons";
-import { TreeViewAlpha } from "@fluidframework/tree/alpha";
 import { useTree } from "./useTree.js";
-import { TaskPane } from "./taskux.js";
 import { PaneContext } from "./PaneContext.js";
 
 export function ReactApp(props: {
-	tree: TreeViewAlpha<typeof App>;
+	tree: TreeView<typeof App>;
 	itemSelection: SelectionManager<TypedSelection>;
 	tableSelection: SelectionManager<TypedSelection>;
 	users: UsersManager;
@@ -71,10 +64,9 @@ export function ReactApp(props: {
 	const [connectionState, setConnectionState] = useState("");
 	const [saved, setSaved] = useState(false);
 	const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
-	const [taskPaneHidden, setTaskPaneHidden] = useState(true);
 	const [commentPaneHidden, setCommentPaneHidden] = useState(true);
 	const [selectedItemId, setSelectedItemId] = useState<string>("");
-	const [view, setView] = useState<TreeViewAlpha<typeof App>>(tree);
+	const [view] = useState<TreeView<typeof App>>(tree);
 
 	useTree(tree.root);
 	useTree(view.root.items);
@@ -192,27 +184,6 @@ export function ReactApp(props: {
 							paneHidden={commentPaneHidden}
 							tooltip="Comments"
 						/>
-						<ShowPaneButton
-							hiddenIcon={<BotRegular />}
-							shownIcon={<BotFilled />}
-							hidePane={setTaskPaneHidden}
-							paneHidden={taskPaneHidden}
-							tooltip="AI Task"
-						/>
-					</ToolbarGroup>
-					<ToolbarGroup>
-						<TooltipButton
-							tooltip="Create Branch"
-							onClick={() => createBranch(tree, view, setView)}
-							icon={tree !== view ? <BranchFilled /> : <BranchRegular />}
-							disabled={view !== tree}
-						/>
-						<TooltipButton
-							tooltip="Merge Branch"
-							onClick={() => mergeBranch(tree, view, setView)}
-							icon={<MergeRegular />}
-							disabled={view === tree}
-						/>
 					</ToolbarGroup>
 					{view !== tree ? (
 						<ToolbarGroup style={{ marginLeft: "auto" }}>
@@ -226,10 +197,7 @@ export function ReactApp(props: {
 				<div className="flex h-[calc(100vh-96px)] w-full flex-row ">
 					<PaneContext.Provider
 						value={{
-							panes: [
-								{ name: "comments", visible: !commentPaneHidden },
-								{ name: "task", visible: !taskPaneHidden },
-							],
+							panes: [{ name: "comments", visible: !commentPaneHidden }],
 						}}
 					>
 						<Canvas
@@ -244,40 +212,10 @@ export function ReactApp(props: {
 						itemId={selectedItemId}
 						app={view.root}
 					/>
-					<TaskPane
-						hidden={taskPaneHidden}
-						setHidden={setTaskPaneHidden}
-						main={tree}
-						setRenderView={setView}
-					/>
 				</div>
 			</div>
 		</PresenceContext.Provider>
 	);
-}
-
-export function createBranch(
-	main: TreeViewAlpha<typeof App>,
-	currentView: TreeViewAlpha<typeof App>,
-	setView: (view: TreeViewAlpha<typeof App>) => void,
-) {
-	// if the current view is not the same as the tree, return the current view
-	// otherwise, create a new branch from the tree and return it
-	if (currentView !== main) return currentView;
-	setView(main.fork());
-}
-
-export function mergeBranch(
-	main: TreeViewAlpha<typeof App>,
-	currentView: TreeViewAlpha<typeof App>,
-	setView: (view: TreeViewAlpha<typeof App>) => void,
-) {
-	// if the current view is the same as main, return the current view
-	// otherwise, merge the current view into main and dispose of the current view
-	if (currentView === main) return currentView;
-	main.merge(currentView);
-	setView(main);
-	currentView.dispose();
 }
 
 export function Header(props: { saved: boolean; connectionState: string }): JSX.Element {

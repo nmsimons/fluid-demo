@@ -1,6 +1,6 @@
 // A pane that shows comments and allows users to interact with them
 import { Button, Textarea } from "@fluentui/react-components";
-import React, { useContext, useEffect, useState } from "react";
+import React, { ReactNode, useContext, useEffect, useState } from "react";
 import { Pane } from "./paneux.js";
 import { PresenceContext } from "./PresenceContext.js";
 import {
@@ -15,7 +15,6 @@ import {
 } from "../schema/app_schema.js";
 import { useTree } from "./useTree.js";
 import { VoteButton } from "./appbuttonux.js";
-import { SpeechBubble } from "./taskux.js";
 import { CommentRegular } from "@fluentui/react-icons";
 
 export function CommentPane(props: {
@@ -136,6 +135,21 @@ export function CommentInput(props: { callback: (comment: string) => void }): JS
 			>
 				Comment
 			</Button>
+		</div>
+	);
+}
+
+export function SpeechBubble(props: { children: ReactNode; isUser: boolean }): JSX.Element {
+	const { children, isUser } = props;
+	return (
+		<div
+			className={`w-full px-4 py-2 rounded-xl ${
+				isUser
+					? "bg-indigo-100 text-black rounded-br-none"
+					: "bg-white text-black rounded-bl-none"
+			}`}
+		>
+			{children}
 		</div>
 	);
 }

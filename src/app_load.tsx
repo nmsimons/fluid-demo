@@ -1,4 +1,3 @@
-import type { ITelemetryBaseLogger } from "@fluidframework/core-interfaces";
 import { AzureClient } from "@fluidframework/azure-client";
 import React from "react";
 import { createRoot } from "react-dom/client";
@@ -16,23 +15,19 @@ import { createUsersManager } from "./utils/users.js";
 import { UserInfo } from "./utils/Interfaces/UsersManager.js";
 import { AccountInfo } from "@azure/msal-browser";
 import { createDragManager } from "./utils/drag.js";
-import { asTreeViewAlpha } from "@fluidframework/tree/alpha";
 
 export async function loadApp(props: {
 	client: AzureClient;
 	containerId: string;
 	account: AccountInfo;
-	logger?: ITelemetryBaseLogger;
 }): Promise<IFluidContainer> {
-	const { client, containerId, logger, account } = props;
+	const { client, containerId, account } = props;
 
 	// Initialize Fluid Container
-	const { container } = await loadFluidData(containerId, containerSchema, client, logger);
+	const { container } = await loadFluidData(containerId, containerSchema, client);
 
 	// Initialize the SharedTree DDSes
-	const appTree = asTreeViewAlpha(
-		container.initialObjects.appData.viewWith(appTreeConfiguration),
-	);
+	const appTree = container.initialObjects.appData.viewWith(appTreeConfiguration);
 	if (appTree.compatibility.canInitialize) {
 		appTree.initialize(new App({ items: [], comments: [] }));
 	}

@@ -2,9 +2,6 @@
  * Copyright (c) Microsoft Corporation and contributors. All rights reserved.
  * Licensed under the MIT License.
  */
-
-import { buildFunc, ExposedMethods, exposeMethodsSymbol } from "@fluidframework/tree-agent/alpha";
-import { layoutCache } from "../react/useLayoutManger.js";
 import { Table } from "./table_schema.js";
 import {
 	TreeViewConfiguration,
@@ -14,7 +11,6 @@ import {
 	TreeNodeFromImplicitAllowedTypes,
 	TreeStatus,
 } from "fluid-framework";
-import { z } from "zod";
 
 export type HintValues = (typeof hintValues)[keyof typeof hintValues];
 export const hintValues = {
@@ -257,29 +253,7 @@ export class Item extends sf.object("Item", {
 			parent.content.removeAt(parent.content.indexOf(this));
 		}
 	}
-
-	getBoundingBox(): { left: number; top: number; right: number; bottom: number } | undefined {
-		return layoutCache.get(this.id);
-	}
-
-	public static [exposeMethodsSymbol](methods: ExposedMethods): void {
-		methods.expose(
-			Item,
-			"getBoundingBox",
-			buildFunc({
-				returns: z
-					.object({
-						left: z.number(),
-						top: z.number(),
-						right: z.number(),
-						bottom: z.number(),
-					})
-					.optional(),
-			}),
-		);
-	}
 }
-
 export class Group extends sf.object("Group", {
 	id: sf.string,
 	x: sf.number,
