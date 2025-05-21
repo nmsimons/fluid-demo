@@ -10,13 +10,7 @@ import { ConnectionState, IFluidContainer, TreeView } from "fluid-framework";
 import { Canvas } from "./canvasux.js";
 import type { SelectionManager } from "../utils/Interfaces/SelectionManager.js";
 import { undoRedo } from "../utils/undo.js";
-import {
-	NewShapeButton,
-	ShowPaneButton,
-	NewNoteButton,
-	NewTableButton,
-	createTable,
-} from "./appbuttonux.js";
+import { NewShapeButton, ShowPaneButton, NewNoteButton, NewTableButton } from "./appbuttonux.js";
 import { TooltipButton } from "./buttonux.js";
 import {
 	Avatar,
@@ -43,7 +37,6 @@ import { CommentPane } from "./commentux.js";
 import {
 	ArrowRedoFilled,
 	ArrowUndoFilled,
-	ColorFilled,
 	CommentFilled,
 	CommentRegular,
 	DeleteRegular,
@@ -151,20 +144,6 @@ export function ReactApp(props: {
 						<NewShapeButton items={view.root.items} canvasSize={canvasSize} />
 						<NewNoteButton items={view.root.items} canvasSize={canvasSize} />
 						<NewTableButton items={view.root.items} canvasSize={canvasSize} />
-						<TooltipButton
-							tooltip="Make the selected shape a new table"
-							onClick={() => {
-								const selectedItem = view.root.items.find(
-									(item) => item.id === selectedItemId,
-								);
-								if (selectedItem) {
-									const newTable = createTable();
-									selectedItem.content = newTable;
-								}
-							}}
-							icon={<ColorFilled />}
-							disabled={selectedItemId === ""}
-						/>
 					</ToolbarGroup>
 					<ToolbarDivider />
 					<ToolbarGroup>
