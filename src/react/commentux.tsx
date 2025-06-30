@@ -2,7 +2,7 @@
 import { Button, Textarea } from "@fluentui/react-components";
 import React, { ReactNode, useContext, useEffect, useState } from "react";
 import { Pane } from "./paneux.js";
-import { PresenceContext } from "./PresenceContext.js";
+import { PresenceContext } from "./contexts/PresenceContext.js";
 import {
 	App,
 	Comment,
@@ -13,7 +13,7 @@ import {
 	Note,
 	Shape,
 } from "../schema/app_schema.js";
-import { useTree } from "./useTree.js";
+import { useTree } from "./hooks/useTree.js";
 import { VoteButton } from "./appbuttonux.js";
 import { CommentRegular } from "@fluentui/react-icons";
 

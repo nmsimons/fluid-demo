@@ -1,19 +1,19 @@
 import React, { JSX, useState, useEffect, useContext, useRef } from "react";
 import { Comments, FluidTable, Item, Note, Shape } from "../schema/app_schema.js";
-import { PresenceContext } from "./PresenceContext.js";
+import { PresenceContext } from "./contexts/PresenceContext.js";
 import { ShapeView } from "./shapeux.js";
 import { Tree } from "fluid-framework";
 import { DragAndRotatePackage } from "../utils/drag.js";
 import { DeleteButton, VoteButton } from "./appbuttonux.js";
 import { Toolbar, ToolbarGroup } from "@fluentui/react-components";
 import { NoteView } from "./noteux.js";
-import { objectIdNumber, useTree } from "./useTree.js";
-import { usePresenceManager } from "./usePresenceManger.js";
+import { objectIdNumber, useTree } from "./hooks/useTree.js";
+import { usePresenceManager } from "./hooks/usePresenceManger.js";
 import { PresenceManager } from "../utils/Interfaces/PresenceManager.js";
 import { TableView } from "./tableux.js";
 import { Comment20Regular } from "@fluentui/react-icons";
-import { PaneContext } from "./PaneContext.js";
-import { LayoutContext } from "./useLayoutManger.js";
+import { PaneContext } from "./contexts/PaneContext.js";
+import { LayoutContext } from "./hooks/useLayoutManger.js";
 
 const getContentType = (item: Item): string => {
 	if (Tree.is(item.content, Shape)) {

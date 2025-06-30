@@ -3,7 +3,7 @@ import { DateTime, Vote, FluidRow, FluidColumn } from "../schema/app_schema.js";
 import { Tree, TreeStatus } from "fluid-framework";
 import { ThumbLikeFilled, ThumbLikeRegular } from "@fluentui/react-icons";
 import { ToolbarButton } from "@fluentui/react-components";
-import { objectIdNumber, useTree } from "./useTree.js";
+import { objectIdNumber, useTree } from "./hooks/useTree.js";
 
 export function ColumnInput(props: { column: FluidColumn }): JSX.Element {
 	const { column } = props;

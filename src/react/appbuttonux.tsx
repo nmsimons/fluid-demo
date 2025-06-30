@@ -25,8 +25,8 @@ import {
 	NoteRegular,
 	TableRegular,
 } from "@fluentui/react-icons";
-import { PresenceContext } from "./PresenceContext.js";
-import { useTree } from "./useTree.js";
+import { PresenceContext } from "./contexts/PresenceContext.js";
+import { useTree } from "./hooks/useTree.js";
 import { TooltipButton, IconButton } from "./buttonux.js";
 
 export function NewShapeButton(props: {

@@ -42,10 +42,10 @@ import {
 	CellInputVote,
 	ColumnInput,
 } from "./inputux.js";
-import { PresenceContext } from "./PresenceContext.js";
-import { objectIdNumber, useTree } from "./useTree.js";
-import { usePresenceManager } from "./usePresenceManger.js";
-import { TableContext, useTable } from "./TableContext.js";
+import { PresenceContext } from "./contexts/PresenceContext.js";
+import { objectIdNumber, useTree } from "./hooks/useTree.js";
+import { usePresenceManager } from "./hooks/usePresenceManger.js";
+import { TableContext, useTable } from "./contexts/TableContext.js";
 
 const leftColumnWidth = "20px"; // Width of the index column
 const columnWidth = "200px"; // Width of the data columns

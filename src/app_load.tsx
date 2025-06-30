@@ -9,7 +9,7 @@ import { loadFluidData } from "./infra/fluid.js";
 import { IFluidContainer } from "fluid-framework";
 import { FluentProvider, webLightTheme } from "@fluentui/react-components";
 
-import { getPresenceViaDataObject } from "@fluidframework/presence/alpha";
+import { getPresence } from "@fluidframework/presence/beta";
 import { createTypedSelectionManager } from "./utils/selection.js";
 import { createUsersManager } from "./utils/users.js";
 import { UserInfo } from "./utils/Interfaces/UsersManager.js";
@@ -33,7 +33,7 @@ export async function loadApp(props: {
 	}
 
 	// Get the Presence data object from the container
-	const presence = getPresenceViaDataObject(container.initialObjects.presence);
+	const presence = getPresence(container);
 
 	// Create a workspace for the selection manager
 	const workspace = presence.states.getWorkspace("workspace:main", {});

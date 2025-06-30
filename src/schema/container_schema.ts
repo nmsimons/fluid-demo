@@ -2,8 +2,6 @@
  * Copyright (c) Microsoft Corporation and contributors. All rights reserved.
  * Licensed under the MIT License.
  */
-
-import { ExperimentalPresenceManager } from "@fluidframework/presence/alpha";
 import { ContainerSchema, SharedTree } from "fluid-framework";
 
 // Define the schema of our Container. This includes the DDSes/DataObjects
@@ -12,6 +10,5 @@ import { ContainerSchema, SharedTree } from "fluid-framework";
 export const containerSchema = {
 	initialObjects: {
 		appData: SharedTree,
-		presence: ExperimentalPresenceManager,
 	},
 } satisfies ContainerSchema;

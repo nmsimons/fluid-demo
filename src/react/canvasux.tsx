@@ -7,9 +7,9 @@
 import React, { JSX, useContext, useEffect, useRef } from "react";
 import { Items, Item } from "../schema/app_schema.js";
 import { IFluidContainer } from "fluid-framework";
-import { PresenceContext } from "./PresenceContext.js";
+import { PresenceContext } from "./contexts/PresenceContext.js";
 import { ItemView } from "./itemux.js";
-import { useTree } from "./useTree.js";
+import { useTree } from "./hooks/useTree.js";
 
 export function Canvas(props: {
 	items: Items;

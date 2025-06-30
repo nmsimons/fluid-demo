@@ -29,7 +29,7 @@ import {
 	Tooltip,
 } from "@fluentui/react-components";
 import { User, UsersManager } from "../utils/Interfaces/UsersManager.js";
-import { PresenceContext } from "./PresenceContext.js";
+import { PresenceContext } from "./contexts/PresenceContext.js";
 import { DragManager } from "../utils/Interfaces/DragManager.js";
 import { DragAndRotatePackage } from "../utils/drag.js";
 import { TypedSelection } from "../utils/selection.js";
@@ -41,8 +41,8 @@ import {
 	CommentRegular,
 	DeleteRegular,
 } from "@fluentui/react-icons";
-import { useTree } from "./useTree.js";
-import { PaneContext } from "./PaneContext.js";
+import { useTree } from "./hooks/useTree.js";
+import { PaneContext } from "./contexts/PaneContext.js";
 
 export function ReactApp(props: {
 	tree: TreeView<typeof App>;

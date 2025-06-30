@@ -40,7 +40,7 @@ import {
 	ToolbarButton,
 	Tooltip,
 } from "@fluentui/react-components";
-import { useTree } from "./useTree.js";
+import { useTree } from "./hooks/useTree.js";
 
 const getLastSelectedRow = (
 	table: FluidTable,
