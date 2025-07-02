@@ -94,6 +94,7 @@ export function NewCircleButton(props: {
 			onClick={(e: React.MouseEvent) => handleClick(e)}
 			icon={<CircleRegular />}
 			tooltip="Add a circle shape to the canvas"
+			keyboardShortcut="C"
 		/>
 	);
 }
@@ -115,6 +116,7 @@ export function NewSquareButton(props: {
 			onClick={(e: React.MouseEvent) => handleClick(e)}
 			icon={<SquareRegular />}
 			tooltip="Add a square shape to the canvas"
+			keyboardShortcut="S"
 		/>
 	);
 }
@@ -136,6 +138,7 @@ export function NewTriangleButton(props: {
 			onClick={(e: React.MouseEvent) => handleClick(e)}
 			icon={<TriangleRegular />}
 			tooltip="Add a triangle shape to the canvas"
+			keyboardShortcut="T"
 		/>
 	);
 }
@@ -157,6 +160,7 @@ export function NewStarButton(props: {
 			onClick={(e: React.MouseEvent) => handleClick(e)}
 			icon={<StarRegular />}
 			tooltip="Add a star shape to the canvas"
+			keyboardShortcut="R"
 		/>
 	);
 }
@@ -197,6 +201,7 @@ export function NewNoteButton(props: {
 			onClick={(e: React.MouseEvent) => handleClick(e)}
 			icon={<NoteRegular />}
 			tooltip="Add a sticky note to the canvas"
+			keyboardShortcut="N"
 		/>
 	);
 }
@@ -230,6 +235,7 @@ export function NewTableButton(props: {
 			onClick={(e: React.MouseEvent) => handleClick(e)}
 			icon={<TableRegular />}
 			tooltip="Add a data table to the canvas"
+			keyboardShortcut="B"
 		/>
 	);
 }
@@ -275,6 +281,7 @@ export function DeleteButton(props: { delete: () => void }): JSX.Element {
 			onClick={() => deleteFunc()}
 			icon={<DismissFilled />}
 			tooltip="Delete item"
+			keyboardShortcut="Delete"
 		/>
 	);
 }
@@ -417,6 +424,7 @@ export function DuplicateButton(props: {
 			onClick={(e) => handleDuplicate(e)}
 			icon={<CopyRegular />}
 			tooltip="Create a copy of this item"
+			keyboardShortcut="Ctrl+D"
 		/>
 	);
 }
@@ -445,6 +453,7 @@ export function VoteButton(props: { vote: Vote }): JSX.Element {
 			icon={hasVoted ? <ThumbLikeFilled /> : <ThumbLikeRegular />}
 			onClick={(e) => handleClick(e)}
 			tooltip={tooltipText}
+			keyboardShortcut="V"
 		></TooltipButton>
 	);
 }
@@ -470,6 +479,7 @@ export function CommentButton(props: { item: Item }): JSX.Element {
 			onClick={(e) => handleClick(e)}
 			icon={commentCount > 0 ? <CommentFilled /> : <CommentRegular />}
 			tooltip={commentCount > 0 ? `View comments (${commentCount})` : "Add a comment"}
+			keyboardShortcut="Ctrl+/"
 		/>
 	);
 }
@@ -480,13 +490,15 @@ export function ShowPaneButton(props: {
 	hiddenIcon: JSX.Element;
 	shownIcon: JSX.Element;
 	tooltip?: string;
+	keyboardShortcut?: string;
 }): JSX.Element {
-	const { hidePane, paneHidden, hiddenIcon, shownIcon, tooltip } = props;
+	const { hidePane, paneHidden, hiddenIcon, shownIcon, tooltip, keyboardShortcut } = props;
 	return (
 		<TooltipButton
 			onClick={() => hidePane(!paneHidden)}
 			icon={paneHidden ? hiddenIcon : shownIcon}
 			tooltip={paneHidden ? `Show ${tooltip}` : `Hide ${tooltip}`}
+			keyboardShortcut={keyboardShortcut}
 		/>
 	);
 }
@@ -546,6 +558,7 @@ export function AddColumnButton(props: { table: FluidTable }): JSX.Element {
 			onClick={handleAddColumn}
 			icon={<TableInsertColumnRegular />}
 			tooltip="Add a new column to the table"
+			keyboardShortcut="Ctrl+Shift+C"
 		/>
 	);
 }
@@ -567,6 +580,7 @@ export function AddRowButton(props: { table: FluidTable }): JSX.Element {
 			onClick={handleAddRow}
 			icon={<TableInsertRowRegular />}
 			tooltip="Add a new row to the table"
+			keyboardShortcut="Ctrl+Shift+R"
 		/>
 	);
 }
@@ -597,6 +611,7 @@ export function MoveColumnLeftButton(props: {
 			onClick={handleMoveLeft}
 			icon={<ChevronLeftRegular />}
 			tooltip="Move selected column to the left"
+			keyboardShortcut="Ctrl+Shift+Left"
 			disabled={!canMoveLeft}
 		/>
 	);
@@ -628,6 +643,7 @@ export function MoveColumnRightButton(props: {
 			onClick={handleMoveRight}
 			icon={<ChevronRightRegular />}
 			tooltip="Move selected column to the right"
+			keyboardShortcut="Ctrl+Shift+Right"
 			disabled={!canMoveRight}
 		/>
 	);
@@ -656,6 +672,7 @@ export function MoveRowUpButton(props: { table: FluidTable; selectedRowId?: stri
 			onClick={handleMoveUp}
 			icon={<ChevronUpRegular />}
 			tooltip="Move selected row up"
+			keyboardShortcut="Ctrl+Shift+Up"
 			disabled={!canMoveUp}
 		/>
 	);
@@ -687,6 +704,7 @@ export function MoveRowDownButton(props: {
 			onClick={handleMoveDown}
 			icon={<ChevronDownRegular />}
 			tooltip="Move selected row down"
+			keyboardShortcut="Ctrl+Shift+Down"
 			disabled={!canMoveDown}
 		/>
 	);
@@ -721,6 +739,7 @@ export function MoveItemForwardButton(props: {
 			onClick={handleMoveForward}
 			icon={<PositionForwardRegular />}
 			tooltip="Move item forward one layer"
+			keyboardShortcut="]"
 			disabled={!canMoveForward}
 		/>
 	);
@@ -754,6 +773,7 @@ export function MoveItemBackwardButton(props: {
 			onClick={handleMoveBackward}
 			icon={<PositionBackwardRegular />}
 			tooltip="Move item backward one layer"
+			keyboardShortcut="["
 			disabled={!canMoveBackward}
 		/>
 	);
@@ -787,6 +807,7 @@ export function BringItemToFrontButton(props: {
 			onClick={handleBringToFront}
 			icon={<PositionToFrontRegular />}
 			tooltip="Bring item to the front layer"
+			keyboardShortcut="Ctrl+]"
 			disabled={!canBringToFront}
 		/>
 	);
@@ -820,6 +841,7 @@ export function SendItemToBackButton(props: {
 			onClick={handleSendToBack}
 			icon={<PositionToBackRegular />}
 			tooltip="Send item to the back layer"
+			keyboardShortcut="Ctrl+["
 			disabled={!canSendToBack}
 		/>
 	);

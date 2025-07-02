@@ -4,7 +4,7 @@
  */
 
 import React, { JSX, useContext, useEffect, useState, useRef } from "react";
-import { App, Shape, FluidTable } from "../schema/app_schema.js";
+import { App, Shape, FluidTable, Item, Note, Vote, hintValues } from "../schema/app_schema.js";
 import "../output.css";
 import { ConnectionState, IFluidContainer, TreeView, Tree } from "fluid-framework";
 import { Canvas } from "./canvasux.js";
@@ -33,6 +33,7 @@ import {
 	MoveItemBackwardButton,
 	BringItemToFrontButton,
 	SendItemToBackButton,
+	SHAPE_COLORS,
 } from "./appbuttonux.js";
 import { TooltipButton } from "./buttonux.js";
 import {
@@ -67,6 +68,7 @@ import {
 	DeleteRegular,
 } from "@fluentui/react-icons";
 import { useTree } from "./hooks/useTree.js";
+import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts.js";
 import { PaneContext } from "./contexts/PaneContext.js";
 
 // Context for comment pane actions
@@ -182,6 +184,489 @@ export function ReactApp(props: {
 		return unsubscribe;
 	}, [tableSelection]);
 
+	// Keyboard shortcuts
+	useKeyboardShortcuts({
+		shortcuts: [
+			// Undo/Redo shortcuts
+			{
+				key: "z",
+				ctrlKey: true,
+				action: () => undoRedo.undo(),
+				disabled: !canUndo,
+			},
+			{
+				key: "y",
+				ctrlKey: true,
+				action: () => undoRedo.redo(),
+				disabled: !canRedo,
+			},
+			{
+				key: "z",
+				ctrlKey: true,
+				shiftKey: true,
+				action: () => undoRedo.redo(),
+				disabled: !canRedo,
+			},
+			// Shape creation shortcuts
+			{
+				key: "c",
+				action: () => {
+					const shape = new Shape({
+						size: 100 + Math.floor(Math.random() * 20),
+						color: SHAPE_COLORS[Math.floor(Math.random() * SHAPE_COLORS.length)],
+						type: "circle",
+					});
+					const item = new Item({
+						id: crypto.randomUUID(),
+						x: Math.random() * (canvasSize.width - 120),
+						y: Math.random() * (canvasSize.height - 120),
+						comments: [],
+						votes: new Vote({ votes: [] }),
+						content: shape,
+						rotation: Math.random() < 0.5 ? Math.random() * 15 : 345 + Math.random() * 15,
+					});
+					view.root.items.insertAtEnd(item);
+				},
+			},
+			{
+				key: "s",
+				action: () => {
+					const shape = new Shape({
+						size: 100 + Math.floor(Math.random() * 20),
+						color: SHAPE_COLORS[Math.floor(Math.random() * SHAPE_COLORS.length)],
+						type: "square",
+					});
+					const item = new Item({
+						id: crypto.randomUUID(),
+						x: Math.random() * (canvasSize.width - 120),
+						y: Math.random() * (canvasSize.height - 120),
+						comments: [],
+						votes: new Vote({ votes: [] }),
+						content: shape,
+						rotation: Math.random() < 0.5 ? Math.random() * 15 : 345 + Math.random() * 15,
+					});
+					view.root.items.insertAtEnd(item);
+				},
+			},
+			{
+				key: "t",
+				action: () => {
+					const shape = new Shape({
+						size: 100 + Math.floor(Math.random() * 20),
+						color: SHAPE_COLORS[Math.floor(Math.random() * SHAPE_COLORS.length)],
+						type: "triangle",
+					});
+					const item = new Item({
+						id: crypto.randomUUID(),
+						x: Math.random() * (canvasSize.width - 120),
+						y: Math.random() * (canvasSize.height - 120),
+						comments: [],
+						votes: new Vote({ votes: [] }),
+						content: shape,
+						rotation: Math.random() < 0.5 ? Math.random() * 15 : 345 + Math.random() * 15,
+					});
+					view.root.items.insertAtEnd(item);
+				},
+			},
+			{
+				key: "r",
+				action: () => {
+					const shape = new Shape({
+						size: 100 + Math.floor(Math.random() * 20),
+						color: SHAPE_COLORS[Math.floor(Math.random() * SHAPE_COLORS.length)],
+						type: "star",
+					});
+					const item = new Item({
+						id: crypto.randomUUID(),
+						x: Math.random() * (canvasSize.width - 120),
+						y: Math.random() * (canvasSize.height - 120),
+						comments: [],
+						votes: new Vote({ votes: [] }),
+						content: shape,
+						rotation: Math.random() < 0.5 ? Math.random() * 15 : 345 + Math.random() * 15,
+					});
+					view.root.items.insertAtEnd(item);
+				},
+			},
+			{
+				key: "n",
+				action: () => {
+					const note = new Note({
+						id: crypto.randomUUID(),
+						text: "",
+						author: users.getMyself().value.id,
+					});
+					const item = new Item({
+						id: crypto.randomUUID(),
+						x: Math.random() * (canvasSize.width - 200),
+						y: Math.random() * (canvasSize.height - 200),
+						comments: [],
+						votes: new Vote({ votes: [] }),
+						content: note,
+						rotation: Math.random() < 0.5 ? Math.random() * 15 : 345 + Math.random() * 15,
+					});
+					view.root.items.insertAtEnd(item);
+				},
+			},
+			{
+				key: "b",
+				action: () => {
+					const rows = new Array(10).fill(null).map(() => {
+						return { id: crypto.randomUUID(), cells: [] };
+					});
+					const table = new FluidTable({
+						rows: rows,
+						columns: [
+							{
+								id: crypto.randomUUID(),
+								name: "String",
+								hint: hintValues.string,
+							},
+							{
+								id: crypto.randomUUID(),
+								name: "Number",
+								hint: hintValues.number,
+							},
+							{
+								id: crypto.randomUUID(),
+								name: "Date",
+								hint: hintValues.date,
+							},
+						],
+					});
+					const item = new Item({
+						id: crypto.randomUUID(),
+						x: Math.random() * (canvasSize.width - 200),
+						y: Math.random() * (canvasSize.height - 200),
+						comments: [],
+						votes: new Vote({ votes: [] }),
+						content: table,
+						rotation: 0,
+					});
+					view.root.items.insertAtEnd(item);
+				},
+			},
+			// Selected item shortcuts
+			{
+				key: "Delete",
+				action: () => {
+					const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
+					if (selectedItem) {
+						selectedItem.delete();
+					}
+				},
+				disabled: !selectedItemId,
+			},
+			{
+				key: "d",
+				ctrlKey: true,
+				action: () => {
+					const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
+					if (selectedItem) {
+						// Use existing duplicate logic from DuplicateButton
+						let newContent;
+						if (Tree.is(selectedItem.content, Shape)) {
+							newContent = new Shape({
+								size: selectedItem.content.size,
+								color: selectedItem.content.color,
+								type: selectedItem.content.type,
+							});
+						} else if (Tree.is(selectedItem.content, Note)) {
+							newContent = new Note({
+								id: crypto.randomUUID(),
+								text: selectedItem.content.text,
+								author: users.getMyself().value.id,
+							});
+						} else if (Tree.is(selectedItem.content, FluidTable)) {
+							// For tables, create a new basic table instead of trying to duplicate complex structure
+							const rows = new Array(10).fill(null).map(() => {
+								return { id: crypto.randomUUID(), cells: [] };
+							});
+							newContent = new FluidTable({
+								rows: rows,
+								columns: [
+									{
+										id: crypto.randomUUID(),
+										name: "String",
+										hint: hintValues.string,
+									},
+									{
+										id: crypto.randomUUID(),
+										name: "Number",
+										hint: hintValues.number,
+									},
+									{
+										id: crypto.randomUUID(),
+										name: "Date",
+										hint: hintValues.date,
+									},
+								],
+							});
+						} else {
+							return; // Unknown content type
+						}
+
+						const newItem = new Item({
+							id: crypto.randomUUID(),
+							x: selectedItem.x + 20,
+							y: selectedItem.y + 20,
+							comments: [],
+							votes: new Vote({ votes: [] }),
+							content: newContent,
+							rotation: selectedItem.rotation,
+						});
+						view.root.items.insertAtEnd(newItem);
+					}
+				},
+				disabled: !selectedItemId,
+			},
+			// Z-order shortcuts
+			{
+				key: "[", // [
+				action: () => {
+					const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
+					if (selectedItem) {
+						const currentIndex = view.root.items.indexOf(selectedItem);
+						if (currentIndex > 0) {
+							Tree.runTransaction(view.root.items, () => {
+								view.root.items.moveToIndex(currentIndex - 1, currentIndex);
+							});
+						}
+					}
+				},
+				disabled: !selectedItemId,
+			},
+			{
+				key: "]", // ]
+				action: () => {
+					const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
+					if (selectedItem) {
+						const currentIndex = view.root.items.indexOf(selectedItem);
+						if (currentIndex < view.root.items.length - 1) {
+							Tree.runTransaction(view.root.items, () => {
+								view.root.items.moveToIndex(currentIndex, currentIndex + 1);
+							});
+						}
+					}
+				},
+				disabled: !selectedItemId,
+			},
+			{
+				key: "[", // Ctrl+[
+				ctrlKey: true,
+				action: () => {
+					const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
+					if (selectedItem) {
+						const currentIndex = view.root.items.indexOf(selectedItem);
+						Tree.runTransaction(view.root.items, () => {
+							view.root.items.moveToStart(currentIndex);
+						});
+					}
+				},
+				disabled: !selectedItemId,
+			},
+			{
+				key: "]", // Ctrl+]
+				ctrlKey: true,
+				action: () => {
+					const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
+					if (selectedItem) {
+						const currentIndex = view.root.items.indexOf(selectedItem);
+						Tree.runTransaction(view.root.items, () => {
+							view.root.items.moveToEnd(currentIndex);
+						});
+					}
+				},
+				disabled: !selectedItemId,
+			},
+			// Clear all shortcut
+			{
+				key: "Delete",
+				ctrlKey: true,
+				shiftKey: true,
+				action: () => view.root.items.removeRange(),
+				disabled: view.root.items.length === 0,
+			},
+			// Toggle comment pane
+			{
+				key: "m",
+				ctrlKey: true,
+				action: () => setCommentPaneHidden(!commentPaneHidden),
+			},
+			// Vote shortcut
+			{
+				key: "v",
+				action: () => {
+					const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
+					if (selectedItem) {
+						const userId = users.getMyself().value.id;
+						selectedItem.votes.toggleVote(userId);
+					}
+				},
+				disabled: !selectedItemId,
+			},
+			// Comment shortcut
+			{
+				key: "/",
+				ctrlKey: true,
+				action: () => {
+					const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
+					if (selectedItem) {
+						openCommentPaneAndFocus(selectedItem.id);
+					}
+				},
+				disabled: !selectedItemId,
+			},
+			// Table operation shortcuts (only work when a table is selected)
+			{
+				key: "c",
+				ctrlKey: true,
+				shiftKey: true,
+				action: () => {
+					const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
+					if (selectedItem && Tree.is(selectedItem.content, FluidTable)) {
+						const table = selectedItem.content as FluidTable;
+						Tree.runTransaction(table, () => {
+							const columnCount = table.columns.length;
+							table.insertColumn({
+								index: columnCount,
+								name: `Column ${columnCount + 1}`,
+								hint: undefined,
+							});
+						});
+					}
+				},
+				disabled: (() => {
+					const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
+					return !selectedItem || !Tree.is(selectedItem.content, FluidTable);
+				})(),
+			},
+			{
+				key: "r",
+				ctrlKey: true,
+				shiftKey: true,
+				action: () => {
+					const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
+					if (selectedItem && Tree.is(selectedItem.content, FluidTable)) {
+						const table = selectedItem.content as FluidTable;
+						Tree.runTransaction(table, () => {
+							const newRow = { id: crypto.randomUUID(), cells: [] };
+							table.insertRows({ rows: [newRow] });
+						});
+					}
+				},
+				disabled: (() => {
+					const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
+					return !selectedItem || !Tree.is(selectedItem.content, FluidTable);
+				})(),
+			},
+			{
+				key: "ArrowLeft",
+				ctrlKey: true,
+				shiftKey: true,
+				action: () => {
+					const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
+					if (selectedItem && Tree.is(selectedItem.content, FluidTable) && selectedColumnId) {
+						const table = selectedItem.content as FluidTable;
+						const selectedColumn = table.columns.find((col) => col.id === selectedColumnId);
+						if (selectedColumn && selectedColumn.index > 0) {
+							Tree.runTransaction(table, () => {
+								selectedColumn.moveTo(selectedColumn.index - 1);
+							});
+						}
+					}
+				},
+				disabled: (() => {
+					const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
+					if (!selectedItem || !Tree.is(selectedItem.content, FluidTable) || !selectedColumnId) {
+						return true;
+					}
+					const table = selectedItem.content as FluidTable;
+					const selectedColumn = table.columns.find((col) => col.id === selectedColumnId);
+					return !selectedColumn || selectedColumn.index === 0;
+				})(),
+			},
+			{
+				key: "ArrowRight",
+				ctrlKey: true,
+				shiftKey: true,
+				action: () => {
+					const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
+					if (selectedItem && Tree.is(selectedItem.content, FluidTable) && selectedColumnId) {
+						const table = selectedItem.content as FluidTable;
+						const selectedColumn = table.columns.find((col) => col.id === selectedColumnId);
+						if (selectedColumn && selectedColumn.index < table.columns.length - 1) {
+							Tree.runTransaction(table, () => {
+								selectedColumn.moveTo(selectedColumn.index + 1);
+							});
+						}
+					}
+				},
+				disabled: (() => {
+					const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
+					if (!selectedItem || !Tree.is(selectedItem.content, FluidTable) || !selectedColumnId) {
+						return true;
+					}
+					const table = selectedItem.content as FluidTable;
+					const selectedColumn = table.columns.find((col) => col.id === selectedColumnId);
+					return !selectedColumn || selectedColumn.index >= table.columns.length - 1;
+				})(),
+			},
+			{
+				key: "ArrowUp",
+				ctrlKey: true,
+				shiftKey: true,
+				action: () => {
+					const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
+					if (selectedItem && Tree.is(selectedItem.content, FluidTable) && selectedRowId) {
+						const table = selectedItem.content as FluidTable;
+						const selectedRow = table.rows.find((row) => row.id === selectedRowId);
+						if (selectedRow && selectedRow.index > 0) {
+							Tree.runTransaction(table, () => {
+								selectedRow.moveTo(selectedRow.index - 1);
+							});
+						}
+					}
+				},
+				disabled: (() => {
+					const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
+					if (!selectedItem || !Tree.is(selectedItem.content, FluidTable) || !selectedRowId) {
+						return true;
+					}
+					const table = selectedItem.content as FluidTable;
+					const selectedRow = table.rows.find((row) => row.id === selectedRowId);
+					return !selectedRow || selectedRow.index === 0;
+				})(),
+			},
+			{
+				key: "ArrowDown",
+				ctrlKey: true,
+				shiftKey: true,
+				action: () => {
+					const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
+					if (selectedItem && Tree.is(selectedItem.content, FluidTable) && selectedRowId) {
+						const table = selectedItem.content as FluidTable;
+						const selectedRow = table.rows.find((row) => row.id === selectedRowId);
+						if (selectedRow && selectedRow.index < table.rows.length - 1) {
+							Tree.runTransaction(table, () => {
+								selectedRow.moveTo(selectedRow.index + 1);
+							});
+						}
+					}
+				},
+				disabled: (() => {
+					const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
+					if (!selectedItem || !Tree.is(selectedItem.content, FluidTable) || !selectedRowId) {
+						return true;
+					}
+					const table = selectedItem.content as FluidTable;
+					const selectedRow = table.rows.find((row) => row.id === selectedRowId);
+					return !selectedRow || selectedRow.index >= table.rows.length - 1;
+				})(),
+			},
+		],
+	});
+
 	return (
 		<PresenceContext.Provider
 			value={{
@@ -203,12 +688,14 @@ export function ReactApp(props: {
 						<ToolbarGroup>
 							<TooltipButton
 								tooltip="Undo"
+								keyboardShortcut="Ctrl+Z"
 								onClick={() => undoRedo.undo()}
 								icon={<ArrowUndoFilled />}
 								disabled={!canUndo}
 							/>
 							<TooltipButton
 								tooltip="Redo"
+								keyboardShortcut="Ctrl+Y"
 								onClick={() => undoRedo.redo()}
 								icon={<ArrowRedoFilled />}
 								disabled={!canRedo}
@@ -309,6 +796,7 @@ export function ReactApp(props: {
 						<ToolbarGroup>
 							<TooltipButton
 								tooltip="Remove all items from the canvas"
+								keyboardShortcut="Ctrl+Shift+Delete"
 								icon={<DeleteRegular />}
 								onClick={() => view.root.items.removeRange()}
 								disabled={view.root.items.length === 0}
@@ -322,6 +810,7 @@ export function ReactApp(props: {
 								hidePane={setCommentPaneHidden}
 								paneHidden={commentPaneHidden}
 								tooltip="Comments"
+								keyboardShortcut="Ctrl+M"
 							/>
 						</ToolbarGroup>
 						{view !== tree ? (
