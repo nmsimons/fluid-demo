@@ -4,19 +4,26 @@ import { useTree } from "./hooks/useTree.js";
 
 const shadow = "drop-shadow(3px 3px 3px rgb(0 0 0 / 0.3))";
 
-export function ShapeView(props: { shape: Shape }): JSX.Element {
-	const { shape } = props;
+export function ShapeView(props: {
+	shape: Shape;
+	sizeOverride?: number;
+	colorOverride?: string;
+}): JSX.Element {
+	const { shape, sizeOverride, colorOverride } = props;
 	useTree(shape);
+
+	const size = sizeOverride ?? shape.size;
+	const backgroundColor = colorOverride ?? shape.color;
 
 	switch (shape.type) {
 		case "circle":
-			return <Circle size={shape.size} backgroundColor={shape.color} />;
+			return <Circle size={size} backgroundColor={backgroundColor} />;
 		case "square":
-			return <Square size={shape.size} backgroundColor={shape.color} />;
+			return <Square size={size} backgroundColor={backgroundColor} />;
 		case "triangle":
-			return <Triangle size={shape.size} backgroundColor={shape.color} />;
+			return <Triangle size={size} backgroundColor={backgroundColor} />;
 		case "star":
-			return <Star size={shape.size} backgroundColor={shape.color} />;
+			return <Star size={size} backgroundColor={backgroundColor} />;
 		default:
 			return <></>;
 	}

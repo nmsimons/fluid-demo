@@ -4,14 +4,13 @@ import { PresenceContext } from "./contexts/PresenceContext.js";
 import { ShapeView } from "./shapeux.js";
 import { Tree } from "fluid-framework";
 import { DragAndRotatePackage } from "../utils/drag.js";
-import { DeleteButton, VoteButton } from "./appbuttonux.js";
-import { Toolbar, ToolbarGroup } from "@fluentui/react-components";
+import { ResizePackage } from "../utils/Interfaces/ResizeManager.js";
 import { NoteView } from "./noteux.js";
 import { objectIdNumber, useTree } from "./hooks/useTree.js";
 import { usePresenceManager } from "./hooks/usePresenceManger.js";
 import { PresenceManager } from "../utils/Interfaces/PresenceManager.js";
 import { TableView } from "./tableux.js";
-import { Comment20Regular } from "@fluentui/react-icons";
+import { Comment20Filled } from "@fluentui/react-icons";
 import { PaneContext } from "./contexts/PaneContext.js";
 import { LayoutContext } from "./hooks/useLayoutManger.js";
 
@@ -27,12 +26,21 @@ const getContentType = (item: Item): string => {
 	}
 };
 
-export function ContentElement(props: { item: Item }): JSX.Element {
-	const { item } = props;
+export function ContentElement(props: {
+	item: Item;
+	shapeProps?: { sizeOverride?: number };
+}): JSX.Element {
+	const { item, shapeProps } = props;
 	useTree(item.content);
 
 	if (Tree.is(item.content, Shape)) {
-		return <ShapeView key={objectIdNumber(item.content)} shape={item.content} />;
+		return (
+			<ShapeView
+				key={objectIdNumber(item.content)}
+				shape={item.content}
+				sizeOverride={shapeProps?.sizeOverride}
+			/>
+		);
 	} else if (Tree.is(item.content, Note)) {
 		return <NoteView key={objectIdNumber(item.content)} note={item.content} />;
 	} else if (Tree.is(item.content, FluidTable)) {
@@ -58,6 +66,11 @@ export function ItemView(props: {
 	const [remoteSelected, setRemoteSelected] = useState<string[]>(
 		presence.itemSelection.testRemoteSelection({ id: item.id }),
 	);
+
+	// Shape-specific props for temporary overrides during resize
+	const [shapeProps, setShapeProps] = useState<{
+		sizeOverride?: number;
+	}>({});
 
 	const [itemProps, setItemProps] = useState<{
 		left: number;
@@ -95,6 +108,29 @@ export function ItemView(props: {
 		}
 	};
 
+	const setPropsOnResize = (resizeData: ResizePackage | null) => {
+		if (resizeData && resizeData.id === item.id && Tree.is(item.content, Shape)) {
+			// Update position via itemProps
+			setItemProps((prev) => ({
+				...prev,
+				left: resizeData.x,
+				top: resizeData.y,
+			}));
+
+			// Update size via shapeProps override
+			setShapeProps({
+				sizeOverride: resizeData.size,
+			});
+		} else if (!resizeData || resizeData.id !== item.id) {
+			// Clear overrides when no resize data for this item
+			setShapeProps({});
+		}
+	};
+
+	const clearShapeProps = () => {
+		setShapeProps({});
+	};
+
 	usePresenceManager(
 		presence.drag as PresenceManager<DragAndRotatePackage>,
 		(update) => {
@@ -104,6 +140,15 @@ export function ItemView(props: {
 		},
 		setPropsOnDrag,
 	);
+
+	usePresenceManager(
+		presence.resize as PresenceManager<ResizePackage | null>,
+		(update) => {
+			setPropsOnResize(update);
+		},
+		setPropsOnResize,
+	);
+
 	usePresenceManager(
 		presence.itemSelection,
 		() => {
@@ -165,11 +210,8 @@ export function ItemView(props: {
 		}
 	};
 
-	if (selected) {
-		itemProps.zIndex = 1000;
-	} else {
-		itemProps.zIndex = index;
-	}
+	// Always use the natural z-order based on position in array
+	itemProps.zIndex = index;
 
 	const ref = useRef<HTMLDivElement>(null);
 	useEffect(() => {
@@ -188,6 +230,7 @@ export function ItemView(props: {
 	return (
 		<div
 			ref={ref}
+			data-item-id={item.id}
 			onClick={(e) => handleClick(e)}
 			onDragStart={(e) => handleDragStart(e)}
 			onDrag={(e) => handleDrag(e)}
@@ -196,30 +239,36 @@ export function ItemView(props: {
 			className={`absolute`}
 			style={{ ...itemProps }}
 		>
-			<CommentIndicator comments={item.comments} />
-			<SelectionBox selected={selected} item={item} />
+			<CommentIndicator comments={item.comments} selected={selected} />
+			<SelectionBox selected={selected} item={item} onResizeEnd={clearShapeProps} />
 			<PresenceBox remoteSelected={remoteSelected.length > 0} />
-			<ContentElement item={item} />
+			<ContentElement item={item} shapeProps={shapeProps} />
 		</div>
 	);
 }
 
-export function CommentIndicator(props: { comments: Comments }): JSX.Element {
-	const { comments } = props;
+export function CommentIndicator(props: { comments: Comments; selected: boolean }): JSX.Element {
+	const { comments, selected } = props;
 	useTree(comments, true);
 
 	const panes = useContext(PaneContext).panes;
 	const visible =
-		(panes.find((pane) => pane.name === "comments")?.visible ?? false) && comments.length > 0;
+		(panes.find((pane) => pane.name === "comments")?.visible ?? false) &&
+		comments.length > 0 &&
+		!selected; // Hide when item is selected
+
 	return (
 		<div
-			className={`absolute pointer-events-none flex flex-row w-full justify-center  ${visible ? "" : " hidden"}`}
+			className={`absolute pointer-events-none flex flex-row justify-center items-center ${visible ? "" : " hidden"}`}
 			style={{
-				top: -40,
+				top: -12, // Position near the top-right corner
+				right: -12, // Position to the right of the item
 				zIndex: 10000,
+				width: "24px",
+				height: "24px",
 			}}
 		>
-			<Comment20Regular />
+			<Comment20Filled />
 		</div>
 	);
 }
@@ -251,25 +300,6 @@ const calculateOffsetFromCanvasOrigin = (
 	};
 };
 
-const calculateOffsetFromCenter = (
-	e: React.MouseEvent<HTMLDivElement>,
-	item: Item,
-): { x: number; y: number } => {
-	const coordinates = calculateCanvasMouseCoordinates(e);
-	const rect =
-		e.currentTarget.parentElement?.getBoundingClientRect() ??
-		e.currentTarget.getBoundingClientRect();
-	const width = rect.width;
-	const height = rect.height;
-	const center = { x: item.x + width / 2, y: item.y + height / 2 };
-	const newX = coordinates.x - center.x;
-	const newY = coordinates.y - center.y;
-	return {
-		x: newX,
-		y: newY,
-	};
-};
-
 export function PresenceBox(props: { remoteSelected: boolean }): JSX.Element {
 	const { remoteSelected } = props;
 	const padding = 8;
@@ -288,13 +318,17 @@ export function PresenceBox(props: { remoteSelected: boolean }): JSX.Element {
 	);
 }
 
-export function SelectionBox(props: { selected: boolean; item: Item }): JSX.Element {
-	const { selected, item } = props;
+export function SelectionBox(props: {
+	selected: boolean;
+	item: Item;
+	onResizeEnd?: () => void;
+}): JSX.Element {
+	const { selected, item, onResizeEnd } = props;
 	useTree(item);
 	const padding = 8;
 	return (
 		<div className={`bg-transparent ${selected ? "" : " hidden"}`}>
-			<SelectionControls item={item} padding={padding} />
+			<SelectionControls item={item} padding={padding} onResizeEnd={onResizeEnd} />
 			<div
 				className={`absolute border-3 border-dashed border-black bg-transparent`}
 				style={{
@@ -310,126 +344,298 @@ export function SelectionBox(props: { selected: boolean; item: Item }): JSX.Elem
 	);
 }
 
-export function SelectionControls(props: { item: Item; padding: number }): JSX.Element {
-	const { item, padding } = props;
+export function SelectionControls(props: {
+	item: Item;
+	padding: number;
+	onResizeEnd?: () => void;
+}): JSX.Element {
+	const { item, padding, onResizeEnd } = props;
 	useTree(item);
-	const height = 40;
-	return (
-		<div
-			className={`absolute flex flex-row justify-items-center items-center w-full bg-gray-100 border-2 border-black shadow-md`}
-			style={{
-				left: -padding,
-				top: -(height + 2) - padding,
-				width: `calc(100% + ${padding * 2}px)`,
-				height: height,
-			}}
-		>
-			<RotateHandle item={item} />
-			<ItemToolbar item={item} />
-		</div>
-	);
-}
 
-export function ItemToolbar(props: { item: Item }): JSX.Element {
-	const { item } = props;
-	useTree(item, true);
+	// Don't show rotation handle for tables since they can't be rotated
+	const showRotationHandle = getContentType(item) !== "table";
+
 	return (
-		<Toolbar
-			size="small"
-			className={"flex flex-row items-center justify-between w-full h-full"}
-		>
-			<ToolbarGroup role="presentation">
-				<VoteButton vote={item.votes} />
-			</ToolbarGroup>
-			<ToolbarGroup role="presentation">
-				<DeleteButton
-					delete={() => {
-						Tree.runTransaction(item, () => {
-							item.delete();
-						});
-					}}
-				/>
-			</ToolbarGroup>
-		</Toolbar>
+		<>
+			{showRotationHandle && <RotateHandle item={item} />}
+			<CornerResizeHandles item={item} padding={padding} onResizeEnd={onResizeEnd} />
+		</>
 	);
 }
 
 export function RotateHandle(props: { item: Item }): JSX.Element {
 	const { item } = props;
+	const presence = useContext(PresenceContext);
 
 	useTree(item);
 
-	const [rotating, setRotating] = useState(false);
-	const offset = useRef({ x: 0, y: 0 });
-	const rotation = useRef(item.rotation);
+	const [active, setActive] = useState(false);
 
-	const presence = useContext(PresenceContext);
-
-	const handleRotate = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
-		if (!rotating) return;
-
+	const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
 		e.bubbles = false;
 		e.stopPropagation();
 		e.preventDefault();
+		setActive(true);
 
-		const o = calculateOffsetFromCenter(e, item);
-		const angleInRadians = Math.atan2(o.y, o.x);
-		const angleInDegrees = (angleInRadians * 180) / Math.PI + 90;
+		// Get the item element to calculate its actual dimensions
+		const itemElement = document.querySelector(`[data-item-id="${item.id}"]`) as HTMLElement;
+		if (!itemElement) return;
 
-		// Normalize the angle to be between 0 and 360
-		let normalizedAngle = angleInDegrees % 360;
-		if (normalizedAngle < 0) normalizedAngle += 360;
+		// Track if we're currently rotating to prevent canvas click
+		let isRotating = false;
 
-		rotation.current = normalizedAngle;
+		const handleMouseMove = (event: MouseEvent) => {
+			isRotating = true; // Mark that we've started rotating
 
-		if (rotation.current !== item.rotation) {
+			// Get current item bounds
+			const itemRect = itemElement.getBoundingClientRect();
+			const canvasElement = document.getElementById("canvas");
+			const canvasRect = canvasElement?.getBoundingClientRect() || { left: 0, top: 0 };
+
+			// Calculate center of the item in canvas coordinates
+			const centerX = (itemRect.left + itemRect.right) / 2 - canvasRect.left;
+			const centerY = (itemRect.top + itemRect.bottom) / 2 - canvasRect.top;
+
+			// Calculate mouse position in canvas coordinates
+			const mouseX = event.clientX - canvasRect.left;
+			const mouseY = event.clientY - canvasRect.top;
+
+			// Calculate angle from center to mouse
+			const deltaX = mouseX - centerX;
+			const deltaY = mouseY - centerY;
+			const angleInRadians = Math.atan2(deltaY, deltaX);
+			const angleInDegrees = (angleInRadians * 180) / Math.PI + 90;
+
+			// Normalize the angle to be between 0 and 360
+			let normalizedAngle = angleInDegrees % 360;
+			if (normalizedAngle < 0) normalizedAngle += 360;
+
+			// Use presence API for real-time feedback instead of persistent storage
 			presence.drag.setDragging({
 				id: item.id,
 				x: item.x,
 				y: item.y,
-				rotation: rotation.current,
+				rotation: normalizedAngle,
 				branch: presence.branch,
 			});
-		}
-	};
+		};
 
-	const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
-		e.bubbles = false;
-		e.stopPropagation();
-		e.dataTransfer.setDragImage(new Image(), 0, 0);
-		offset.current = calculateOffsetFromCanvasOrigin(e, item);
-		setRotating(true);
-	};
+		const handleMouseUp = () => {
+			setActive(false);
+			document.removeEventListener("mousemove", handleMouseMove);
+			document.removeEventListener("mouseup", handleMouseUp);
 
-	const handleDragEnd = (e: React.DragEvent<HTMLDivElement>) => {
-		e.bubbles = false;
-		e.stopPropagation();
-		setRotating(false);
-		if (rotation.current !== item.rotation) {
-			item.rotation = rotation.current;
-		}
+			// If we were rotating, commit the final rotation to persistent storage
+			if (isRotating) {
+				// Get the current rotation from the drag state
+				const dragState = presence.drag.state.local;
+				if (dragState) {
+					Tree.runTransaction(item, () => {
+						item.rotation = dragState.rotation;
+					});
+				}
+
+				// Clear the drag state
+				presence.drag.clearDragging();
+
+				// Add a temporary click handler to the canvas to prevent selection clearing
+				const preventCanvasClick = (e: Event) => {
+					e.stopPropagation();
+					e.preventDefault();
+					// Remove this handler immediately after preventing the click
+					document.removeEventListener("click", preventCanvasClick, true);
+				};
+				// Use capture phase to intercept the click before it reaches the canvas
+				document.addEventListener("click", preventCanvasClick, true);
+			}
+		};
+
+		document.addEventListener("mousemove", handleMouseMove);
+		document.addEventListener("mouseup", handleMouseUp);
 	};
 
 	const handleClick = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
 		e.stopPropagation();
 	};
 
+	const handleSize = active ? 16 : 12;
+
 	return (
 		<div
 			className="absolute flex flex-row w-full justify-center items-center"
 			style={{
-				top: -15,
+				top: -35, // Moved farther from the rectangle
 			}}
 		>
 			<div
 				onClick={(e) => handleClick(e)}
-				onDragStart={(e) => handleDragStart(e)}
-				onDrag={(e) => handleRotate(e)}
-				onDragEnd={(e) => handleDragEnd(e)}
-				onMouseMove={(e) => handleRotate(e)}
-				draggable="true"
-				className={`bg-red-800 border-4 border-black`}
+				onMouseDown={(e) => handleMouseDown(e)}
+				className={`absolute bg-black shadow-lg z-50 cursor-grab`}
+				style={{
+					width: `${handleSize}px`,
+					height: `${handleSize}px`,
+					borderRadius: "50%", // Make it circular to distinguish from square resize handles
+				}}
 			></div>
 		</div>
+	);
+}
+
+export function CornerResizeHandles(props: {
+	item: Item;
+	padding: number;
+	onResizeEnd?: () => void;
+}): JSX.Element {
+	const { item, padding, onResizeEnd } = props;
+
+	// Only show resize handles for shapes
+	if (!Tree.is(item.content, Shape)) {
+		return <></>;
+	}
+
+	const shape = item.content;
+	useTree(shape);
+
+	const [resizing, setResizing] = useState(false);
+	const initialSize = useRef(shape.size);
+	const initialCenter = useRef({ x: 0, y: 0 });
+	const centerPos = useRef({ x: 0, y: 0 });
+	const initialDistance = useRef(0);
+	const presence = useContext(PresenceContext);
+
+	const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+		e.bubbles = false;
+		e.stopPropagation();
+		e.preventDefault();
+
+		setResizing(true);
+		initialSize.current = shape.size;
+
+		// Calculate the center of the shape in canvas coordinates
+		initialCenter.current = {
+			x: item.x + shape.size / 2,
+			y: item.y + shape.size / 2,
+		};
+
+		// Calculate the center of the shape in screen coordinates
+		// Need to find the actual item element, not just the handle
+		let itemElement = e.currentTarget.parentElement;
+		while (itemElement && !itemElement.getAttribute("data-item-id")) {
+			itemElement = itemElement.parentElement;
+		}
+
+		if (itemElement) {
+			const rect = itemElement.getBoundingClientRect();
+			centerPos.current = {
+				x: rect.left + rect.width / 2,
+				y: rect.top + rect.height / 2,
+			};
+		}
+
+		// Calculate initial distance from center to mouse
+		const initialDeltaX = e.clientX - centerPos.current.x;
+		const initialDeltaY = e.clientY - centerPos.current.y;
+		initialDistance.current = Math.sqrt(
+			initialDeltaX * initialDeltaX + initialDeltaY * initialDeltaY,
+		);
+		// Add global mouse move and up listeners
+		const handleMouseMove = (event: MouseEvent) => {
+			// Calculate current distance from center to mouse
+			const currentDeltaX = event.clientX - centerPos.current.x;
+			const currentDeltaY = event.clientY - centerPos.current.y;
+
+			// Calculate the dot product to determine if we're moving towards or away from center
+			// relative to the initial drag direction
+			const dotProduct = currentDeltaX * initialDeltaX + currentDeltaY * initialDeltaY;
+			const initialMagnitudeSquared =
+				initialDeltaX * initialDeltaX + initialDeltaY * initialDeltaY;
+
+			// Project current position onto initial direction vector
+			const projectionLength = dotProduct / Math.sqrt(initialMagnitudeSquared);
+
+			// Use the projection length to determine size - this prevents growth when dragging past center
+			const distanceRatio = Math.max(0.1, projectionLength / initialDistance.current);
+			const newSize = Math.max(20, Math.min(300, initialSize.current * distanceRatio));
+
+			// Calculate new position to keep center fixed
+			const newX = initialCenter.current.x - newSize / 2;
+			const newY = initialCenter.current.y - newSize / 2;
+
+			// Update via presence API for real-time feedback
+			presence.resize.setResizing({
+				id: item.id,
+				x: newX,
+				y: newY,
+				size: newSize,
+			});
+		};
+
+		const handleMouseUp = () => {
+			setResizing(false);
+			document.removeEventListener("mousemove", handleMouseMove);
+			document.removeEventListener("mouseup", handleMouseUp);
+
+			// Get the final values from the presence data and commit to persistent storage
+			const currentResizeData = presence.resize.state?.local;
+			if (currentResizeData && currentResizeData.id === item.id) {
+				Tree.runTransaction(item, () => {
+					shape.size = currentResizeData.size;
+					item.x = currentResizeData.x;
+					item.y = currentResizeData.y;
+				});
+			}
+
+			// Clear the presence data
+			presence.resize.clearResizing();
+
+			// Clear the shape props override
+			onResizeEnd?.();
+		};
+
+		document.addEventListener("mousemove", handleMouseMove);
+		document.addEventListener("mouseup", handleMouseUp);
+	};
+
+	const handleClick = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+		e.stopPropagation();
+	};
+
+	// Create a handle component for reuse
+	const ResizeHandle = ({ position }: { position: string }) => (
+		<div
+			className={`absolute bg-black cursor-nw-resize hover:bg-black shadow-lg z-50`}
+			style={{
+				width: resizing ? "12px" : "8px",
+				height: resizing ? "12px" : "8px",
+				...getHandlePosition(position, padding),
+			}}
+			onClick={(e) => handleClick(e)}
+			onMouseDown={(e) => handleMouseDown(e)}
+		/>
+	);
+
+	const getHandlePosition = (position: string, padding: number) => {
+		const offset = resizing ? 6 : 4; // Half of handle size (12px/2 or 8px/2)
+		switch (position) {
+			case "top-left":
+				return { left: -padding - offset, top: -padding - offset };
+			case "top-right":
+				return { right: -padding - offset, top: -padding - offset };
+			case "bottom-left":
+				return { left: -padding - offset, bottom: -padding - offset };
+			case "bottom-right":
+				return { right: -padding - offset, bottom: -padding - offset };
+			default:
+				return {};
+		}
+	};
+
+	return (
+		<>
+			<ResizeHandle position="top-left" />
+			<ResizeHandle position="top-right" />
+			<ResizeHandle position="bottom-left" />
+			<ResizeHandle position="bottom-right" />
+		</>
 	);
 }

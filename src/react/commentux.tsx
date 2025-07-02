@@ -1,6 +1,14 @@
 // A pane that shows comments and allows users to interact with them
 import { Button, Textarea } from "@fluentui/react-components";
-import React, { ReactNode, useContext, useEffect, useState } from "react";
+import React, {
+	ReactNode,
+	useContext,
+	useEffect,
+	useState,
+	useRef,
+	forwardRef,
+	useImperativeHandle,
+} from "react";
 import { Pane } from "./paneux.js";
 import { PresenceContext } from "./contexts/PresenceContext.js";
 import {
@@ -17,15 +25,29 @@ import { useTree } from "./hooks/useTree.js";
 import { VoteButton } from "./appbuttonux.js";
 import { CommentRegular } from "@fluentui/react-icons";
 
-export function CommentPane(props: {
-	hidden: boolean;
-	setHidden: (hidden: boolean) => void;
-	itemId: string;
-	app: App;
-}): JSX.Element {
+export interface CommentPaneRef {
+	focusInput: () => void;
+}
+
+export const CommentPane = forwardRef<
+	CommentPaneRef,
+	{
+		hidden: boolean;
+		setHidden: (hidden: boolean) => void;
+		itemId: string;
+		app: App;
+	}
+>((props, ref) => {
 	const { hidden, setHidden, app } = props;
 	const presence = useContext(PresenceContext);
 	const [title, setTitle] = useState("Comments");
+	const commentInputRef = useRef<CommentInputRef>(null);
+
+	useImperativeHandle(ref, () => ({
+		focusInput: () => {
+			commentInputRef.current?.focus();
+		},
+	}));
 
 	useTree(app);
 	const item = app.items.find((item) => item.id === props.itemId) ?? app;
@@ -60,10 +82,12 @@ export function CommentPane(props: {
 	return (
 		<Pane hidden={hidden} setHidden={setHidden} title={title}>
 			<CommentList comments={item.comments} />
-			<CommentInput callback={(comment) => handleAddComment(comment)} />
+			<CommentInput ref={commentInputRef} callback={(comment) => handleAddComment(comment)} />
 		</Pane>
 	);
-}
+});
+
+CommentPane.displayName = "CommentPane";
 
 export function CommentList(props: { comments: Comments }): JSX.Element {
 	const { comments } = props;
@@ -113,31 +137,48 @@ export function CommentView(props: { comment: Comment }): JSX.Element {
 	);
 }
 
-export function CommentInput(props: { callback: (comment: string) => void }): JSX.Element {
-	const { callback } = props;
-	const [comment, setComment] = useState("");
-	return (
-		<div className="flex flex-col justify-self-end gap-y-2 ">
-			<Textarea
-				className="flex"
-				rows={4}
-				value={comment}
-				onChange={(e) => setComment(e.target.value)}
-				placeholder="Type your comment here..."
-			/>
-			<Button
-				className="flex "
-				appearance="primary"
-				onClick={() => {
-					callback(comment);
-					setComment("");
-				}}
-			>
-				Comment
-			</Button>
-		</div>
-	);
+export interface CommentInputRef {
+	focus: () => void;
 }
+
+export const CommentInput = forwardRef<CommentInputRef, { callback: (comment: string) => void }>(
+	(props, ref) => {
+		const { callback } = props;
+		const [comment, setComment] = useState("");
+		const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+		useImperativeHandle(ref, () => ({
+			focus: () => {
+				textareaRef.current?.focus();
+			},
+		}));
+
+		return (
+			<div className="flex flex-col justify-self-end gap-y-2 ">
+				<Textarea
+					ref={textareaRef}
+					className="flex"
+					rows={4}
+					value={comment}
+					onChange={(e) => setComment(e.target.value)}
+					placeholder="Type your comment here..."
+				/>
+				<Button
+					className="flex "
+					appearance="primary"
+					onClick={() => {
+						callback(comment);
+						setComment("");
+					}}
+				>
+					Comment
+				</Button>
+			</div>
+		);
+	},
+);
+
+CommentInput.displayName = "CommentInput";
 
 export function SpeechBubble(props: { children: ReactNode; isUser: boolean }): JSX.Element {
 	const { children, isUser } = props;

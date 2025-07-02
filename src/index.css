@@ -166,3 +166,33 @@ body {
 		border-color: var(--color-gray-200, currentColor);
 	}
 }
+
+/* Simple Tailwind-based toolbar animations */
+@keyframes slideInFromLeft {
+	from {
+		opacity: 0;
+		transform: translateX(-12px);
+	}
+	to {
+		opacity: 1;
+		transform: translateX(0);
+	}
+}
+
+.toolbar-slide-in {
+	animation: slideInFromLeft 0.25s ease-out forwards;
+}
+
+.toolbar-slide-in-delayed {
+	animation: slideInFromLeft 0.25s ease-out 0.1s forwards;
+	opacity: 0; /* Start invisible until animation begins */
+}
+
+/* Ensure toolbar content doesn't overflow vertically without breaking natural alignment */
+.fui-Toolbar {
+	overflow-y: hidden !important;
+}
+
+.fui-SwatchPicker {
+	overflow-y: hidden !important;
+}

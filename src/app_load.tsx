@@ -15,13 +15,15 @@ import { createUsersManager } from "./utils/users.js";
 import { UserInfo } from "./utils/Interfaces/UsersManager.js";
 import { AccountInfo } from "@azure/msal-browser";
 import { createDragManager } from "./utils/drag.js";
+import { createResizeManager } from "./utils/resize.js";
 
 export async function loadApp(props: {
 	client: AzureClient;
 	containerId: string;
 	account: AccountInfo;
+	user?: UserInfo;
 }): Promise<IFluidContainer> {
-	const { client, containerId, account } = props;
+	const { client, containerId, account, user } = props;
 
 	// Initialize Fluid Container
 	const { container } = await loadFluidData(containerId, containerSchema, client);
@@ -39,7 +41,7 @@ export async function loadApp(props: {
 	const workspace = presence.states.getWorkspace("workspace:main", {});
 
 	// Create the current UserInfo object
-	const userInfo: UserInfo = {
+	const userInfo: UserInfo = user || {
 		name: account.name ?? account.username, // Use the name or username from the account
 		id: account.homeAccountId, // Use the homeAccountId as the unique user ID
 	};
@@ -73,6 +75,12 @@ export async function loadApp(props: {
 		presence,
 	});
 
+	const resize = createResizeManager({
+		name: "resize:main",
+		workspace,
+		presence,
+	});
+
 	// create the root element for React
 	const app = document.createElement("div");
 	app.id = "app";
@@ -92,6 +100,7 @@ export async function loadApp(props: {
 				itemSelection={itemSelection}
 				tableSelection={tableSelection}
 				drag={drag}
+				resize={resize}
 				users={users}
 				container={container}
 				undoRedo={undoRedo}

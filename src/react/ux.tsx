@@ -3,14 +3,37 @@
  * Licensed under the MIT License.
  */
 
-import React, { JSX, useContext, useEffect, useState } from "react";
-import { App } from "../schema/app_schema.js";
+import React, { JSX, useContext, useEffect, useState, useRef } from "react";
+import { App, Shape, FluidTable } from "../schema/app_schema.js";
 import "../output.css";
-import { ConnectionState, IFluidContainer, TreeView } from "fluid-framework";
+import { ConnectionState, IFluidContainer, TreeView, Tree } from "fluid-framework";
 import { Canvas } from "./canvasux.js";
 import type { SelectionManager } from "../utils/Interfaces/SelectionManager.js";
 import { undoRedo } from "../utils/undo.js";
-import { NewShapeButton, ShowPaneButton, NewNoteButton, NewTableButton } from "./appbuttonux.js";
+import {
+	NewCircleButton,
+	NewSquareButton,
+	NewTriangleButton,
+	NewStarButton,
+	ShowPaneButton,
+	NewNoteButton,
+	NewTableButton,
+	VoteButton,
+	DeleteButton,
+	DuplicateButton,
+	CommentButton,
+	ColorPicker,
+	AddColumnButton,
+	AddRowButton,
+	MoveColumnLeftButton,
+	MoveColumnRightButton,
+	MoveRowUpButton,
+	MoveRowDownButton,
+	MoveItemForwardButton,
+	MoveItemBackwardButton,
+	BringItemToFrontButton,
+	SendItemToBackButton,
+} from "./appbuttonux.js";
 import { TooltipButton } from "./buttonux.js";
 import {
 	Avatar,
@@ -31,9 +54,11 @@ import {
 import { User, UsersManager } from "../utils/Interfaces/UsersManager.js";
 import { PresenceContext } from "./contexts/PresenceContext.js";
 import { DragManager } from "../utils/Interfaces/DragManager.js";
+import { ResizeManager } from "../utils/Interfaces/ResizeManager.js";
 import { DragAndRotatePackage } from "../utils/drag.js";
+import { ResizePackage } from "../utils/Interfaces/ResizeManager.js";
 import { TypedSelection } from "../utils/selection.js";
-import { CommentPane } from "./commentux.js";
+import { CommentPane, CommentPaneRef } from "./commentux.js";
 import {
 	ArrowRedoFilled,
 	ArrowUndoFilled,
@@ -44,6 +69,11 @@ import {
 import { useTree } from "./hooks/useTree.js";
 import { PaneContext } from "./contexts/PaneContext.js";
 
+// Context for comment pane actions
+export const CommentPaneContext = React.createContext<{
+	openCommentPaneAndFocus: (itemId: string) => void;
+} | null>(null);
+
 export function ReactApp(props: {
 	tree: TreeView<typeof App>;
 	itemSelection: SelectionManager<TypedSelection>;
@@ -52,14 +82,30 @@ export function ReactApp(props: {
 	container: IFluidContainer;
 	undoRedo: undoRedo;
 	drag: DragManager<DragAndRotatePackage | null>;
+	resize: ResizeManager<ResizePackage | null>;
 }): JSX.Element {
-	const { tree, itemSelection, tableSelection, users, container, undoRedo, drag } = props;
+	const { tree, itemSelection, tableSelection, users, container, undoRedo, drag, resize } = props;
 	const [connectionState, setConnectionState] = useState("");
 	const [saved, setSaved] = useState(false);
 	const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
 	const [commentPaneHidden, setCommentPaneHidden] = useState(true);
 	const [selectedItemId, setSelectedItemId] = useState<string>("");
+	const [selectedColumnId, setSelectedColumnId] = useState<string>("");
+	const [selectedRowId, setSelectedRowId] = useState<string>("");
 	const [view] = useState<TreeView<typeof App>>(tree);
+	const [canUndo, setCanUndo] = useState(false);
+	const [canRedo, setCanRedo] = useState(false);
+	const commentPaneRef = useRef<CommentPaneRef>(null);
+
+	// Function to open comment pane and focus input
+	const openCommentPaneAndFocus = (itemId: string) => {
+		setSelectedItemId(itemId);
+		setCommentPaneHidden(false);
+		// Use setTimeout to ensure the pane is rendered before focusing
+		setTimeout(() => {
+			commentPaneRef.current?.focusInput();
+		}, 0);
+	};
 
 	useTree(tree.root);
 	useTree(view.root.items);
@@ -88,8 +134,24 @@ export function ReactApp(props: {
 
 	/** Unsubscribe to undo-redo events when the component unmounts */
 	useEffect(() => {
-		return undoRedo.dispose;
-	}, []);
+		// Update undo/redo state whenever commits occur
+		const updateUndoRedoState = () => {
+			setCanUndo(undoRedo.canUndo());
+			setCanRedo(undoRedo.canRedo());
+		};
+
+		// Initial update
+		updateUndoRedoState();
+
+		// Listen for commits to update undo/redo state
+		const unsubscribe = tree.events.on("commitApplied", updateUndoRedoState);
+
+		// Cleanup function
+		return () => {
+			unsubscribe();
+			undoRedo.dispose();
+		};
+	}, [tree.events, undoRedo]);
 
 	useEffect(() => {
 		console.log("View Changed");
@@ -109,6 +171,17 @@ export function ReactApp(props: {
 		return unsubscribe;
 	}, [view, itemSelection]);
 
+	useEffect(() => {
+		const unsubscribe = tableSelection.events.on("localUpdated", () => {
+			const selection = tableSelection.getLocalSelection();
+			const columnSelection = selection.find((sel) => sel.type === "column");
+			const rowSelection = selection.find((sel) => sel.type === "row");
+			setSelectedColumnId(columnSelection?.id ?? "");
+			setSelectedRowId(rowSelection?.id ?? "");
+		});
+		return unsubscribe;
+	}, [tableSelection]);
+
 	return (
 		<PresenceContext.Provider
 			value={{
@@ -116,83 +189,171 @@ export function ReactApp(props: {
 				itemSelection: itemSelection,
 				tableSelection: tableSelection,
 				drag: drag,
+				resize: resize,
 				branch: view !== tree,
 			}}
 		>
-			<div
-				id="main"
-				className="flex flex-col bg-transparent h-screen w-full overflow-hidden overscroll-none"
-			>
-				<Header saved={saved} connectionState={connectionState} />
-				<Toolbar className="h-[48px] shadow-lg">
-					<ToolbarGroup>
-						<TooltipButton
-							tooltip="Undo"
-							onClick={() => undoRedo.undo()}
-							icon={<ArrowUndoFilled />}
-							disabled={!undoRedo.canUndo()}
-						/>
-						<TooltipButton
-							tooltip="Redo"
-							onClick={() => undoRedo.redo()}
-							icon={<ArrowRedoFilled />}
-							disabled={!undoRedo.canRedo()}
-						/>
-					</ToolbarGroup>
-					<ToolbarDivider />
-					<ToolbarGroup>
-						<NewShapeButton items={view.root.items} canvasSize={canvasSize} />
-						<NewNoteButton items={view.root.items} canvasSize={canvasSize} />
-						<NewTableButton items={view.root.items} canvasSize={canvasSize} />
-					</ToolbarGroup>
-					<ToolbarDivider />
-					<ToolbarGroup>
-						<TooltipButton
-							tooltip="Clear canvas"
-							icon={<DeleteRegular />}
-							onClick={() => view.root.items.removeRange()}
-							disabled={view.root.items.length === 0}
-						/>
-					</ToolbarGroup>
-					<ToolbarDivider />
-					<ToolbarGroup>
-						<ShowPaneButton
-							hiddenIcon={<CommentRegular />}
-							shownIcon={<CommentFilled />}
-							hidePane={setCommentPaneHidden}
-							paneHidden={commentPaneHidden}
-							tooltip="Comments"
-						/>
-					</ToolbarGroup>
-					{view !== tree ? (
-						<ToolbarGroup style={{ marginLeft: "auto" }}>
-							<MessageBarComponent message="While viewing an AI Task, others will not see your changes (and you will not see theirs) until you complete the task." />
+			<CommentPaneContext.Provider value={{ openCommentPaneAndFocus }}>
+				<div
+					id="main"
+					className="flex flex-col bg-transparent h-screen w-full overflow-hidden overscroll-none"
+				>
+					<Header saved={saved} connectionState={connectionState} />{" "}
+					<Toolbar className="h-[48px] shadow-lg flex-nowrap overflow-x-auto overflow-y-hidden whitespace-nowrap min-h-[48px] max-h-[48px]">
+						<ToolbarGroup>
+							<TooltipButton
+								tooltip="Undo"
+								onClick={() => undoRedo.undo()}
+								icon={<ArrowUndoFilled />}
+								disabled={!canUndo}
+							/>
+							<TooltipButton
+								tooltip="Redo"
+								onClick={() => undoRedo.redo()}
+								icon={<ArrowRedoFilled />}
+								disabled={!canRedo}
+							/>
 						</ToolbarGroup>
-					) : (
-						<></>
-					)}
-				</Toolbar>
+						<ToolbarDivider />
+						<ToolbarGroup>
+							<NewCircleButton items={view.root.items} canvasSize={canvasSize} />
+							<NewSquareButton items={view.root.items} canvasSize={canvasSize} />
+							<NewTriangleButton items={view.root.items} canvasSize={canvasSize} />
+							<NewStarButton items={view.root.items} canvasSize={canvasSize} />
+							<NewNoteButton items={view.root.items} canvasSize={canvasSize} />
+							<NewTableButton items={view.root.items} canvasSize={canvasSize} />
+						</ToolbarGroup>
+						{(() => {
+							const selectedItem = view.root.items.find(
+								(item) => item.id === selectedItemId,
+							);
 
-				<div className="flex h-[calc(100vh-96px)] w-full flex-row ">
-					<PaneContext.Provider
-						value={{
-							panes: [{ name: "comments", visible: !commentPaneHidden }],
-						}}
-					>
-						<Canvas
-							items={view.root.items}
-							container={container}
-							setSize={(width, height) => setCanvasSize({ width, height })}
+							// Only show divider and buttons when an item is selected
+							if (!selectedItem) {
+								return null;
+							}
+
+							return (
+								<div className="flex items-center h-full toolbar-slide-in">
+									<ToolbarDivider />
+									<ToolbarGroup>
+										<VoteButton vote={selectedItem.votes} />
+										<CommentButton item={selectedItem} />
+										<DuplicateButton
+											item={selectedItem}
+											items={view.root.items}
+											canvasSize={canvasSize}
+										/>
+										<DeleteButton
+											delete={() => {
+												selectedItem.delete();
+											}}
+										/>
+									</ToolbarGroup>
+									<ToolbarDivider />
+									<ToolbarGroup>
+										<SendItemToBackButton
+											items={view.root.items}
+											selectedItemId={selectedItemId}
+										/>
+										<MoveItemBackwardButton
+											items={view.root.items}
+											selectedItemId={selectedItemId}
+										/>
+										<MoveItemForwardButton
+											items={view.root.items}
+											selectedItemId={selectedItemId}
+										/>
+										<BringItemToFrontButton
+											items={view.root.items}
+											selectedItemId={selectedItemId}
+										/>
+									</ToolbarGroup>
+									{Tree.is(selectedItem.content, Shape) && (
+										<div className="flex items-center h-full toolbar-slide-in-delayed">
+											<ToolbarDivider />
+											<ToolbarGroup>
+												<ColorPicker shape={selectedItem.content} />
+											</ToolbarGroup>
+										</div>
+									)}
+									{Tree.is(selectedItem.content, FluidTable) && (
+										<div className="flex items-center h-full toolbar-slide-in-delayed">
+											<ToolbarDivider />
+											<ToolbarGroup>
+												<AddColumnButton table={selectedItem.content} />
+												<AddRowButton table={selectedItem.content} />
+												<MoveColumnLeftButton
+													table={selectedItem.content}
+													selectedColumnId={selectedColumnId}
+												/>
+												<MoveColumnRightButton
+													table={selectedItem.content}
+													selectedColumnId={selectedColumnId}
+												/>
+												<MoveRowUpButton
+													table={selectedItem.content}
+													selectedRowId={selectedRowId}
+												/>
+												<MoveRowDownButton
+													table={selectedItem.content}
+													selectedRowId={selectedRowId}
+												/>
+											</ToolbarGroup>
+										</div>
+									)}
+								</div>
+							);
+						})()}
+						<ToolbarDivider />
+						<ToolbarGroup>
+							<TooltipButton
+								tooltip="Remove all items from the canvas"
+								icon={<DeleteRegular />}
+								onClick={() => view.root.items.removeRange()}
+								disabled={view.root.items.length === 0}
+							/>
+						</ToolbarGroup>
+						<ToolbarDivider />
+						<ToolbarGroup>
+							<ShowPaneButton
+								hiddenIcon={<CommentRegular />}
+								shownIcon={<CommentFilled />}
+								hidePane={setCommentPaneHidden}
+								paneHidden={commentPaneHidden}
+								tooltip="Comments"
+							/>
+						</ToolbarGroup>
+						{view !== tree ? (
+							<ToolbarGroup style={{ marginLeft: "auto" }}>
+								<MessageBarComponent message="While viewing an AI Task, others will not see your changes (and you will not see theirs) until you complete the task." />
+							</ToolbarGroup>
+						) : (
+							<></>
+						)}
+					</Toolbar>
+					<div className="flex h-[calc(100vh-96px)] w-full flex-row ">
+						<PaneContext.Provider
+							value={{
+								panes: [{ name: "comments", visible: !commentPaneHidden }],
+							}}
+						>
+							<Canvas
+								items={view.root.items}
+								container={container}
+								setSize={(width, height) => setCanvasSize({ width, height })}
+							/>
+						</PaneContext.Provider>
+						<CommentPane
+							ref={commentPaneRef}
+							hidden={commentPaneHidden}
+							setHidden={setCommentPaneHidden}
+							itemId={selectedItemId}
+							app={view.root}
 						/>
-					</PaneContext.Provider>
-					<CommentPane
-						hidden={commentPaneHidden}
-						setHidden={setCommentPaneHidden}
-						itemId={selectedItemId}
-						app={view.root}
-					/>
+					</div>
 				</div>
-			</div>
+			</CommentPaneContext.Provider>
 		</PresenceContext.Provider>
 	);
 }
@@ -251,7 +412,23 @@ export const HeaderDivider = (): JSX.Element => {
 
 export const CurrentUser = (): JSX.Element => {
 	const users = useContext(PresenceContext).users;
-	return <Avatar name={users.getMyself().value.name} size={24} />;
+	const currentUser = users.getMyself().value;
+
+	// Debug logging
+	console.log("CurrentUser component - user data:", {
+		name: currentUser.name,
+		id: currentUser.id,
+		hasImage: !!currentUser.image,
+		imageLength: currentUser.image?.length,
+	});
+
+	return (
+		<Avatar
+			name={currentUser.name}
+			image={currentUser.image ? { src: currentUser.image } : undefined}
+			size={24}
+		/>
+	);
 };
 
 export const Facepile = (props: Partial<AvatarGroupProps>) => {
@@ -293,6 +470,7 @@ export const Facepile = (props: Partial<AvatarGroupProps>) => {
 				>
 					<AvatarGroupItem
 						name={user.value.name}
+						image={user.value.image ? { src: user.value.image } : undefined}
 						key={String(user.client.attendeeId ?? user.value.name)}
 					/>
 				</Tooltip>
@@ -302,6 +480,7 @@ export const Facepile = (props: Partial<AvatarGroupProps>) => {
 					{overflowItems.map((user) => (
 						<AvatarGroupItem
 							name={user.value.name}
+							image={user.value.image ? { src: user.value.image } : undefined}
 							key={String(user.client.attendeeId ?? user.value.name)}
 						/>
 					))}

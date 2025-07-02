@@ -18,6 +18,10 @@ export interface IInsecureUser extends IUser {
 	 * Name of the user making the connection to the service.
 	 */
 	name: string;
+	/**
+	 * Optional profile picture URL for the user.
+	 */
+	image?: string;
 }
 
 /**
@@ -119,6 +123,7 @@ export const user = generateUser();
 export const azureUser = {
 	id: user.id,
 	name: user.name,
+	image: user.image,
 };
 
 /**
@@ -188,12 +193,48 @@ export function generateToken(
  * random UUID for its {@link @fluidframework/protocol-definitions#IUser.id | id} and {@link IInsecureUser.name | name} properties.
  */
 export function generateUser(): IInsecureUser {
+	const userId = uuid();
 	const randomUser = {
-		id: uuid(),
+		id: userId,
 		name: uniqueNamesGenerator({
 			dictionaries: [names],
 		}),
+		// Generate a consistent avatar based on user ID using DiceBear API
+		image: `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}`,
 	};
 
 	return randomUser;
+}
+
+/**
+ * Generates a base64 encoded profile image for a user
+ */
+export async function generateUserWithImage(): Promise<IInsecureUser> {
+	const userId = uuid();
+	const userName = uniqueNamesGenerator({
+		dictionaries: [names],
+	});
+
+	try {
+		// Fetch the SVG avatar from DiceBear API
+		const response = await fetch(`https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}`);
+		const svgText = await response.text();
+
+		// Convert SVG to base64 data URL
+		const base64Image = `data:image/svg+xml;base64,${btoa(svgText)}`;
+
+		return {
+			id: userId,
+			name: userName,
+			image: base64Image,
+		};
+	} catch (error) {
+		console.warn("Failed to generate base64 image, falling back to URL:", error);
+		// Fallback to regular URL if base64 conversion fails
+		return {
+			id: userId,
+			name: userName,
+			image: `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}`,
+		};
+	}
 }
