@@ -223,7 +223,8 @@ export function ReactApp(props: {
 						comments: [],
 						votes: new Vote({ votes: [] }),
 						content: shape,
-						rotation: Math.random() < 0.5 ? Math.random() * 15 : 345 + Math.random() * 15,
+						rotation:
+							Math.random() < 0.5 ? Math.random() * 15 : 345 + Math.random() * 15,
 					});
 					view.root.items.insertAtEnd(item);
 				},
@@ -243,7 +244,8 @@ export function ReactApp(props: {
 						comments: [],
 						votes: new Vote({ votes: [] }),
 						content: shape,
-						rotation: Math.random() < 0.5 ? Math.random() * 15 : 345 + Math.random() * 15,
+						rotation:
+							Math.random() < 0.5 ? Math.random() * 15 : 345 + Math.random() * 15,
 					});
 					view.root.items.insertAtEnd(item);
 				},
@@ -263,7 +265,8 @@ export function ReactApp(props: {
 						comments: [],
 						votes: new Vote({ votes: [] }),
 						content: shape,
-						rotation: Math.random() < 0.5 ? Math.random() * 15 : 345 + Math.random() * 15,
+						rotation:
+							Math.random() < 0.5 ? Math.random() * 15 : 345 + Math.random() * 15,
 					});
 					view.root.items.insertAtEnd(item);
 				},
@@ -283,7 +286,8 @@ export function ReactApp(props: {
 						comments: [],
 						votes: new Vote({ votes: [] }),
 						content: shape,
-						rotation: Math.random() < 0.5 ? Math.random() * 15 : 345 + Math.random() * 15,
+						rotation:
+							Math.random() < 0.5 ? Math.random() * 15 : 345 + Math.random() * 15,
 					});
 					view.root.items.insertAtEnd(item);
 				},
@@ -303,7 +307,8 @@ export function ReactApp(props: {
 						comments: [],
 						votes: new Vote({ votes: [] }),
 						content: note,
-						rotation: Math.random() < 0.5 ? Math.random() * 15 : 345 + Math.random() * 15,
+						rotation:
+							Math.random() < 0.5 ? Math.random() * 15 : 345 + Math.random() * 15,
 					});
 					view.root.items.insertAtEnd(item);
 				},
@@ -566,9 +571,15 @@ export function ReactApp(props: {
 				shiftKey: true,
 				action: () => {
 					const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
-					if (selectedItem && Tree.is(selectedItem.content, FluidTable) && selectedColumnId) {
+					if (
+						selectedItem &&
+						Tree.is(selectedItem.content, FluidTable) &&
+						selectedColumnId
+					) {
 						const table = selectedItem.content as FluidTable;
-						const selectedColumn = table.columns.find((col) => col.id === selectedColumnId);
+						const selectedColumn = table.columns.find(
+							(col) => col.id === selectedColumnId,
+						);
 						if (selectedColumn && selectedColumn.index > 0) {
 							Tree.runTransaction(table, () => {
 								selectedColumn.moveTo(selectedColumn.index - 1);
@@ -578,7 +589,11 @@ export function ReactApp(props: {
 				},
 				disabled: (() => {
 					const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
-					if (!selectedItem || !Tree.is(selectedItem.content, FluidTable) || !selectedColumnId) {
+					if (
+						!selectedItem ||
+						!Tree.is(selectedItem.content, FluidTable) ||
+						!selectedColumnId
+					) {
 						return true;
 					}
 					const table = selectedItem.content as FluidTable;
@@ -592,9 +607,15 @@ export function ReactApp(props: {
 				shiftKey: true,
 				action: () => {
 					const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
-					if (selectedItem && Tree.is(selectedItem.content, FluidTable) && selectedColumnId) {
+					if (
+						selectedItem &&
+						Tree.is(selectedItem.content, FluidTable) &&
+						selectedColumnId
+					) {
 						const table = selectedItem.content as FluidTable;
-						const selectedColumn = table.columns.find((col) => col.id === selectedColumnId);
+						const selectedColumn = table.columns.find(
+							(col) => col.id === selectedColumnId,
+						);
 						if (selectedColumn && selectedColumn.index < table.columns.length - 1) {
 							Tree.runTransaction(table, () => {
 								selectedColumn.moveTo(selectedColumn.index + 1);
@@ -604,7 +625,11 @@ export function ReactApp(props: {
 				},
 				disabled: (() => {
 					const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
-					if (!selectedItem || !Tree.is(selectedItem.content, FluidTable) || !selectedColumnId) {
+					if (
+						!selectedItem ||
+						!Tree.is(selectedItem.content, FluidTable) ||
+						!selectedColumnId
+					) {
 						return true;
 					}
 					const table = selectedItem.content as FluidTable;
@@ -618,7 +643,11 @@ export function ReactApp(props: {
 				shiftKey: true,
 				action: () => {
 					const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
-					if (selectedItem && Tree.is(selectedItem.content, FluidTable) && selectedRowId) {
+					if (
+						selectedItem &&
+						Tree.is(selectedItem.content, FluidTable) &&
+						selectedRowId
+					) {
 						const table = selectedItem.content as FluidTable;
 						const selectedRow = table.rows.find((row) => row.id === selectedRowId);
 						if (selectedRow && selectedRow.index > 0) {
@@ -630,7 +659,11 @@ export function ReactApp(props: {
 				},
 				disabled: (() => {
 					const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
-					if (!selectedItem || !Tree.is(selectedItem.content, FluidTable) || !selectedRowId) {
+					if (
+						!selectedItem ||
+						!Tree.is(selectedItem.content, FluidTable) ||
+						!selectedRowId
+					) {
 						return true;
 					}
 					const table = selectedItem.content as FluidTable;
@@ -644,7 +677,11 @@ export function ReactApp(props: {
 				shiftKey: true,
 				action: () => {
 					const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
-					if (selectedItem && Tree.is(selectedItem.content, FluidTable) && selectedRowId) {
+					if (
+						selectedItem &&
+						Tree.is(selectedItem.content, FluidTable) &&
+						selectedRowId
+					) {
 						const table = selectedItem.content as FluidTable;
 						const selectedRow = table.rows.find((row) => row.id === selectedRowId);
 						if (selectedRow && selectedRow.index < table.rows.length - 1) {
@@ -656,7 +693,11 @@ export function ReactApp(props: {
 				},
 				disabled: (() => {
 					const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
-					if (!selectedItem || !Tree.is(selectedItem.content, FluidTable) || !selectedRowId) {
+					if (
+						!selectedItem ||
+						!Tree.is(selectedItem.content, FluidTable) ||
+						!selectedRowId
+					) {
 						return true;
 					}
 					const table = selectedItem.content as FluidTable;

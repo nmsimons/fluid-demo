@@ -25,7 +25,10 @@ export interface UseKeyboardShortcutsProps {
  * @param shortcuts Array of keyboard shortcuts to register
  * @param enabled Whether shortcuts are enabled (default: true)
  */
-export function useKeyboardShortcuts({ shortcuts, enabled = true }: UseKeyboardShortcutsProps): void {
+export function useKeyboardShortcuts({
+	shortcuts,
+	enabled = true,
+}: UseKeyboardShortcutsProps): void {
 	useEffect(() => {
 		if (!enabled) {
 			return;
@@ -76,17 +79,19 @@ export function useKeyboardShortcuts({ shortcuts, enabled = true }: UseKeyboardS
  * @param shortcut The keyboard shortcut to format
  * @returns Formatted string like "Ctrl+Z" or "Shift+Delete"
  */
-export function formatKeyboardShortcut(shortcut: Omit<KeyboardShortcut, "action" | "disabled">): string {
+export function formatKeyboardShortcut(
+	shortcut: Omit<KeyboardShortcut, "action" | "disabled">,
+): string {
 	const parts: string[] = [];
-	
+
 	if (shortcut.ctrlKey) parts.push("Ctrl");
 	if (shortcut.metaKey) parts.push("Cmd");
 	if (shortcut.altKey) parts.push("Alt");
 	if (shortcut.shiftKey) parts.push("Shift");
-	
+
 	// Capitalize single letters, keep special keys as-is
 	const key = shortcut.key.length === 1 ? shortcut.key.toUpperCase() : shortcut.key;
 	parts.push(key);
-	
+
 	return parts.join("+");
 }

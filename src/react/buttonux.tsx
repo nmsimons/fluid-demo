@@ -10,12 +10,12 @@ export function TooltipButton(props: {
 	disabled?: boolean;
 }): JSX.Element {
 	const { children, tooltip, keyboardShortcut } = props;
-	
+
 	// Format tooltip with keyboard shortcut if provided
-	const tooltipContent = keyboardShortcut 
+	const tooltipContent = keyboardShortcut
 		? `${tooltip ?? "No Tooltip Provided"} (${keyboardShortcut})`
-		: tooltip ?? "No Tooltip Provided";
-	
+		: (tooltip ?? "No Tooltip Provided");
+
 	return (
 		<Tooltip content={tooltipContent} relationship="description">
 			<ToolbarButton {...props}>{children}</ToolbarButton>
