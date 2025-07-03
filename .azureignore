@@ -1,0 +1,19 @@
+# Azure Static Web Apps ignore file
+# Exclude node_modules and other large/unnecessary files
+
+node_modules/
+*.map
+*.log
+.git/
+.vscode/
+.env*
+coverage/
+*.tgz
+*.tar.gz
+dist/**/*.map
+build/**/*.map
+
+# Keep only the built dist folder contents for the app
+!dist/**/*
+!dist/**/
+!dist/
