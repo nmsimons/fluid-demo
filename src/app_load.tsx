@@ -106,7 +106,7 @@ export async function loadApp(props: {
 				container={container}
 				undoRedo={undoRedo}
 			/>
-		</FluentProvider>,
+		</FluentProvider>
 	);
 
 	return container;

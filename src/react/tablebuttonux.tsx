@@ -44,7 +44,7 @@ import { useTree } from "./hooks/useTree.js";
 
 const getLastSelectedRow = (
 	table: FluidTable,
-	selection: SelectionManager<TypedSelection>,
+	selection: SelectionManager<TypedSelection>
 ): FluidRow | undefined => {
 	const selectedRows = selection.getLocalSelection().filter((s) => {
 		return s.type === "row";
@@ -318,8 +318,7 @@ export function MoveSelectedColumnsButton(props: {
 	// Disable the button if there are no selected columns
 	// and no selected cells in the table
 	const [disabled, setDisabled] = React.useState(
-		getSelected(selection, "column").length === 0 &&
-			getSelected(selection, "cell").length === 0,
+		getSelected(selection, "column").length === 0 && getSelected(selection, "cell").length === 0
 	);
 
 	useEffect(() => {
@@ -348,7 +347,7 @@ export function MoveSelectedColumnsButton(props: {
 			const selectedCells = getSelected(selection, "cell");
 			if (selectedCells.length > 0) {
 				const column = table.getColumnByCellId(
-					selectedCells[0].id as `${string}_${string}`,
+					selectedCells[0].id as `${string}_${string}`
 				);
 				if (column !== undefined && Tree.status(column) === TreeStatus.InDocument) {
 					selectedColumns.push({ id: column.id, type: "column" });
@@ -444,7 +443,7 @@ export function ColumnTypeDropdown(props: { column: FluidColumn }): JSX.Element 
 	});
 	const onChange: MenuProps["onCheckedValueChange"] = (
 		e,
-		{ name, checkedItems }: { name: string; checkedItems: string[] },
+		{ name, checkedItems }: { name: string; checkedItems: string[] }
 	) => {
 		setCheckedValues((s) => ({ ...s, [name]: checkedItems }));
 	};
@@ -602,7 +601,7 @@ export function Placeholder(): JSX.Element {
 
 const getSelected = (
 	selection: SelectionManager<TypedSelection>,
-	type: selectionType,
+	type: selectionType
 ): TypedSelection[] => {
 	switch (type) {
 		case "row":

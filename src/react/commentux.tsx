@@ -76,7 +76,7 @@ export const CommentPane = forwardRef<
 		item.comments.addComment(
 			comment,
 			presence.users.getMyself().value.id,
-			presence.users.getMyself().value.name,
+			presence.users.getMyself().value.name
 		);
 	};
 
@@ -176,7 +176,7 @@ export const CommentInput = forwardRef<CommentInputRef, { callback: (comment: st
 				</Button>
 			</div>
 		);
-	},
+	}
 );
 
 CommentInput.displayName = "CommentInput";

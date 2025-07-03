@@ -574,7 +574,7 @@ export function ReactApp(props: {
 					) {
 						const table = selectedItem.content as FluidTable;
 						const selectedColumn = table.columns.find(
-							(col) => col.id === selectedColumnId,
+							(col) => col.id === selectedColumnId
 						);
 						if (selectedColumn && selectedColumn.index > 0) {
 							Tree.runTransaction(table, () => {
@@ -610,7 +610,7 @@ export function ReactApp(props: {
 					) {
 						const table = selectedItem.content as FluidTable;
 						const selectedColumn = table.columns.find(
-							(col) => col.id === selectedColumnId,
+							(col) => col.id === selectedColumnId
 						);
 						if (selectedColumn && selectedColumn.index < table.columns.length - 1) {
 							Tree.runTransaction(table, () => {
@@ -749,7 +749,7 @@ export function ReactApp(props: {
 						</ToolbarGroup>
 						{(() => {
 							const selectedItem = view.root.items.find(
-								(item) => item.id === selectedItemId,
+								(item) => item.id === selectedItemId
 							);
 
 							// Only show divider and buttons when an item is selected

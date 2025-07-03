@@ -54,7 +54,7 @@ export const SHAPE_COLORS = [
 function createShape(
 	items: Items,
 	canvasSize: { width: number; height: number },
-	shapeType: "circle" | "square" | "triangle" | "star",
+	shapeType: "circle" | "square" | "triangle" | "star"
 ) {
 	const maxSize = 120;
 	const minSize = 100;
@@ -385,7 +385,7 @@ export function DuplicateButton(props: {
 				newRows.length,
 				"rows and",
 				newColumns.length,
-				"columns",
+				"columns"
 			);
 			console.log("Column ID mapping:", columnIdMapping);
 
