@@ -14,7 +14,16 @@ export default defineConfig(({ mode }) => {
 		base: "/",
 		build: {
 			outDir: "dist",
-			sourcemap: true,
+			sourcemap: false,
+			rollupOptions: {
+				output: {
+					manualChunks: {
+						vendor: ['react', 'react-dom'],
+						fluidFramework: ['@fluidframework/aqueduct', '@fluidframework/map'],
+						azure: ['@azure/msal-browser']
+					}
+				}
+			}
 		},
 		publicDir: "public",
 		server: {
