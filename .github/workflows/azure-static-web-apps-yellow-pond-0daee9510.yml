@@ -47,6 +47,7 @@ jobs:
                   app_location: "/" # App source code path
                   api_location: "" # Api source code path - optional
                   output_location: "dist" # Built app content directory - optional
+                  app_artifact_location: "dist" # App artifact location - optional
                   ###### End of Repository/Build Configurations ######
               env:
                   AZURE_TENANT_ID: e025c2d0-86bc-48aa-aac1-9fb7df64d731
