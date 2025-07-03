@@ -26,15 +26,6 @@ jobs:
                   cache: "npm"
             - name: Install dependencies
               run: npm ci
-            - name: Build application
-              run: npm run build
-              env:
-                  AZURE_TENANT_ID: e025c2d0-86bc-48aa-aac1-9fb7df64d731
-                  AZURE_ORDERER: https://us.fluidrelay.azure.com
-                  AZURE_FUNCTION_TOKEN_PROVIDER_URL: https://afr-token-provider.azurewebsites.net/api/getafrtoken
-                  FLUID_CLIENT: azure
-                  AZURE_CLIENT_ID: 75ed1fd1-3bd2-419d-be57-726ee3adead6
-                  AZURE_REDIRECT_URI: https://yellow-pond-0daee9510.azurestaticapps.net
             - name: Build And Deploy
               id: builddeploy
               uses: Azure/static-web-apps-deploy@v1
@@ -47,8 +38,7 @@ jobs:
                   app_location: "/" # App source code path
                   api_location: "" # Api source code path - optional
                   output_location: "dist" # Built app content directory - optional
-                  app_artifact_location: "dist" # App artifact location - optional
-                  ###### End of Repository/Build Configurations ######
+                  app_build_command: "npm run build"
               env:
                   AZURE_TENANT_ID: e025c2d0-86bc-48aa-aac1-9fb7df64d731
                   AZURE_ORDERER: https://us.fluidrelay.azure.com
@@ -56,6 +46,7 @@ jobs:
                   FLUID_CLIENT: azure
                   AZURE_CLIENT_ID: 75ed1fd1-3bd2-419d-be57-726ee3adead6
                   AZURE_REDIRECT_URI: https://yellow-pond-0daee9510.azurestaticapps.net
+                  ###### End of Repository/Build Configurations ######
     close_pull_request_job:
         if: github.event_name == 'pull_request' && github.event.action == 'closed'
         runs-on: ubuntu-latest
@@ -67,5 +58,4 @@ jobs:
               with:
                   azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_YELLOW_POND_0DAEE9510 }}
                   action: "close"
-                  app_location: "/" # App source code path
-                  app_artifact_location: "dist" # App artifact location - optional
+                  app_location: "/"
