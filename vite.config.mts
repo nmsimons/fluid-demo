@@ -15,7 +15,13 @@ export default defineConfig(({ mode }) => {
 		build: {
 			outDir: "dist",
 			sourcemap: true,
+			rollupOptions: {
+				input: {
+					main: "./index.html",
+				},
+			},
 		},
+		publicDir: "public",
 		server: {
 			port: 8080,
 			hot: true,
