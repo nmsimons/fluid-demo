@@ -15,15 +15,36 @@ export default defineConfig(({ mode }) => {
 		build: {
 			outDir: "dist",
 			sourcemap: false,
+			minify: 'terser',
 			rollupOptions: {
+				treeshake: {
+					moduleSideEffects: false
+				},
 				output: {
-					manualChunks: {
-						vendor: ['react', 'react-dom'],
-						fluidFramework: ['@fluidframework/aqueduct', '@fluidframework/map'],
-						azure: ['@azure/msal-browser']
+					manualChunks: (id) => {
+						// Split large dependencies into separate chunks
+						if (id.includes('node_modules')) {
+							if (id.includes('react') || id.includes('react-dom')) {
+								return 'vendor-react';
+							}
+							if (id.includes('@fluidframework')) {
+								return 'vendor-fluid';
+							}
+							if (id.includes('@fluentui')) {
+								return 'vendor-fluentui';
+							}
+							if (id.includes('@azure') || id.includes('msal')) {
+								return 'vendor-azure';
+							}
+							if (id.includes('lodash')) {
+								return 'vendor-lodash';
+							}
+							return 'vendor-other';
+						}
 					}
 				}
-			}
+			},
+			chunkSizeWarningLimit: 1000
 		},
 		publicDir: "public",
 		server: {
