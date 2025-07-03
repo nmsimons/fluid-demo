@@ -73,7 +73,7 @@ export function Canvas(props: {
 					/>
 				) : (
 					<></>
-				),
+				)
 			)}
 		</div>
 	);

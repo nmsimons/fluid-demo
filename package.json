@@ -18,7 +18,7 @@
 		"start:server": "azure-local-service",
 		"pretest": "playwright install --with-deps",
 		"test": "playwright test",
-		"webpack": "cross-env vite build"
+		"webpack": "vite build"
 	},
 	"engines": {
 		"node": ">=22.0.0"
@@ -28,16 +28,16 @@
 		"@azure/msal-browser": "^3.28.0",
 		"@fluentui/react-avatar": "^9.7.5",
 		"@fluentui/react-button": "^9.4.4",
+		"@fluentui/react-icons": "^2.0.292",
 		"@fluentui/react-menu": "^9.16.7",
 		"@fluentui/react-message-bar": "^9.3.5",
 		"@fluentui/react-provider": "^9.16.7",
-		"@fluentui/react-textarea": "^9.4.88",
+		"@fluentui/react-swatch-picker": "^9.1.82",
 		"@fluentui/react-text": "^9.5.2",
+		"@fluentui/react-textarea": "^9.4.88",
+		"@fluentui/react-theme": "^9.1.24",
 		"@fluentui/react-toolbar": "^9.2.27",
 		"@fluentui/react-tooltip": "^9.4.38",
-		"@fluentui/react-swatch-picker": "^9.1.82",
-		"@fluentui/react-theme": "^9.1.24",
-		"@fluentui/react-icons": "^2.0.292",
 		"@fluidframework/azure-client": "^2.42.0",
 		"@fluidframework/odsp-client": "^2.42.0",
 		"@fluidframework/presence": "^2.42.0",
@@ -46,12 +46,15 @@
 		"@fluidframework/test-runtime-utils": "^2.42.0",
 		"@fluidframework/tree": "^2.42.0",
 		"@microsoft/microsoft-graph-client": "^3.0.7",
+		"@rollup/rollup-win32-arm64-msvc": "^4.44.1",
 		"@tailwindcss/vite": "^4.0.9",
 		"@tanstack/react-table": "^8.20.6",
 		"@tanstack/react-virtual": "^3.13.0",
 		"@vitejs/plugin-react": "^4.3.4",
 		"axios": "^1.7.9",
+		"cross-spawn": "^7.0.6",
 		"dotenv": "^16.4.7",
+		"events": "^3.3.0",
 		"fluid-framework": "^2.42.0",
 		"hashids": "^2.2.10",
 		"jsrsasign": "^11.1.0",
@@ -60,7 +63,7 @@
 		"react-transition-state": "^2.2.0",
 		"unique-names-generator": "^4.7.1",
 		"uuid": "^11.0.5",
-		"vite": "^5.4.10"
+		"vite": "^7.0.1"
 	},
 	"devDependencies": {
 		"@eslint/eslintrc": "^3.2.0",
@@ -70,6 +73,8 @@
 		"@fluidframework/devtools": "^2.42.0",
 		"@microsoft/microsoft-graph-types": "^2.40.0",
 		"@playwright/test": "^1.49.1",
+		"@rollup/plugin-commonjs": "^28.0.6",
+		"@rollup/plugin-node-resolve": "^16.0.1",
 		"@types/debug": "^4.1.7",
 		"@types/dotenv": "^6.1.1",
 		"@types/jsrsasign": "^10.5.15",
@@ -86,6 +91,5 @@
 		"tailwindcss": "^4.0.9",
 		"ts-loader": "^9.5.2",
 		"typescript": "~5.7"
-	},
-	"packageManager": "pnpm@10.5.2+sha512.da9dc28cd3ff40d0592188235ab25d3202add8a207afbedc682220e4a0029ffbff4562102b9e6e46b4e3f9e8bd53e6d05de48544b0c57d4b0179e22c76d1199b"
+	}
 }

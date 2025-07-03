@@ -28,11 +28,11 @@ export function createDragManager(props: {
 		constructor(
 			name: string,
 			workspace: StatesWorkspace<{}>,
-			private presence: Presence,
+			private presence: Presence
 		) {
 			workspace.add(
 				name,
-				StateFactory.latest<DragAndRotatePackage | null>({ local: this.initialState }),
+				StateFactory.latest<DragAndRotatePackage | null>({ local: this.initialState })
 			);
 			this.state = workspace.states[name];
 		}

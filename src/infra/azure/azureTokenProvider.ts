@@ -36,7 +36,7 @@ export class AzureFunctionTokenProvider implements ITokenProvider {
 	 */
 	constructor(
 		private readonly azFunctionUrl: string,
-		private readonly user?: Pick<AzureMember, "name" | "id" | "additionalDetails">,
+		private readonly user?: Pick<AzureMember, "name" | "id" | "additionalDetails">
 	) {}
 
 	public async fetchOrdererToken(tenantId: string, documentId?: string): Promise<ITokenResponse> {
@@ -82,7 +82,7 @@ export class InsecureTokenProvider implements ITokenProvider {
 		/**
 		 * User with whom generated tokens will be associated.
 		 */
-		private readonly user: IInsecureUser,
+		private readonly user: IInsecureUser
 	) {}
 
 	/**
@@ -96,7 +96,7 @@ export class InsecureTokenProvider implements ITokenProvider {
 				this.tenantKey,
 				[ScopeType.DocRead, ScopeType.DocWrite, ScopeType.SummaryWrite],
 				documentId,
-				this.user,
+				this.user
 			),
 		};
 	}
@@ -112,7 +112,7 @@ export class InsecureTokenProvider implements ITokenProvider {
 				this.tenantKey,
 				[ScopeType.DocRead, ScopeType.DocWrite, ScopeType.SummaryWrite],
 				documentId,
-				this.user,
+				this.user
 			),
 		};
 	}
@@ -157,7 +157,7 @@ export function generateToken(
 	documentId?: string,
 	user?: IInsecureUser,
 	lifetime: number = 60 * 60,
-	ver = "1.0",
+	ver = "1.0"
 ): string {
 	let userClaim = user ? user : generateUser();
 	if (userClaim.id === "" || userClaim.id === undefined) {
@@ -184,7 +184,7 @@ export function generateToken(
 		null,
 		JSON.stringify({ alg: "HS256", typ: "JWT" }),
 		claims,
-		utf8Key,
+		utf8Key
 	);
 }
 

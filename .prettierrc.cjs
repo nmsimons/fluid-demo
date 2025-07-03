@@ -4,5 +4,10 @@
  */
 
 module.exports = {
-    ...require("@fluidframework/build-common/prettier.config.cjs"),
+	semi: true,
+	trailingComma: "es5",
+	singleQuote: false,
+	printWidth: 100,
+	tabWidth: 4,
+	useTabs: true,
 };

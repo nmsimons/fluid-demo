@@ -177,7 +177,7 @@ export class Note extends sf.object(
 				description: `A unique user id for author of the node, or "AI Agent" if created by an agent`,
 			},
 		}),
-	},
+	}
 ) {}
 
 export type typeDefinition = TreeNodeFromImplicitAllowedTypes<typeof schemaTypes>;
@@ -279,5 +279,5 @@ export type FluidColumn = NodeFromSchema<typeof FluidTable.Column>;
  * */
 export const appTreeConfiguration = new TreeViewConfiguration(
 	// Schema for the root
-	{ schema: App },
+	{ schema: App }
 );

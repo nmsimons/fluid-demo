@@ -33,7 +33,7 @@ export function createTypedSelectionManager(props: {
 		constructor(
 			name: string,
 			workspace: StatesWorkspace<{}>,
-			private presence: Presence,
+			private presence: Presence
 		) {
 			workspace.add(name, StateFactory.latest({ local: this.initialState }));
 			this.state = workspace.states[name];
@@ -144,7 +144,7 @@ export function createTypedSelectionManager(props: {
 
 		private _testForInclusion(
 			sel: TypedSelection,
-			collection: readonly TypedSelection[],
+			collection: readonly TypedSelection[]
 		): boolean {
 			return !!collection.find((s) => s.id === sel.id);
 		}
@@ -168,7 +168,7 @@ export function createSelectionManager(props: {
 		constructor(
 			name: string,
 			workspace: StatesWorkspace<{}>,
-			private presence: Presence,
+			private presence: Presence
 		) {
 			workspace.add(name, StateFactory.latest({ local: this.initialState }));
 			this.state = workspace.states[name];

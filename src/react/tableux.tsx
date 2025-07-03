@@ -58,7 +58,7 @@ export function TableView(props: { fluidTable: FluidTable }): JSX.Element {
 
 	const [data, setData] = useState<FluidRow[]>(fluidTable.rows.map((row) => row));
 	const [columns, setColumns] = useState<ColumnDef<FluidRow, cellValue>[]>(
-		updateColumnData(fluidTable.columns.map((column) => column)), // Create a column helper based on the columns in the table
+		updateColumnData(fluidTable.columns.map((column) => column)) // Create a column helper based on the columns in the table
 	);
 
 	// Register for tree deltas when the component mounts. Any time the rows change, the app will update.
@@ -127,7 +127,7 @@ export function TableHeadersView(props: { table: Table<FluidRow> }): JSX.Element
 							<IndexHeaderView key="index" />
 						) : (
 							<TableHeaderView key={header.id} header={header} />
-						),
+						)
 					)}
 				</tr>
 			))}
@@ -325,7 +325,7 @@ export function TableRowView(props: {
 						cell={cell as Cell<FluidRow, cellValue>}
 						{...props} // Pass the user prop to the TableCellView
 					/>
-				),
+				)
 			)}
 		</tr>
 	);
@@ -503,7 +503,7 @@ export function PresenceIndicator(props: {
 
 	const [selected, setSelected] = useState(selection.testSelection(selectedItem));
 	const [remoteSelected, setRemoteSelected] = useState(
-		selection.testRemoteSelection(selectedItem),
+		selection.testRemoteSelection(selectedItem)
 	);
 
 	usePresenceManager(
@@ -516,7 +516,7 @@ export function PresenceIndicator(props: {
 		},
 		() => {
 			setRemoteSelected(selection.testRemoteSelection(selectedItem));
-		},
+		}
 	);
 
 	const isRow = type === "row";
@@ -569,7 +569,7 @@ const updateColumnData = (columnsArray: FluidColumn[]) => {
 				sortingFn: sortingConfig.fn,
 				sortDescFirst: sortingConfig.desc,
 				sortUndefined: "last",
-			}),
+			})
 		);
 	});
 
@@ -582,7 +582,7 @@ const updateColumnData = (columnsArray: FluidColumn[]) => {
 const dateSortingFn: SortingFn<FluidRow> = (
 	rowA: Row<FluidRow>,
 	rowB: Row<FluidRow>,
-	columnId: string,
+	columnId: string
 ) => {
 	const valueA = rowA.getValue(columnId) as { value: DateTime | undefined };
 	const valueB = rowB.getValue(columnId) as { value: DateTime | undefined };
@@ -612,7 +612,7 @@ const dateSortingFn: SortingFn<FluidRow> = (
 const voteSortingFn: SortingFn<FluidRow> = (
 	rowA: Row<FluidRow>,
 	rowB: Row<FluidRow>,
-	columnId: string,
+	columnId: string
 ) => {
 	const valueA = rowA.getValue(columnId) as { value: Vote | undefined };
 	const valueB = rowB.getValue(columnId) as { value: Vote | undefined };
@@ -638,7 +638,7 @@ const voteSortingFn: SortingFn<FluidRow> = (
 
 // Get the sorting function and sort direction for a column
 const getSortingConfig = (
-	column: FluidColumn, // Column object with id, name, and hint properties
+	column: FluidColumn // Column object with id, name, and hint properties
 ): { fn: SortingFnOption<FluidRow> | undefined; desc: boolean } => {
 	if (column.hint === hintValues.boolean) {
 		return { fn: "basic", desc: false };

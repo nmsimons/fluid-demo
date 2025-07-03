@@ -30,7 +30,7 @@ export function createUsersManager(props: {
 		constructor(
 			name: string,
 			workspace: StatesWorkspace<{}>,
-			private presence: Presence,
+			private presence: Presence
 		) {
 			workspace.add(name, StateFactory.latest({ local: this.initialState }));
 			this.state = workspace.states[name];
@@ -59,13 +59,13 @@ export function createUsersManager(props: {
 
 		getConnectedUsers(): readonly User[] {
 			return this.getUsers().filter(
-				(user) => user.client.getConnectionStatus() === AttendeeStatus.Connected,
+				(user) => user.client.getConnectionStatus() === AttendeeStatus.Connected
 			);
 		}
 
 		getDisconnectedUsers(): readonly User[] {
 			return this.getUsers().filter(
-				(user) => user.client.getConnectionStatus() === AttendeeStatus.Disconnected,
+				(user) => user.client.getConnectionStatus() === AttendeeStatus.Disconnected
 			);
 		}
 

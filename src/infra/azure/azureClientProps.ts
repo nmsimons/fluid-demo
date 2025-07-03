@@ -26,14 +26,14 @@ const localConnectionConfig: AzureLocalConnectionConfig = {
 
 export function getClientProps(
 	user?: typeof azureUser,
-	logger?: ITelemetryBaseLogger,
+	logger?: ITelemetryBaseLogger
 ): AzureClientProps {
 	const remoteConnectionConfig: AzureRemoteConnectionConfig = {
 		type: "remote",
 		tenantId: process.env.AZURE_TENANT_ID!,
 		tokenProvider: new AzureFunctionTokenProvider(
 			process.env.AZURE_FUNCTION_TOKEN_PROVIDER_URL!,
-			user ?? azureUser,
+			user ?? azureUser
 		),
 		endpoint: process.env.AZURE_ORDERER!,
 	};

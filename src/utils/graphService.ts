@@ -53,7 +53,7 @@ export async function getUserProfilePicture(accessToken: string): Promise<string
  * Gets the Microsoft Graph access token from MSAL
  */
 export async function getGraphAccessToken(
-	msalInstance: PublicClientApplication,
+	msalInstance: PublicClientApplication
 ): Promise<string | null> {
 	try {
 		console.log("Attempting to get Graph access token...");

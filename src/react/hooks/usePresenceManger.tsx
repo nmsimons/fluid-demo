@@ -9,7 +9,7 @@ export function usePresenceManager<TState>(
 	presenceManager: PresenceManager<TState>,
 	runOnChange: (updated: TState) => void,
 	runOnChangeLocal: (updated: TState) => void = runOnChange,
-	runOnDisconnect?: (updated: Attendee) => void,
+	runOnDisconnect?: (updated: Attendee) => void
 ) {
 	useEffect(() => {
 		const unsubscribe = presenceManager.events.on("remoteUpdated", (updated) => {

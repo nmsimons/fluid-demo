@@ -64,7 +64,7 @@ export function ItemView(props: {
 
 	const [selected, setSelected] = useState(presence.itemSelection.testSelection({ id: item.id }));
 	const [remoteSelected, setRemoteSelected] = useState<string[]>(
-		presence.itemSelection.testRemoteSelection({ id: item.id }),
+		presence.itemSelection.testRemoteSelection({ id: item.id })
 	);
 
 	// Shape-specific props for temporary overrides during resize
@@ -138,7 +138,7 @@ export function ItemView(props: {
 				setPropsOnDrag(update);
 			}
 		},
-		setPropsOnDrag,
+		setPropsOnDrag
 	);
 
 	usePresenceManager(
@@ -146,7 +146,7 @@ export function ItemView(props: {
 		(update) => {
 			setPropsOnResize(update);
 		},
-		setPropsOnResize,
+		setPropsOnResize
 	);
 
 	usePresenceManager(
@@ -159,7 +159,7 @@ export function ItemView(props: {
 		},
 		() => {
 			setRemoteSelected(presence.itemSelection.testRemoteSelection({ id: item.id }));
-		},
+		}
 	);
 
 	const handleDrag = (e: React.DragEvent<HTMLDivElement>) => {
@@ -275,7 +275,7 @@ export function CommentIndicator(props: { comments: Comments; selected: boolean 
 
 // calculate the mouse coordinates relative to the canvas div
 const calculateCanvasMouseCoordinates = (
-	e: React.MouseEvent<HTMLDivElement>,
+	e: React.MouseEvent<HTMLDivElement>
 ): { x: number; y: number } => {
 	const canvasElement = document.getElementById("canvas");
 	const canvasRect = canvasElement?.getBoundingClientRect() || { left: 0, top: 0 };
@@ -289,7 +289,7 @@ const calculateCanvasMouseCoordinates = (
 // when dragging
 const calculateOffsetFromCanvasOrigin = (
 	e: React.MouseEvent<HTMLDivElement>,
-	item: Item,
+	item: Item
 ): { x: number; y: number } => {
 	const coordinates = calculateCanvasMouseCoordinates(e);
 	const newX = coordinates.x - item.x;
@@ -536,7 +536,7 @@ export function CornerResizeHandles(props: {
 		const initialDeltaX = e.clientX - centerPos.current.x;
 		const initialDeltaY = e.clientY - centerPos.current.y;
 		initialDistance.current = Math.sqrt(
-			initialDeltaX * initialDeltaX + initialDeltaY * initialDeltaY,
+			initialDeltaX * initialDeltaX + initialDeltaY * initialDeltaY
 		);
 		// Add global mouse move and up listeners
 		const handleMouseMove = (event: MouseEvent) => {

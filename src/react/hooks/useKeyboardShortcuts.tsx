@@ -80,7 +80,7 @@ export function useKeyboardShortcuts({
  * @returns Formatted string like "Ctrl+Z" or "Shift+Delete"
  */
 export function formatKeyboardShortcut(
-	shortcut: Omit<KeyboardShortcut, "action" | "disabled">,
+	shortcut: Omit<KeyboardShortcut, "action" | "disabled">
 ): string {
 	const parts: string[] = [];
 

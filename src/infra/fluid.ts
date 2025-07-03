@@ -16,7 +16,7 @@ import { OdspClient, OdspContainerServices } from "@fluidframework/odsp-client/b
 export async function loadFluidData<T extends ContainerSchema>(
 	containerId: string,
 	containerSchema: T,
-	client: AzureClient | OdspClient,
+	client: AzureClient | OdspClient
 ): Promise<{
 	services: AzureContainerServices | OdspContainerServices;
 	container: IFluidContainer<T>;
