@@ -4,8 +4,12 @@
 	},
 	"routes": [
 		{
+			"route": "/",
+			"allowedRoles": ["anonymous", "authenticated"]
+		},
+		{
 			"route": "/*",
-			"allowedRoles": ["authenticated"]
+			"allowedRoles": ["anonymous", "authenticated"]
 		}
 	],
 	"responseOverrides": {
