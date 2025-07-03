@@ -3,7 +3,7 @@
 
 import React from "react";
 import { Note } from "../schema/app_schema.js";
-import { Textarea } from "@fluentui/react-components";
+import { Textarea } from "@fluentui/react-textarea";
 import { useTree } from "./hooks/useTree.js";
 
 export function NoteView(props: { note: Note }): JSX.Element {

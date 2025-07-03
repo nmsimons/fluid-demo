@@ -1,5 +1,5 @@
 import { Button } from "@fluentui/react-button";
-import { Text } from "@fluentui/react-components";
+import { Text } from "@fluentui/react-text";
 import { DismissFilled } from "@fluentui/react-icons";
 import React from "react";
 

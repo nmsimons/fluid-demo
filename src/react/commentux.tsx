@@ -1,5 +1,6 @@
 // A pane that shows comments and allows users to interact with them
-import { Button, Textarea } from "@fluentui/react-components";
+import { Button } from "@fluentui/react-button";
+import { Textarea } from "@fluentui/react-textarea";
 import React, {
 	ReactNode,
 	useContext,

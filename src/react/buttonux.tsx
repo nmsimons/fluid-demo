@@ -1,4 +1,5 @@
-import { Tooltip, ToolbarButton } from "@fluentui/react-components";
+import { Tooltip } from "@fluentui/react-tooltip";
+import { ToolbarButton } from "@fluentui/react-toolbar";
 import React, { JSX } from "react";
 
 export function TooltipButton(props: {

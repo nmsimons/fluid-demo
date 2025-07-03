@@ -42,16 +42,20 @@ import {
 	AvatarGroupItem,
 	AvatarGroupPopover,
 	AvatarGroupProps,
+	partitionAvatarGroupItems,
+} from "@fluentui/react-avatar";
+import {
 	MessageBar,
 	MessageBarBody,
 	MessageBarTitle,
-	partitionAvatarGroupItems,
-	Text,
+} from "@fluentui/react-message-bar";
+import { Text } from "@fluentui/react-text";
+import {
 	Toolbar,
 	ToolbarDivider,
 	ToolbarGroup,
-	Tooltip,
-} from "@fluentui/react-components";
+} from "@fluentui/react-toolbar";
+import { Tooltip } from "@fluentui/react-tooltip";
 import { User, UsersManager } from "../utils/Interfaces/UsersManager.js";
 import { PresenceContext } from "./contexts/PresenceContext.js";
 import { DragManager } from "../utils/Interfaces/DragManager.js";

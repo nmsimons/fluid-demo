@@ -9,7 +9,7 @@
 		"build": "npm run compile && npm run format && npm run webpack",
 		"ci:test": "npm run test",
 		"compile": "tsc -b",
-		"dev": "cross-env vite",
+		"dev": "cross-env vite serve",
 		"dev:local": "cross-env FLUID_CLIENT='local' vite serve",
 		"dev:azure": "cross-env FLUID_CLIENT='azure' vite serve",
 		"format": "prettier src --write",
@@ -26,8 +26,17 @@
 	"dependencies": {
 		"@azure/identity": "^4.5.0",
 		"@azure/msal-browser": "^3.28.0",
+		"@fluentui/react-avatar": "^9.7.5",
 		"@fluentui/react-button": "^9.4.4",
-		"@fluentui/react-components": "^9.61.6",
+		"@fluentui/react-menu": "^9.16.7",
+		"@fluentui/react-message-bar": "^9.3.5",
+		"@fluentui/react-provider": "^9.16.7",
+		"@fluentui/react-textarea": "^9.4.88",
+		"@fluentui/react-text": "^9.5.2",
+		"@fluentui/react-toolbar": "^9.2.27",
+		"@fluentui/react-tooltip": "^9.4.38",
+		"@fluentui/react-swatch-picker": "^9.1.82",
+		"@fluentui/react-theme": "^9.1.24",
 		"@fluentui/react-icons": "^2.0.292",
 		"@fluidframework/azure-client": "^2.42.0",
 		"@fluidframework/odsp-client": "^2.42.0",
@@ -51,7 +60,7 @@
 		"react-transition-state": "^2.2.0",
 		"unique-names-generator": "^4.7.1",
 		"uuid": "^11.0.5",
-		"vite": "^6.2.0"
+		"vite": "^5.4.10"
 	},
 	"devDependencies": {
 		"@eslint/eslintrc": "^3.2.0",

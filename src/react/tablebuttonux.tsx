@@ -37,9 +37,9 @@ import {
 	MenuPopover,
 	MenuProps,
 	MenuTrigger,
-	ToolbarButton,
-	Tooltip,
-} from "@fluentui/react-components";
+} from "@fluentui/react-menu";
+import { ToolbarButton } from "@fluentui/react-toolbar";
+import { Tooltip } from "@fluentui/react-tooltip";
 import { useTree } from "./hooks/useTree.js";
 
 const getLastSelectedRow = (

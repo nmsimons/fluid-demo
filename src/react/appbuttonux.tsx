@@ -29,7 +29,7 @@ import {
 	PositionToBackRegular,
 	CopyRegular,
 } from "@fluentui/react-icons";
-import { SwatchPicker, ColorSwatch } from "@fluentui/react-components";
+import { SwatchPicker, ColorSwatch } from "@fluentui/react-swatch-picker";
 import { PresenceContext } from "./contexts/PresenceContext.js";
 import { CommentPaneContext } from "./ux.js";
 import { useTree } from "./hooks/useTree.js";
