@@ -68,3 +68,4 @@ jobs:
                   azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_YELLOW_POND_0DAEE9510 }}
                   action: "close"
                   app_location: "/" # App source code path
+                  app_artifact_location: "dist" # App artifact location - optional
