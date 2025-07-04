@@ -52,7 +52,7 @@ export default defineConfig(({ mode }) => {
 					},
 				},
 			},
-			chunkSizeWarningLimit: 800,
+			chunkSizeWarningLimit: 2000,
 		},
 		publicDir: "public",
 		server: {
