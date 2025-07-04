@@ -27,9 +27,8 @@ export default defineConfig(({ mode }) => {
 							if (id.includes("react") || id.includes("react-dom")) {
 								return "vendor-react";
 							}
-							if (id.includes("@fluidframework")) {
-								return "vendor-fluid";
-							}
+							// Let Vite handle Fluid Framework chunking automatically
+							// to avoid circular dependency issues
 							if (id.includes("@fluentui")) {
 								return "vendor-fluentui";
 							}
@@ -39,7 +38,10 @@ export default defineConfig(({ mode }) => {
 							if (id.includes("lodash")) {
 								return "vendor-lodash";
 							}
-							return "vendor-other";
+							// Don't chunk @fluidframework - let Vite handle it
+							if (!id.includes("@fluidframework")) {
+								return "vendor-other";
+							}
 						}
 					},
 				},
