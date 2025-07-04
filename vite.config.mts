@@ -22,13 +22,30 @@ export default defineConfig(({ mode }) => {
 				},
 				output: {
 					manualChunks: (id) => {
-						// Split large dependencies into separate chunks
+						// Split large dependencies into separate chunks to stay under Azure limits
 						if (id.includes("node_modules")) {
 							if (id.includes("react") || id.includes("react-dom")) {
 								return "vendor-react";
 							}
-							// Let Vite handle Fluid Framework chunking automatically
-							// to avoid circular dependency issues
+							// Split Fluid Framework more granularly to avoid circular deps
+							if (id.includes("@fluidframework/core-interfaces") || id.includes("@fluidframework/common-definitions")) {
+								return "vendor-fluid-core";
+							}
+							if (id.includes("@fluidframework/container-definitions") || id.includes("@fluidframework/container-loader")) {
+								return "vendor-fluid-container";
+							}
+							if (id.includes("@fluidframework/runtime-definitions") || id.includes("@fluidframework/datastore-definitions")) {
+								return "vendor-fluid-runtime";
+							}
+							if (id.includes("@fluidframework/tree")) {
+								return "vendor-fluid-tree";
+							}
+							if (id.includes("@fluidframework/presence")) {
+								return "vendor-fluid-presence";
+							}
+							if (id.includes("@fluidframework")) {
+								return "vendor-fluid-other";
+							}
 							if (id.includes("@fluentui")) {
 								return "vendor-fluentui";
 							}
@@ -38,15 +55,19 @@ export default defineConfig(({ mode }) => {
 							if (id.includes("lodash")) {
 								return "vendor-lodash";
 							}
-							// Don't chunk @fluidframework - let Vite handle it
-							if (!id.includes("@fluidframework")) {
-								return "vendor-other";
+							// Split other large dependencies
+							if (id.includes("@microsoft/microsoft-graph")) {
+								return "vendor-graph";
 							}
+							if (id.includes("@tanstack")) {
+								return "vendor-tanstack";
+							}
+							return "vendor-other";
 						}
 					},
 				},
 			},
-			chunkSizeWarningLimit: 1000,
+			chunkSizeWarningLimit: 800,
 		},
 		publicDir: "public",
 		server: {
