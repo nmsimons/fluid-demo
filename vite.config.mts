@@ -27,24 +27,9 @@ export default defineConfig(({ mode }) => {
 							if (id.includes("react") || id.includes("react-dom")) {
 								return "vendor-react";
 							}
-							// Split Fluid Framework more granularly to avoid circular deps
-							if (id.includes("@fluidframework/core-interfaces") || id.includes("@fluidframework/common-definitions")) {
-								return "vendor-fluid-core";
-							}
-							if (id.includes("@fluidframework/container-definitions") || id.includes("@fluidframework/container-loader")) {
-								return "vendor-fluid-container";
-							}
-							if (id.includes("@fluidframework/runtime-definitions") || id.includes("@fluidframework/datastore-definitions")) {
-								return "vendor-fluid-runtime";
-							}
-							if (id.includes("@fluidframework/tree")) {
-								return "vendor-fluid-tree";
-							}
-							if (id.includes("@fluidframework/presence")) {
-								return "vendor-fluid-presence";
-							}
-							if (id.includes("@fluidframework")) {
-								return "vendor-fluid-other";
+							// Keep all Fluid Framework in one chunk to avoid circular dependency issues
+							if (id.includes("@fluidframework") || id.includes("fluid-framework")) {
+								return "vendor-fluid";
 							}
 							if (id.includes("@fluentui")) {
 								return "vendor-fluentui";
