@@ -9,11 +9,7 @@ import {
 	Items,
 	Shape,
 	Vote,
-	Note,
-	hintValues,
 	FluidTable,
-	FluidRowSchema,
-	FluidColumnSchema,
 } from "../schema/app_schema.js";
 import {
 	DismissFilled,
@@ -60,32 +56,7 @@ export const SHAPE_COLORS = [
 	"#FF8C33", // Orange
 ];
 
-// Helper function to create a shape with random position and color
-function createShape(
-	items: Items,
-	canvasSize: { width: number; height: number },
-	shapeType: "circle" | "square" | "triangle" | "star"
-) {
-	const maxSize = 120;
-	const minSize = 100;
-
-	const shape = new Shape({
-		size: getRandomNumber(minSize, maxSize),
-		color: SHAPE_COLORS[Math.floor(Math.random() * SHAPE_COLORS.length)],
-		type: shapeType,
-	});
-	const item = new Item({
-		id: crypto.randomUUID(),
-		x: getRandomNumber(0, canvasSize.width - maxSize - minSize),
-		y: getRandomNumber(0, canvasSize.height - maxSize - minSize),
-		comments: [],
-		votes: new Vote({ votes: [] }),
-		content: shape,
-		// a random number between 0 and 15
-		rotation: getRandomNumber(0, 1) === 0 ? getRandomNumber(0, 15) : getRandomNumber(345, 360),
-	});
-	items.insertAtEnd(item);
-}
+// (Removed - moved to Items class as createShapeItem method)
 
 export function NewCircleButton(props: {
 	items: Items;
@@ -96,7 +67,7 @@ export function NewCircleButton(props: {
 
 	const handleClick = (e: React.MouseEvent) => {
 		e.stopPropagation();
-		createShape(items, canvasSize, "circle");
+		items.createShapeItem("circle", canvasSize, SHAPE_COLORS);
 	};
 
 	return (
@@ -118,7 +89,7 @@ export function NewSquareButton(props: {
 
 	const handleClick = (e: React.MouseEvent) => {
 		e.stopPropagation();
-		createShape(items, canvasSize, "square");
+		items.createShapeItem("square", canvasSize, SHAPE_COLORS);
 	};
 
 	return (
@@ -140,7 +111,7 @@ export function NewTriangleButton(props: {
 
 	const handleClick = (e: React.MouseEvent) => {
 		e.stopPropagation();
-		createShape(items, canvasSize, "triangle");
+		items.createShapeItem("triangle", canvasSize, SHAPE_COLORS);
 	};
 
 	return (
@@ -162,7 +133,7 @@ export function NewStarButton(props: {
 
 	const handleClick = (e: React.MouseEvent) => {
 		e.stopPropagation();
-		createShape(items, canvasSize, "star");
+		items.createShapeItem("star", canvasSize, SHAPE_COLORS);
 	};
 
 	return (
@@ -185,26 +156,7 @@ export function NewNoteButton(props: {
 
 	const handleClick = (e: React.MouseEvent) => {
 		e.stopPropagation();
-
-		const note = new Note({
-			id: crypto.randomUUID(),
-			text: "",
-			author: presence.users.getMyself().value.id,
-		});
-
-		const item = new Item({
-			id: crypto.randomUUID(),
-			x: getRandomNumber(0, canvasSize.width - 200),
-			y: getRandomNumber(0, canvasSize.height - 200),
-			comments: [],
-			votes: new Vote({ votes: [] }),
-			content: note,
-			// a random number between 0 and 15
-			rotation:
-				getRandomNumber(0, 1) === 0 ? getRandomNumber(0, 15) : getRandomNumber(345, 360),
-		});
-
-		items.insertAtEnd(item);
+		items.createNoteItem(canvasSize, presence.users.getMyself().value.id);
 	};
 	return (
 		<TooltipButton
@@ -225,20 +177,7 @@ export function NewTableButton(props: {
 
 	const handleClick = (e: React.MouseEvent) => {
 		e.stopPropagation();
-
-		const table = createTable();
-
-		const item = new Item({
-			id: crypto.randomUUID(),
-			x: getRandomNumber(0, canvasSize.width - 200),
-			y: getRandomNumber(0, canvasSize.height - 200),
-			comments: [],
-			votes: new Vote({ votes: [] }),
-			content: table,
-			// a random number between 0 and 15 or 345 and 360, matching other items
-			rotation: 0,
-		});
-		items.insertAtEnd(item);
+		items.createTableItem(canvasSize);
 	};
 	return (
 		<TooltipButton
@@ -250,47 +189,9 @@ export function NewTableButton(props: {
 	);
 }
 
-export const createTable = () => {
-	const rows = new Array(10).fill(null).map(() => {
-		return new FluidRowSchema({ id: crypto.randomUUID(), cells: {} });
-	});
+// (Removed - moved to Items class as createDefaultTable method)
 
-	const columns = [
-		new FluidColumnSchema({
-			id: crypto.randomUUID(),
-			props: {
-				name: "String",
-				hint: hintValues.string,
-			},
-		}),
-		new FluidColumnSchema({
-			id: crypto.randomUUID(),
-			props: {
-				name: "Number",
-				hint: hintValues.number,
-			},
-		}),
-		new FluidColumnSchema({
-			id: crypto.randomUUID(),
-			props: {
-				name: "Date",
-				hint: hintValues.date,
-			},
-		}),
-	];
-
-	// Initialize the SharedTree DDSes
-	const table = new FluidTable({
-		rows: rows,
-		columns: columns,
-	});
-	return table;
-};
-
-// Generate a random number between min and max
-const getRandomNumber = (min: number, max: number): number => {
-	return Math.floor(Math.random() * (max - min + 1)) + min;
-};
+// (Removed - moved to Items class as getRandomNumber method)
 
 export function DeleteButton(props: { delete: () => void }): JSX.Element {
 	const { delete: deleteFunc } = props;
@@ -314,130 +215,7 @@ export function DuplicateButton(props: {
 
 	const handleDuplicate = (e: React.MouseEvent) => {
 		e.stopPropagation();
-		console.log("Duplicate button clicked for item:", item.id);
-
-		// Create a copy of the item with new ID and slightly offset position
-		const offsetX = 20;
-		const offsetY = 20;
-
-		// Calculate new position, wrapping around canvas if needed
-		let newX = item.x + offsetX;
-		let newY = item.y + offsetY;
-
-		if (newX > canvasSize.width - 200) {
-			// Assume item width ~200px
-			newX = item.x - offsetX;
-		}
-		if (newY > canvasSize.height - 200) {
-			// Assume item height ~200px
-			newY = item.y - offsetY;
-		}
-
-		// Ensure we don't go negative
-		newX = Math.max(0, newX);
-		newY = Math.max(0, newY);
-
-		console.log("Creating duplicate at position:", newX, newY);
-
-		// First, create the appropriate content based on the original item's content type
-		let duplicatedContent;
-
-		if (Tree.is(item.content, Shape)) {
-			console.log("Duplicating shape:", item.content.type);
-			duplicatedContent = new Shape({
-				size: item.content.size,
-				color: item.content.color,
-				type: item.content.type,
-			});
-		} else if (Tree.is(item.content, Note)) {
-			console.log("Duplicating note");
-			duplicatedContent = new Note({
-				id: crypto.randomUUID(),
-				text: item.content.text,
-				author: item.content.author,
-			});
-		} else if (Tree.is(item.content, FluidTable)) {
-			console.log("Duplicating table");
-			console.log("Original table rows:", item.content.rows.length);
-			console.log("Original table columns:", item.content.columns.length);
-
-			// Create new columns with new IDs but same structure
-			// Also create a mapping from old column IDs to new ones
-			const columnIdMapping: Record<string, string> = {};
-			const newColumns = item.content.columns.map((col) => {
-				console.log("Copying column:", col.id, col.props.name, col.props.hint);
-				const newColumnId = crypto.randomUUID();
-				columnIdMapping[col.id] = newColumnId;
-				return new FluidColumnSchema({
-					id: newColumnId,
-					props: {
-						name: col.props.name,
-						hint: col.props.hint,
-					},
-				});
-			});
-
-			// Create new rows with new IDs and get their cell data
-			const newRows = item.content.rows.map((row) => {
-				console.log("Copying row:", row.id);
-				const newRow = new FluidRowSchema({
-					id: crypto.randomUUID(),
-					cells: {},
-				});
-
-				// Copy cells to the new row
-				const table = item.content as FluidTable;
-				for (const column of table.columns) {
-					const cell = row.getCell(column);
-					if (cell !== undefined) {
-						const newColumnId = columnIdMapping[column.id];
-						const newColumn = newColumns.find((c) => c.id === newColumnId);
-						if (newColumn) {
-							newRow.setCell(newColumn, cell);
-						}
-					}
-				}
-
-				return newRow;
-			});
-
-			console.log(
-				"Creating new FluidTable with",
-				newRows.length,
-				"rows and",
-				newColumns.length,
-				"columns"
-			);
-			console.log("Column ID mapping:", columnIdMapping);
-
-			try {
-				duplicatedContent = new FluidTable({
-					rows: newRows,
-					columns: newColumns,
-				});
-				console.log("Successfully created FluidTable");
-			} catch (error) {
-				console.error("Error creating FluidTable:", error);
-				return;
-			}
-		} else {
-			console.error("Unknown content type, cannot duplicate");
-			return;
-		}
-
-		// Now create the item with the properly created content
-		const duplicatedItem = new Item({
-			id: crypto.randomUUID(),
-			x: newX,
-			y: newY,
-			comments: [], // Start with empty comments
-			votes: new Vote({ votes: [] }), // Start with empty votes
-			content: duplicatedContent,
-			rotation: item.rotation,
-		});
-
-		console.log("Adding duplicated item to items collection");
-		items.insertAtEnd(duplicatedItem);
+		items.duplicateItem(item, canvasSize);
 	};
 
 	return (

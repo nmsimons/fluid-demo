@@ -8,12 +8,6 @@ import {
 	App,
 	Shape,
 	FluidTable,
-	FluidRowSchema,
-	FluidColumnSchema,
-	Item,
-	Note,
-	Vote,
-	hintValues,
 } from "../schema/app_schema.js";
 import "../output.css";
 import { ConnectionState, IFluidContainer, TreeView, Tree } from "fluid-framework";
@@ -218,150 +212,37 @@ export function ReactApp(props: {
 			{
 				key: "c",
 				action: () => {
-					const shape = new Shape({
-						size: 100 + Math.floor(Math.random() * 20),
-						color: SHAPE_COLORS[Math.floor(Math.random() * SHAPE_COLORS.length)],
-						type: "circle",
-					});
-					const item = new Item({
-						id: crypto.randomUUID(),
-						x: Math.random() * (canvasSize.width - 120),
-						y: Math.random() * (canvasSize.height - 120),
-						comments: [],
-						votes: new Vote({ votes: [] }),
-						content: shape,
-						rotation:
-							Math.random() < 0.5 ? Math.random() * 15 : 345 + Math.random() * 15,
-					});
-					view.root.items.insertAtEnd(item);
+					view.root.items.createShapeItem("circle", canvasSize, SHAPE_COLORS);
 				},
 			},
 			{
 				key: "s",
 				action: () => {
-					const shape = new Shape({
-						size: 100 + Math.floor(Math.random() * 20),
-						color: SHAPE_COLORS[Math.floor(Math.random() * SHAPE_COLORS.length)],
-						type: "square",
-					});
-					const item = new Item({
-						id: crypto.randomUUID(),
-						x: Math.random() * (canvasSize.width - 120),
-						y: Math.random() * (canvasSize.height - 120),
-						comments: [],
-						votes: new Vote({ votes: [] }),
-						content: shape,
-						rotation:
-							Math.random() < 0.5 ? Math.random() * 15 : 345 + Math.random() * 15,
-					});
-					view.root.items.insertAtEnd(item);
+					view.root.items.createShapeItem("square", canvasSize, SHAPE_COLORS);
 				},
 			},
 			{
 				key: "t",
 				action: () => {
-					const shape = new Shape({
-						size: 100 + Math.floor(Math.random() * 20),
-						color: SHAPE_COLORS[Math.floor(Math.random() * SHAPE_COLORS.length)],
-						type: "triangle",
-					});
-					const item = new Item({
-						id: crypto.randomUUID(),
-						x: Math.random() * (canvasSize.width - 120),
-						y: Math.random() * (canvasSize.height - 120),
-						comments: [],
-						votes: new Vote({ votes: [] }),
-						content: shape,
-						rotation:
-							Math.random() < 0.5 ? Math.random() * 15 : 345 + Math.random() * 15,
-					});
-					view.root.items.insertAtEnd(item);
+					view.root.items.createShapeItem("triangle", canvasSize, SHAPE_COLORS);
 				},
 			},
 			{
 				key: "r",
 				action: () => {
-					const shape = new Shape({
-						size: 100 + Math.floor(Math.random() * 20),
-						color: SHAPE_COLORS[Math.floor(Math.random() * SHAPE_COLORS.length)],
-						type: "star",
-					});
-					const item = new Item({
-						id: crypto.randomUUID(),
-						x: Math.random() * (canvasSize.width - 120),
-						y: Math.random() * (canvasSize.height - 120),
-						comments: [],
-						votes: new Vote({ votes: [] }),
-						content: shape,
-						rotation:
-							Math.random() < 0.5 ? Math.random() * 15 : 345 + Math.random() * 15,
-					});
-					view.root.items.insertAtEnd(item);
+					view.root.items.createShapeItem("star", canvasSize, SHAPE_COLORS);
 				},
 			},
 			{
 				key: "n",
 				action: () => {
-					const note = new Note({
-						id: crypto.randomUUID(),
-						text: "",
-						author: users.getMyself().value.id,
-					});
-					const item = new Item({
-						id: crypto.randomUUID(),
-						x: Math.random() * (canvasSize.width - 200),
-						y: Math.random() * (canvasSize.height - 200),
-						comments: [],
-						votes: new Vote({ votes: [] }),
-						content: note,
-						rotation:
-							Math.random() < 0.5 ? Math.random() * 15 : 345 + Math.random() * 15,
-					});
-					view.root.items.insertAtEnd(item);
+					view.root.items.createNoteItem(canvasSize, users.getMyself().value.id);
 				},
 			},
 			{
 				key: "b",
 				action: () => {
-					const rows = new Array(10).fill(null).map(() => {
-						return new FluidRowSchema({ id: crypto.randomUUID(), cells: {} });
-					});
-					const table = new FluidTable({
-						rows: rows,
-						columns: [
-							new FluidColumnSchema({
-								id: crypto.randomUUID(),
-								props: {
-									name: "String",
-									hint: hintValues.string,
-								},
-							}),
-							new FluidColumnSchema({
-								id: crypto.randomUUID(),
-								props: {
-									name: "Number",
-									hint: hintValues.number,
-								},
-							}),
-							new FluidColumnSchema({
-								id: crypto.randomUUID(),
-								props: {
-									name: "Date",
-									hint: hintValues.date,
-								},
-							}),
-						],
-					});
-					const item = new Item({
-						id: crypto.randomUUID(),
-						x: Math.random() * (canvasSize.width - 200),
-						y: Math.random() * (canvasSize.height - 200),
-						comments: [],
-						votes: new Vote({ votes: [] }),
-						content: table,
-						rotation: 0,
-					});
-					view.root.items.insertAtEnd(item);
+					view.root.items.createTableItem(canvasSize);
 				},
 			},
 			// Selected item shortcuts
@@ -381,65 +262,7 @@ export function ReactApp(props: {
 				action: () => {
 					const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
 					if (selectedItem) {
-						// Use existing duplicate logic from DuplicateButton
-						let newContent;
-						if (Tree.is(selectedItem.content, Shape)) {
-							newContent = new Shape({
-								size: selectedItem.content.size,
-								color: selectedItem.content.color,
-								type: selectedItem.content.type,
-							});
-						} else if (Tree.is(selectedItem.content, Note)) {
-							newContent = new Note({
-								id: crypto.randomUUID(),
-								text: selectedItem.content.text,
-								author: users.getMyself().value.id,
-							});
-						} else if (Tree.is(selectedItem.content, FluidTable)) {
-							// For tables, create a new basic table instead of trying to duplicate complex structure
-							const rows = new Array(10).fill(null).map(() => {
-								return new FluidRowSchema({ id: crypto.randomUUID(), cells: {} });
-							});
-							newContent = new FluidTable({
-								rows: rows,
-								columns: [
-									new FluidColumnSchema({
-										id: crypto.randomUUID(),
-										props: {
-											name: "String",
-											hint: hintValues.string,
-										},
-									}),
-									new FluidColumnSchema({
-										id: crypto.randomUUID(),
-										props: {
-											name: "Number",
-											hint: hintValues.number,
-										},
-									}),
-									new FluidColumnSchema({
-										id: crypto.randomUUID(),
-										props: {
-											name: "Date",
-											hint: hintValues.date,
-										},
-									}),
-								],
-							});
-						} else {
-							return; // Unknown content type
-						}
-
-						const newItem = new Item({
-							id: crypto.randomUUID(),
-							x: selectedItem.x + 20,
-							y: selectedItem.y + 20,
-							comments: [],
-							votes: new Vote({ votes: [] }),
-							content: newContent,
-							rotation: selectedItem.rotation,
-						});
-						view.root.items.insertAtEnd(newItem);
+						view.root.items.duplicateItem(selectedItem, canvasSize);
 					}
 				},
 				disabled: !selectedItemId,

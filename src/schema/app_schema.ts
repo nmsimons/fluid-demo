@@ -306,6 +306,54 @@ export class FluidTable extends TableSchema.table({
 		this.rows.moveToIndex(currentIndex + 2, currentIndex);
 		return true;
 	}
+
+	/**
+	 * Create a row with random values based on column types
+	 */
+	createRowWithValues(): FluidRow {
+		const row = this.createDetachedRow();
+		// Iterate through all the columns and add a random value for the new row
+		for (const column of this.columns) {
+			const fluidColumn = this.getColumn(column.id);
+			if (!fluidColumn) continue;
+
+			const hint = fluidColumn.props.hint;
+
+			switch (hint) {
+				case hintValues.string:
+					row.setCell(fluidColumn, Math.random().toString(36).substring(7));
+					break;
+				case hintValues.number:
+					row.setCell(fluidColumn, Math.floor(Math.random() * 1000));
+					break;
+				case hintValues.boolean:
+					row.setCell(fluidColumn, Math.random() > 0.5);
+					break;
+				case hintValues.date: {
+					// Add a random date
+					const startDate = new Date(2020, 0, 1);
+					const endDate = new Date();
+					const date = this.getRandomDate(startDate, endDate);
+					const dateTime = new DateTime({ ms: date.getTime() });
+					row.setCell(fluidColumn, dateTime);
+					break;
+				}
+				case hintValues.vote:
+					break;
+				default: // Add a random string
+					row.setCell(fluidColumn, Math.random().toString(36).substring(7));
+					break;
+			}
+		}
+		return row;
+	}
+
+	/**
+	 * Generate a random date between two dates
+	 */
+	private getRandomDate(start: Date, end: Date): Date {
+		return new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime()));
+	}
 }
 export class Item extends sf.object("Item", {
 	id: sf.string,
@@ -349,6 +397,228 @@ export class Group extends sf.object("Group", {
 
 // TODO: Support groups
 export class Items extends sf.array("Items", [Item]) {
+	/**
+	 * Create a new shape item and add it to the items collection
+	 */
+	createShapeItem(
+		shapeType: "circle" | "square" | "triangle" | "star",
+		canvasSize: { width: number; height: number },
+		shapeColors: string[]
+	): Item {
+		const maxSize = 120;
+		const minSize = 100;
+
+		const shape = new Shape({
+			size: this.getRandomNumber(minSize, maxSize),
+			color: shapeColors[Math.floor(Math.random() * shapeColors.length)],
+			type: shapeType,
+		});
+
+		const item = new Item({
+			id: crypto.randomUUID(),
+			x: this.getRandomNumber(0, canvasSize.width - maxSize - minSize),
+			y: this.getRandomNumber(0, canvasSize.height - maxSize - minSize),
+			comments: [],
+			votes: new Vote({ votes: [] }),
+			content: shape,
+			rotation: this.getRandomNumber(0, 1) === 0 ? this.getRandomNumber(0, 15) : this.getRandomNumber(345, 360),
+		});
+
+		this.insertAtEnd(item);
+		return item;
+	}
+
+	/**
+	 * Create a new note item and add it to the items collection
+	 */
+	createNoteItem(
+		canvasSize: { width: number; height: number },
+		authorId: string
+	): Item {
+		const note = new Note({
+			id: crypto.randomUUID(),
+			text: "",
+			author: authorId,
+		});
+
+		const item = new Item({
+			id: crypto.randomUUID(),
+			x: this.getRandomNumber(0, canvasSize.width - 200),
+			y: this.getRandomNumber(0, canvasSize.height - 200),
+			comments: [],
+			votes: new Vote({ votes: [] }),
+			content: note,
+			rotation: this.getRandomNumber(0, 1) === 0 ? this.getRandomNumber(0, 15) : this.getRandomNumber(345, 360),
+		});
+
+		this.insertAtEnd(item);
+		return item;
+	}
+
+	/**
+	 * Create a new table item and add it to the items collection
+	 */
+	createTableItem(canvasSize: { width: number; height: number }): Item {
+		const table = this.createDefaultTable();
+
+		const item = new Item({
+			id: crypto.randomUUID(),
+			x: this.getRandomNumber(0, canvasSize.width - 200),
+			y: this.getRandomNumber(0, canvasSize.height - 200),
+			comments: [],
+			votes: new Vote({ votes: [] }),
+			content: table,
+			rotation: 0,
+		});
+
+		this.insertAtEnd(item);
+		return item;
+	}
+
+	/**
+	 * Create a default table with basic columns
+	 */
+	createDefaultTable(): FluidTable {
+		const rows = new Array(10).fill(null).map(() => {
+			return new FluidRowSchema({ id: crypto.randomUUID(), cells: {} });
+		});
+
+		const columns = [
+			new FluidColumnSchema({
+				id: crypto.randomUUID(),
+				props: {
+					name: "String",
+					hint: hintValues.string,
+				},
+			}),
+			new FluidColumnSchema({
+				id: crypto.randomUUID(),
+				props: {
+					name: "Number",
+					hint: hintValues.number,
+				},
+			}),
+			new FluidColumnSchema({
+				id: crypto.randomUUID(),
+				props: {
+					name: "Date",
+					hint: hintValues.date,
+				},
+			}),
+		];
+
+		return new FluidTable({
+			rows: rows,
+			columns: columns,
+		});
+	}
+
+	/**
+	 * Duplicate an existing item
+	 */
+	duplicateItem(
+		item: Item,
+		canvasSize: { width: number; height: number }
+	): Item {
+		// Calculate new position with offset
+		const offsetX = 20;
+		const offsetY = 20;
+
+		let newX = item.x + offsetX;
+		let newY = item.y + offsetY;
+
+		if (newX > canvasSize.width - 200) {
+			newX = item.x - offsetX;
+		}
+		if (newY > canvasSize.height - 200) {
+			newY = item.y - offsetY;
+		}
+
+		newX = Math.max(0, newX);
+		newY = Math.max(0, newY);
+
+		// Create the appropriate content based on the original item's content type
+		let duplicatedContent;
+
+		if (Tree.is(item.content, Shape)) {
+			duplicatedContent = new Shape({
+				size: item.content.size,
+				color: item.content.color,
+				type: item.content.type,
+			});
+		} else if (Tree.is(item.content, Note)) {
+			duplicatedContent = new Note({
+				id: crypto.randomUUID(),
+				text: item.content.text,
+				author: item.content.author,
+			});
+		} else if (Tree.is(item.content, FluidTable)) {
+			// Create new columns with new IDs and mapping
+			const columnIdMapping: Record<string, string> = {};
+			const newColumns = item.content.columns.map((col) => {
+				const newColumnId = crypto.randomUUID();
+				columnIdMapping[col.id] = newColumnId;
+				return new FluidColumnSchema({
+					id: newColumnId,
+					props: {
+						name: col.props.name,
+						hint: col.props.hint,
+					},
+				});
+			});
+
+			// Create new rows with copied cell data
+			const newRows = item.content.rows.map((row) => {
+				const newRow = new FluidRowSchema({
+					id: crypto.randomUUID(),
+					cells: {},
+				});
+
+				// Copy cells to the new row
+				const table = item.content as FluidTable;
+				for (const column of table.columns) {
+					const cell = row.getCell(column);
+					if (cell !== undefined) {
+						const newColumnId = columnIdMapping[column.id];
+						const newColumn = newColumns.find((c) => c.id === newColumnId);
+						if (newColumn) {
+							newRow.setCell(newColumn, cell);
+						}
+					}
+				}
+
+				return newRow;
+			});
+
+			duplicatedContent = new FluidTable({
+				rows: newRows,
+				columns: newColumns,
+			});
+		} else {
+			throw new Error("Unknown content type, cannot duplicate");
+		}
+
+		const duplicatedItem = new Item({
+			id: crypto.randomUUID(),
+			x: newX,
+			y: newY,
+			comments: [],
+			votes: new Vote({ votes: [] }),
+			content: duplicatedContent,
+			rotation: item.rotation,
+		});
+
+		this.insertAtEnd(duplicatedItem);
+		return duplicatedItem;
+	}
+
+	/**
+	 * Generate a random number between min and max (inclusive)
+	 */
+	private getRandomNumber(min: number, max: number): number {
+		return Math.floor(Math.random() * (max - min + 1)) + min;
+	}
+
 	/**
 	 * Move an item forward one position (higher z-order)
 	 */

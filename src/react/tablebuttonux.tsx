@@ -5,7 +5,6 @@
 
 import React, { JSX, useEffect } from "react";
 import {
-	DateTime,
 	FluidColumn,
 	FluidRow,
 	FluidTable,
@@ -106,7 +105,7 @@ export function NewRowButton(props: {
 		// This ensures that the revertible of the operation will undo all the changes made by the operation.
 		Tree.runTransaction(table, () => {
 			const lastSelectedRow = getLastSelectedRow(table, selection);
-			const row = getRowWithValues(props.table);
+			const row = table.createRowWithValues();
 
 			if (lastSelectedRow !== undefined) {
 				const rowIndex = table.rows.indexOf(lastSelectedRow);
@@ -138,7 +137,7 @@ export function NewManysRowsButton(props: { table: FluidTable }): JSX.Element {
 			// Add a thousand rows at a time
 			const rows = [];
 			for (let i = 0; i < 1000; i++) {
-				const row = getRowWithValues(props.table);
+				const row = table.createRowWithValues();
 				rows.push(row);
 			}
 			props.table.insertRows({ index: props.table.rows.length, rows });
@@ -153,53 +152,7 @@ export function NewManysRowsButton(props: { table: FluidTable }): JSX.Element {
 	);
 }
 
-const getRowWithValues = (table: FluidTable): FluidRow => {
-	const row = table.createDetachedRow();
-	// Iterate through all the columns and add a random value for the new row
-	// If the column is a number, we will add a random number, otherwise we will add a random string
-	// If the column is a boolean, we will add a random boolean
-	for (const column of table.columns) {
-		const fluidColumn = table.getColumn(column.id);
-		if (!fluidColumn) continue;
-
-		const hint = fluidColumn.props.hint;
-
-		switch (hint) {
-			case hintValues.string:
-				row.setCell(fluidColumn, Math.random().toString(36).substring(7));
-				break;
-			case hintValues.number:
-				row.setCell(fluidColumn, Math.floor(Math.random() * 1000));
-				break;
-			case hintValues.boolean:
-				row.setCell(fluidColumn, Math.random() > 0.5);
-				break;
-			case hintValues.date: {
-				// Add a random date
-				const getDate = () => {
-					const startDate = new Date(2020, 0, 1);
-					const endDate = new Date();
-					const date = getRandomDate(startDate, endDate);
-					const dateTime = new DateTime({ ms: date.getTime() });
-					return dateTime;
-				};
-				row.setCell(fluidColumn, getDate());
-				break;
-			}
-			case hintValues.vote:
-				break;
-			default: // Add a random string
-				row.setCell(fluidColumn, Math.random().toString(36).substring(7));
-				break;
-		}
-	}
-	return row;
-};
-
-function getRandomDate(start: Date, end: Date): Date {
-	const date = new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime()));
-	return date;
-}
+// (Removed - moved to FluidTable class as createRowWithValues method)
 
 export function NewColumnButton(props: { table: FluidTable }): JSX.Element {
 	const { table } = props;
