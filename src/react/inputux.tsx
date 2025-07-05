@@ -12,9 +12,9 @@ export function ColumnInput(props: { column: FluidColumn }): JSX.Element {
 		<input
 			id={column.id}
 			className="outline-none w-full h-full truncate"
-			value={column.name}
+			value={column.props.name}
 			onChange={(e) => {
-				column.name = e.target.value;
+				column.props.name = e.target.value;
 			}}
 		></input>
 	);
@@ -136,7 +136,7 @@ export function CellInputDate(props: {
 		if (isNaN(Date.parse(e.target.value))) {
 			if (fluidCell !== undefined) {
 				if (Tree.is(fluidCell, DateTime)) {
-					row.setCell(column, undefined);
+					row.removeCell(column);
 					return;
 				}
 			}

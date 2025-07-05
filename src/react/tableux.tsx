@@ -430,7 +430,7 @@ export function TableCellViewContent(props: { cell: Cell<FluidRow, cellValue> })
 	const users = useContext(PresenceContext).users;
 
 	// Switch on the hint of the column to determine the type of input to display
-	switch (fluidColumn.hint) {
+	switch (fluidColumn.props.hint) {
 		case "boolean":
 			return (
 				<CellInputBoolean
@@ -563,9 +563,9 @@ const updateColumnData = (columnsArray: FluidColumn[]) => {
 	columnsArray.forEach((column) => {
 		const sortingConfig = getSortingConfig(column);
 		headerArray.push(
-			columnHelper.accessor((row) => row.getCells()[column.id], {
+			columnHelper.accessor((row) => row.getCell(column), {
 				id: column.id,
-				header: column.name,
+				header: column.props.name,
 				sortingFn: sortingConfig.fn,
 				sortDescFirst: sortingConfig.desc,
 				sortUndefined: "last",
@@ -640,18 +640,18 @@ const voteSortingFn: SortingFn<FluidRow> = (
 const getSortingConfig = (
 	column: FluidColumn // Column object with id, name, and hint properties
 ): { fn: SortingFnOption<FluidRow> | undefined; desc: boolean } => {
-	if (column.hint === hintValues.boolean) {
+	if (column.props.hint === hintValues.boolean) {
 		return { fn: "basic", desc: false };
-	} else if (column.hint === hintValues.number) {
+	} else if (column.props.hint === hintValues.number) {
 		return { fn: "alphanumeric", desc: true };
-	} else if (column.hint === hintValues.string) {
+	} else if (column.props.hint === hintValues.string) {
 		return { fn: "alphanumeric", desc: false };
-	} else if (column.hint === hintValues.date) {
+	} else if (column.props.hint === hintValues.date) {
 		return { fn: dateSortingFn, desc: false };
-	} else if (column.hint === hintValues.vote) {
+	} else if (column.props.hint === hintValues.vote) {
 		return { fn: voteSortingFn, desc: true };
 	} else {
-		console.error("Unknown column type", "Hint:", column.hint);
+		console.error("Unknown column type", "Hint:", column.props.hint);
 		return { fn: "basic", desc: false };
 	}
 };

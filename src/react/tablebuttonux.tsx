@@ -9,6 +9,7 @@ import {
 	FluidColumn,
 	FluidRow,
 	FluidTable,
+	FluidColumnSchema,
 	HintValues,
 	hintValues,
 } from "../schema/app_schema.js";
@@ -76,7 +77,8 @@ export function NewEmptyRowButton(props: {
 		const lastSelectedRow = getLastSelectedRow(table, selection);
 		const row = table.createDetachedRow();
 		if (lastSelectedRow !== undefined) {
-			table.insertRows({ rows: [row], index: lastSelectedRow.index + 1 });
+			const rowIndex = table.rows.indexOf(lastSelectedRow);
+			table.insertRows({ rows: [row], index: rowIndex + 1 });
 		} else {
 			table.insertRows({ rows: [row], index: table.rows.length });
 		}
@@ -107,7 +109,8 @@ export function NewRowButton(props: {
 			const row = getRowWithValues(props.table);
 
 			if (lastSelectedRow !== undefined) {
-				props.table.insertRows({ index: lastSelectedRow.index + 1, rows: [row] });
+				const rowIndex = table.rows.indexOf(lastSelectedRow);
+				props.table.insertRows({ index: rowIndex + 1, rows: [row] });
 			} else {
 				props.table.insertRows({ index: props.table.rows.length, rows: [row] });
 			}
@@ -157,7 +160,9 @@ const getRowWithValues = (table: FluidTable): FluidRow => {
 	// If the column is a boolean, we will add a random boolean
 	for (const column of table.columns) {
 		const fluidColumn = table.getColumn(column.id);
-		const hint = fluidColumn.hint;
+		if (!fluidColumn) continue;
+
+		const hint = fluidColumn.props.hint;
 
 		switch (hint) {
 			case hintValues.string:
@@ -210,32 +215,57 @@ export function NewColumnButton(props: { table: FluidTable }): JSX.Element {
 		// Add a new column to the table
 		if (index % 5 === 1) {
 			table.insertColumn({
-				name,
-				hint: hintValues.string,
+				column: new FluidColumnSchema({
+					id: crypto.randomUUID(),
+					props: {
+						name,
+						hint: hintValues.string,
+					},
+				}),
 				index: table.columns.length,
 			});
 		} else if (index % 5 === 2) {
 			table.insertColumn({
-				name,
-				hint: hintValues.number,
+				column: new FluidColumnSchema({
+					id: crypto.randomUUID(),
+					props: {
+						name,
+						hint: hintValues.number,
+					},
+				}),
 				index: table.columns.length,
 			});
 		} else if (index % 5 === 3) {
 			table.insertColumn({
-				name,
-				hint: hintValues.boolean,
+				column: new FluidColumnSchema({
+					id: crypto.randomUUID(),
+					props: {
+						name,
+						hint: hintValues.boolean,
+					},
+				}),
 				index: table.columns.length,
 			});
 		} else if (index % 5 === 4) {
 			table.insertColumn({
-				name,
-				hint: hintValues.vote,
+				column: new FluidColumnSchema({
+					id: crypto.randomUUID(),
+					props: {
+						name,
+						hint: hintValues.vote,
+					},
+				}),
 				index: table.columns.length,
 			});
 		} else {
 			table.insertColumn({
-				name,
-				hint: hintValues.date,
+				column: new FluidColumnSchema({
+					id: crypto.randomUUID(),
+					props: {
+						name,
+						hint: hintValues.date,
+					},
+				}),
 				index: table.columns.length,
 			});
 		}
@@ -281,15 +311,25 @@ export function MoveSelectedRowsButton(props: {
 			return;
 		}
 
-		// Iterate through the selected rows and move them to the top of the table
+		// Iterate through the selected rows and move them
 		Tree.runTransaction(table, () => {
 			for (const rowId of selectedRows) {
 				const row = table.getRow(rowId);
 				if (row !== undefined && Tree.status(row) === TreeStatus.InDocument) {
+					const currentIndex = table.rows.indexOf(row);
+					if (currentIndex === -1) continue;
+
+					let newIndex: number;
 					if (up) {
-						row.moveTo(row.index - 1);
+						newIndex = Math.max(0, currentIndex - 1);
 					} else {
-						row.moveTo(row.index + 1);
+						newIndex = Math.min(table.rows.length - 1, currentIndex + 1);
+					}
+
+					if (newIndex !== currentIndex) {
+						// Remove the row and re-insert it at the new position
+						table.removeRow(row);
+						table.insertRows({ rows: [row], index: newIndex });
 					}
 				}
 			}
@@ -359,10 +399,20 @@ export function MoveSelectedColumnsButton(props: {
 			for (const c of selectedColumns) {
 				const column = table.getColumn(c.id);
 				if (column !== undefined && Tree.status(column) === TreeStatus.InDocument) {
+					const currentIndex = table.columns.indexOf(column);
+					if (currentIndex === -1) continue;
+
+					let newIndex: number;
 					if (left) {
-						column.moveTo(column.index - 1);
+						newIndex = Math.max(0, currentIndex - 1);
 					} else {
-						column.moveTo(column.index + 1);
+						newIndex = Math.min(table.columns.length - 1, currentIndex + 1);
+					}
+
+					if (newIndex !== currentIndex) {
+						// Remove the column and re-insert it at the new position
+						table.removeColumn(column);
+						table.insertColumn({ column, index: newIndex });
 					}
 				}
 			}
@@ -416,7 +466,7 @@ export function DeleteSelectedRowsButton(props: {
 		const rowsToDelete = selectedRows
 			.map((rowId) => table.getRow(rowId))
 			.filter((row): row is FluidRow => row !== undefined);
-		table.deleteRows(rowsToDelete);
+		table.removeRows(rowsToDelete);
 		// Clear the selection
 		selection.clearSelection();
 	};
@@ -439,7 +489,7 @@ export function ColumnTypeDropdown(props: { column: FluidColumn }): JSX.Element 
 	useTree(column);
 
 	const [checkedValues, setCheckedValues] = React.useState<Record<string, string[]>>({
-		type: [column.hint ?? ""],
+		type: [column.props.hint ?? ""],
 	});
 	const onChange: MenuProps["onCheckedValueChange"] = (
 		e,
@@ -448,7 +498,8 @@ export function ColumnTypeDropdown(props: { column: FluidColumn }): JSX.Element 
 		setCheckedValues((s) => ({ ...s, [name]: checkedItems }));
 	};
 
-	if (column.cells.size !== 0) return <></>;
+	// Note: The old column.cells.size check is no longer available, so we skip it for now
+	if (column.getCells().length !== 0) return <></>;
 
 	return (
 		<Menu
@@ -485,22 +536,22 @@ export function ChangeColumnTypeMenuItem(props: {
 		e.stopPropagation();
 		switch (type) {
 			case hintValues.string:
-				column.hint = hintValues.string;
+				column.props.hint = hintValues.string;
 				break;
 			case hintValues.number:
-				column.hint = hintValues.number;
+				column.props.hint = hintValues.number;
 				break;
 			case hintValues.boolean:
-				column.hint = hintValues.boolean;
+				column.props.hint = hintValues.boolean;
 				break;
 			case hintValues.date:
-				column.hint = hintValues.date;
+				column.props.hint = hintValues.date;
 				break;
 			case hintValues.vote:
-				column.hint = hintValues.vote;
+				column.props.hint = hintValues.vote;
 				break;
 			default:
-				column.hint = hintValues.string;
+				column.props.hint = hintValues.string;
 				break;
 		}
 	};
@@ -519,7 +570,7 @@ export function DeleteAllRowsButton(props: { table: FluidTable }): JSX.Element {
 
 	const handleClick = (e: React.MouseEvent) => {
 		e.stopPropagation();
-		props.table.deleteAllRows();
+		props.table.removeAllRows();
 	};
 	return (
 		<TooltipButton

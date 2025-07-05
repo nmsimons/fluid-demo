@@ -4,7 +4,17 @@
  */
 
 import React, { JSX, useContext, useEffect, useState, useRef } from "react";
-import { App, Shape, FluidTable, Item, Note, Vote, hintValues } from "../schema/app_schema.js";
+import {
+	App,
+	Shape,
+	FluidTable,
+	FluidRowSchema,
+	FluidColumnSchema,
+	Item,
+	Note,
+	Vote,
+	hintValues,
+} from "../schema/app_schema.js";
 import "../output.css";
 import { ConnectionState, IFluidContainer, TreeView, Tree } from "fluid-framework";
 import { Canvas } from "./canvasux.js";
@@ -314,26 +324,32 @@ export function ReactApp(props: {
 				key: "b",
 				action: () => {
 					const rows = new Array(10).fill(null).map(() => {
-						return { id: crypto.randomUUID(), cells: [] };
+						return new FluidRowSchema({ id: crypto.randomUUID(), cells: {} });
 					});
 					const table = new FluidTable({
 						rows: rows,
 						columns: [
-							{
+							new FluidColumnSchema({
 								id: crypto.randomUUID(),
-								name: "String",
-								hint: hintValues.string,
-							},
-							{
+								props: {
+									name: "String",
+									hint: hintValues.string,
+								},
+							}),
+							new FluidColumnSchema({
 								id: crypto.randomUUID(),
-								name: "Number",
-								hint: hintValues.number,
-							},
-							{
+								props: {
+									name: "Number",
+									hint: hintValues.number,
+								},
+							}),
+							new FluidColumnSchema({
 								id: crypto.randomUUID(),
-								name: "Date",
-								hint: hintValues.date,
-							},
+								props: {
+									name: "Date",
+									hint: hintValues.date,
+								},
+							}),
 						],
 					});
 					const item = new Item({
@@ -382,26 +398,32 @@ export function ReactApp(props: {
 						} else if (Tree.is(selectedItem.content, FluidTable)) {
 							// For tables, create a new basic table instead of trying to duplicate complex structure
 							const rows = new Array(10).fill(null).map(() => {
-								return { id: crypto.randomUUID(), cells: [] };
+								return new FluidRowSchema({ id: crypto.randomUUID(), cells: {} });
 							});
 							newContent = new FluidTable({
 								rows: rows,
 								columns: [
-									{
+									new FluidColumnSchema({
 										id: crypto.randomUUID(),
-										name: "String",
-										hint: hintValues.string,
-									},
-									{
+										props: {
+											name: "String",
+											hint: hintValues.string,
+										},
+									}),
+									new FluidColumnSchema({
 										id: crypto.randomUUID(),
-										name: "Number",
-										hint: hintValues.number,
-									},
-									{
+										props: {
+											name: "Number",
+											hint: hintValues.number,
+										},
+									}),
+									new FluidColumnSchema({
 										id: crypto.randomUUID(),
-										name: "Date",
-										hint: hintValues.date,
-									},
+										props: {
+											name: "Date",
+											hint: hintValues.date,
+										},
+									}),
 								],
 							});
 						} else {
@@ -428,12 +450,7 @@ export function ReactApp(props: {
 				action: () => {
 					const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
 					if (selectedItem) {
-						const currentIndex = view.root.items.indexOf(selectedItem);
-						if (currentIndex > 0) {
-							Tree.runTransaction(view.root.items, () => {
-								view.root.items.moveToIndex(currentIndex - 1, currentIndex);
-							});
-						}
+						view.root.items.moveItemBackward(selectedItem);
 					}
 				},
 				disabled: !selectedItemId,
@@ -443,12 +460,7 @@ export function ReactApp(props: {
 				action: () => {
 					const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
 					if (selectedItem) {
-						const currentIndex = view.root.items.indexOf(selectedItem);
-						if (currentIndex < view.root.items.length - 1) {
-							Tree.runTransaction(view.root.items, () => {
-								view.root.items.moveToIndex(currentIndex, currentIndex + 1);
-							});
-						}
+						view.root.items.moveItemForward(selectedItem);
 					}
 				},
 				disabled: !selectedItemId,
@@ -459,10 +471,7 @@ export function ReactApp(props: {
 				action: () => {
 					const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
 					if (selectedItem) {
-						const currentIndex = view.root.items.indexOf(selectedItem);
-						Tree.runTransaction(view.root.items, () => {
-							view.root.items.moveToStart(currentIndex);
-						});
+						view.root.items.sendItemToBack(selectedItem);
 					}
 				},
 				disabled: !selectedItemId,
@@ -473,10 +482,7 @@ export function ReactApp(props: {
 				action: () => {
 					const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
 					if (selectedItem) {
-						const currentIndex = view.root.items.indexOf(selectedItem);
-						Tree.runTransaction(view.root.items, () => {
-							view.root.items.moveToEnd(currentIndex);
-						});
+						view.root.items.bringItemToFront(selectedItem);
 					}
 				},
 				disabled: !selectedItemId,
@@ -528,14 +534,7 @@ export function ReactApp(props: {
 					const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
 					if (selectedItem && Tree.is(selectedItem.content, FluidTable)) {
 						const table = selectedItem.content as FluidTable;
-						Tree.runTransaction(table, () => {
-							const columnCount = table.columns.length;
-							table.insertColumn({
-								index: columnCount,
-								name: `Column ${columnCount + 1}`,
-								hint: undefined,
-							});
-						});
+						table.addColumn();
 					}
 				},
 				disabled: (() => {
@@ -551,10 +550,7 @@ export function ReactApp(props: {
 					const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
 					if (selectedItem && Tree.is(selectedItem.content, FluidTable)) {
 						const table = selectedItem.content as FluidTable;
-						Tree.runTransaction(table, () => {
-							const newRow = { id: crypto.randomUUID(), cells: [] };
-							table.insertRows({ rows: [newRow] });
-						});
+						table.addRow();
 					}
 				},
 				disabled: (() => {
@@ -577,10 +573,8 @@ export function ReactApp(props: {
 						const selectedColumn = table.columns.find(
 							(col) => col.id === selectedColumnId
 						);
-						if (selectedColumn && selectedColumn.index > 0) {
-							Tree.runTransaction(table, () => {
-								selectedColumn.moveTo(selectedColumn.index - 1);
-							});
+						if (selectedColumn) {
+							table.moveColumnLeft(selectedColumn);
 						}
 					}
 				},
@@ -595,7 +589,9 @@ export function ReactApp(props: {
 					}
 					const table = selectedItem.content as FluidTable;
 					const selectedColumn = table.columns.find((col) => col.id === selectedColumnId);
-					return !selectedColumn || selectedColumn.index === 0;
+					if (!selectedColumn) return true;
+					const currentIndex = table.columns.indexOf(selectedColumn);
+					return currentIndex === 0;
 				})(),
 			},
 			{
@@ -613,10 +609,8 @@ export function ReactApp(props: {
 						const selectedColumn = table.columns.find(
 							(col) => col.id === selectedColumnId
 						);
-						if (selectedColumn && selectedColumn.index < table.columns.length - 1) {
-							Tree.runTransaction(table, () => {
-								selectedColumn.moveTo(selectedColumn.index + 1);
-							});
+						if (selectedColumn) {
+							table.moveColumnRight(selectedColumn);
 						}
 					}
 				},
@@ -631,7 +625,9 @@ export function ReactApp(props: {
 					}
 					const table = selectedItem.content as FluidTable;
 					const selectedColumn = table.columns.find((col) => col.id === selectedColumnId);
-					return !selectedColumn || selectedColumn.index >= table.columns.length - 1;
+					if (!selectedColumn) return true;
+					const currentIndex = table.columns.indexOf(selectedColumn);
+					return currentIndex >= table.columns.length - 1;
 				})(),
 			},
 			{
@@ -647,10 +643,8 @@ export function ReactApp(props: {
 					) {
 						const table = selectedItem.content as FluidTable;
 						const selectedRow = table.rows.find((row) => row.id === selectedRowId);
-						if (selectedRow && selectedRow.index > 0) {
-							Tree.runTransaction(table, () => {
-								selectedRow.moveTo(selectedRow.index - 1);
-							});
+						if (selectedRow) {
+							table.moveRowUp(selectedRow);
 						}
 					}
 				},
@@ -665,7 +659,9 @@ export function ReactApp(props: {
 					}
 					const table = selectedItem.content as FluidTable;
 					const selectedRow = table.rows.find((row) => row.id === selectedRowId);
-					return !selectedRow || selectedRow.index === 0;
+					if (!selectedRow) return true;
+					const currentIndex = table.rows.indexOf(selectedRow);
+					return currentIndex === 0;
 				})(),
 			},
 			{
@@ -681,10 +677,8 @@ export function ReactApp(props: {
 					) {
 						const table = selectedItem.content as FluidTable;
 						const selectedRow = table.rows.find((row) => row.id === selectedRowId);
-						if (selectedRow && selectedRow.index < table.rows.length - 1) {
-							Tree.runTransaction(table, () => {
-								selectedRow.moveTo(selectedRow.index + 1);
-							});
+						if (selectedRow) {
+							table.moveRowDown(selectedRow);
 						}
 					}
 				},
@@ -699,7 +693,9 @@ export function ReactApp(props: {
 					}
 					const table = selectedItem.content as FluidTable;
 					const selectedRow = table.rows.find((row) => row.id === selectedRowId);
-					return !selectedRow || selectedRow.index >= table.rows.length - 1;
+					if (!selectedRow) return true;
+					const currentIndex = table.rows.indexOf(selectedRow);
+					return currentIndex >= table.rows.length - 1;
 				})(),
 			},
 		],

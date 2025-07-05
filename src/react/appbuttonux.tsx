@@ -4,7 +4,17 @@
  */
 
 import React, { JSX, useContext } from "react";
-import { Item, Items, Shape, Vote, Note, hintValues, FluidTable } from "../schema/app_schema.js";
+import {
+	Item,
+	Items,
+	Shape,
+	Vote,
+	Note,
+	hintValues,
+	FluidTable,
+	FluidRowSchema,
+	FluidColumnSchema,
+} from "../schema/app_schema.js";
 import {
 	DismissFilled,
 	CircleRegular,
@@ -242,29 +252,37 @@ export function NewTableButton(props: {
 
 export const createTable = () => {
 	const rows = new Array(10).fill(null).map(() => {
-		return { id: crypto.randomUUID(), cells: [] };
+		return new FluidRowSchema({ id: crypto.randomUUID(), cells: {} });
 	});
+
+	const columns = [
+		new FluidColumnSchema({
+			id: crypto.randomUUID(),
+			props: {
+				name: "String",
+				hint: hintValues.string,
+			},
+		}),
+		new FluidColumnSchema({
+			id: crypto.randomUUID(),
+			props: {
+				name: "Number",
+				hint: hintValues.number,
+			},
+		}),
+		new FluidColumnSchema({
+			id: crypto.randomUUID(),
+			props: {
+				name: "Date",
+				hint: hintValues.date,
+			},
+		}),
+	];
 
 	// Initialize the SharedTree DDSes
 	const table = new FluidTable({
 		rows: rows,
-		columns: [
-			{
-				id: crypto.randomUUID(),
-				name: "String",
-				hint: hintValues.string,
-			},
-			{
-				id: crypto.randomUUID(),
-				name: "Number",
-				hint: hintValues.number,
-			},
-			{
-				id: crypto.randomUUID(),
-				name: "Date",
-				hint: hintValues.date,
-			},
-		],
+		columns: columns,
 	});
 	return table;
 };
@@ -347,37 +365,40 @@ export function DuplicateButton(props: {
 			// Also create a mapping from old column IDs to new ones
 			const columnIdMapping: Record<string, string> = {};
 			const newColumns = item.content.columns.map((col) => {
-				console.log("Copying column:", col.id, col.name, col.hint);
+				console.log("Copying column:", col.id, col.props.name, col.props.hint);
 				const newColumnId = crypto.randomUUID();
 				columnIdMapping[col.id] = newColumnId;
-				return {
+				return new FluidColumnSchema({
 					id: newColumnId,
-					name: col.name,
-					hint: col.hint,
-				};
+					props: {
+						name: col.props.name,
+						hint: col.props.hint,
+					},
+				});
 			});
 
-			// Create new rows with new IDs and updated cell column references
+			// Create new rows with new IDs and get their cell data
 			const newRows = item.content.rows.map((row) => {
-				console.log("Copying row:", row.id, "with cells:", row.cells.length);
-
-				// Copy cells but update their columnId to reference the new columns
-				const newCells = row.cells.map((cell) => {
-					const newColumnId = columnIdMapping[cell.columnId];
-					if (!newColumnId) {
-						console.warn("Could not find new column ID for", cell.columnId);
-						return cell; // Return original cell if mapping fails
-					}
-					return {
-						columnId: newColumnId,
-						value: cell.value, // Copy the actual cell value
-					};
+				console.log("Copying row:", row.id);
+				const newRow = new FluidRowSchema({
+					id: crypto.randomUUID(),
+					cells: {},
 				});
 
-				return {
-					id: crypto.randomUUID(),
-					cells: newCells,
-				};
+				// Copy cells to the new row
+				const table = item.content as FluidTable;
+				for (const column of table.columns) {
+					const cell = row.getCell(column);
+					if (cell !== undefined) {
+						const newColumnId = columnIdMapping[column.id];
+						const newColumn = newColumns.find((c) => c.id === newColumnId);
+						if (newColumn) {
+							newRow.setCell(newColumn, cell);
+						}
+					}
+				}
+
+				return newRow;
 			});
 
 			console.log(
@@ -542,15 +563,7 @@ export function AddColumnButton(props: { table: FluidTable }): JSX.Element {
 	useTree(table);
 
 	const handleAddColumn = () => {
-		Tree.runTransaction(table, () => {
-			// Add a new column at the end with a default name
-			const columnCount = table.columns.length;
-			table.insertColumn({
-				index: columnCount,
-				name: `Column ${columnCount + 1}`,
-				hint: undefined,
-			});
-		});
+		table.addColumn();
 	};
 
 	return (
@@ -568,11 +581,7 @@ export function AddRowButton(props: { table: FluidTable }): JSX.Element {
 	useTree(table);
 
 	const handleAddRow = () => {
-		Tree.runTransaction(table, () => {
-			// Add a new row at the end
-			const newRow = { id: crypto.randomUUID(), cells: [] };
-			table.insertRows({ rows: [newRow] });
-		});
+		table.addRow();
 	};
 
 	return (
@@ -596,13 +605,11 @@ export function MoveColumnLeftButton(props: {
 		? table.columns.find((col) => col.id === selectedColumnId)
 		: undefined;
 
-	const canMoveLeft = selectedColumn && selectedColumn.index > 0;
+	const canMoveLeft = selectedColumn && table.columns.indexOf(selectedColumn) > 0;
 
 	const handleMoveLeft = () => {
 		if (selectedColumn && canMoveLeft) {
-			Tree.runTransaction(table, () => {
-				selectedColumn.moveTo(selectedColumn.index - 1);
-			});
+			table.moveColumnLeft(selectedColumn);
 		}
 	};
 
@@ -628,13 +635,12 @@ export function MoveColumnRightButton(props: {
 		? table.columns.find((col) => col.id === selectedColumnId)
 		: undefined;
 
-	const canMoveRight = selectedColumn && selectedColumn.index < table.columns.length - 1;
+	const canMoveRight =
+		selectedColumn && table.columns.indexOf(selectedColumn) < table.columns.length - 1;
 
 	const handleMoveRight = () => {
 		if (selectedColumn && canMoveRight) {
-			Tree.runTransaction(table, () => {
-				selectedColumn.moveTo(selectedColumn.index + 1);
-			});
+			table.moveColumnRight(selectedColumn);
 		}
 	};
 
@@ -657,13 +663,11 @@ export function MoveRowUpButton(props: { table: FluidTable; selectedRowId?: stri
 		? table.rows.find((row) => row.id === selectedRowId)
 		: undefined;
 
-	const canMoveUp = selectedRow && selectedRow.index > 0;
+	const canMoveUp = selectedRow && table.rows.indexOf(selectedRow) > 0;
 
 	const handleMoveUp = () => {
 		if (selectedRow && canMoveUp) {
-			Tree.runTransaction(table, () => {
-				selectedRow.moveTo(selectedRow.index - 1);
-			});
+			table.moveRowUp(selectedRow);
 		}
 	};
 
@@ -689,13 +693,11 @@ export function MoveRowDownButton(props: {
 		? table.rows.find((row) => row.id === selectedRowId)
 		: undefined;
 
-	const canMoveDown = selectedRow && selectedRow.index < table.rows.length - 1;
+	const canMoveDown = selectedRow && table.rows.indexOf(selectedRow) < table.rows.length - 1;
 
 	const handleMoveDown = () => {
 		if (selectedRow && canMoveDown) {
-			Tree.runTransaction(table, () => {
-				selectedRow.moveTo(selectedRow.index + 1);
-			});
+			table.moveRowDown(selectedRow);
 		}
 	};
 
@@ -726,11 +728,8 @@ export function MoveItemForwardButton(props: {
 	const canMoveForward = selectedItem && itemIndex < items.length - 1;
 
 	const handleMoveForward = () => {
-		if (selectedItem && canMoveForward && itemIndex !== -1) {
-			Tree.runTransaction(items, () => {
-				// Move item forward one position (higher z-order)
-				items.moveToIndex(itemIndex, itemIndex + 1);
-			});
+		if (selectedItem && canMoveForward) {
+			items.moveItemForward(selectedItem);
 		}
 	};
 
@@ -760,11 +759,8 @@ export function MoveItemBackwardButton(props: {
 	const canMoveBackward = selectedItem && itemIndex > 0;
 
 	const handleMoveBackward = () => {
-		if (selectedItem && canMoveBackward && itemIndex !== -1) {
-			Tree.runTransaction(items, () => {
-				// Move item backward one position (lower z-order)
-				items.moveToIndex(itemIndex - 1, itemIndex);
-			});
+		if (selectedItem && canMoveBackward) {
+			items.moveItemBackward(selectedItem);
 		}
 	};
 
@@ -794,11 +790,8 @@ export function BringItemToFrontButton(props: {
 	const canBringToFront = selectedItem && itemIndex < items.length - 1;
 
 	const handleBringToFront = () => {
-		if (selectedItem && canBringToFront && itemIndex !== -1) {
-			Tree.runTransaction(items, () => {
-				// Move item to the end (highest z-order)
-				items.moveToEnd(itemIndex);
-			});
+		if (selectedItem && canBringToFront) {
+			items.bringItemToFront(selectedItem);
 		}
 	};
 
@@ -828,11 +821,8 @@ export function SendItemToBackButton(props: {
 	const canSendToBack = selectedItem && itemIndex > 0;
 
 	const handleSendToBack = () => {
-		if (selectedItem && canSendToBack && itemIndex !== -1) {
-			Tree.runTransaction(items, () => {
-				// Move item to the beginning (lowest z-order)
-				items.moveToStart(itemIndex);
-			});
+		if (selectedItem && canSendToBack) {
+			items.sendItemToBack(selectedItem);
 		}
 	};
 

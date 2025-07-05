@@ -2,12 +2,11 @@
  * Copyright (c) Microsoft Corporation and contributors. All rights reserved.
  * Licensed under the MIT License.
  */
-import { Table } from "./table_schema.js";
+
+import { TableSchema, SchemaFactoryAlpha } from "@fluidframework/tree/alpha";
 import {
 	TreeViewConfiguration,
-	SchemaFactory,
 	Tree,
-	NodeFromSchema,
 	TreeNodeFromImplicitAllowedTypes,
 	TreeStatus,
 } from "fluid-framework";
@@ -26,7 +25,7 @@ export const hintValues = {
 
 // Include a UUID to guarantee that this schema will be uniquely identifiable.
 // As this schema uses a recursive type, the beta SchemaFactoryRecursive is used instead of just SchemaFactory.
-const sf = new SchemaFactory("fc1db2e8-0a00-11ee-be56-0242ac120002");
+const sf = new SchemaFactoryAlpha("fc1db2e8-0a00-11ee-be56-0242ac120002");
 
 export class Shape extends sf.object("Shape", {
 	size: sf.required(sf.number, {
@@ -183,29 +182,34 @@ export class Note extends sf.object(
 export type typeDefinition = TreeNodeFromImplicitAllowedTypes<typeof schemaTypes>;
 const schemaTypes = [sf.string, sf.number, sf.boolean, DateTime, Vote] as const;
 
-const tableFactory = new SchemaFactory(sf.scope + "/table1");
-export class FluidTable extends Table({
-	sf: tableFactory,
-	schemaTypes,
-}) {
-	/**
-	 * Get a cell by the synthetic id
-	 * @param id The synthetic id of the cell
-	 */
-	getColumnByCellId(id: `${string}_${string}`) {
-		const [, columnId] = id.split("_");
-		const column = this.getColumn(columnId);
-		if (column === undefined) {
-			return undefined;
-		}
-		return column;
-	}
+// Create column schema with properties for hint and name
+export const FluidColumnSchema = TableSchema.column({
+	schemaFactory: sf,
+	cell: schemaTypes,
+	props: sf.object("ColumnProps", {
+		name: sf.string,
+		hint: sf.optional(sf.string),
+	}),
+});
 
+// Create row schema
+export const FluidRowSchema = TableSchema.row({
+	schemaFactory: sf,
+	cell: schemaTypes,
+});
+
+// Create the built-in table schema
+export class FluidTable extends TableSchema.table({
+	schemaFactory: sf,
+	cell: schemaTypes,
+	column: FluidColumnSchema,
+	row: FluidRowSchema,
+}) {
 	/**
 	 * Create a Row before inserting it into the table
 	 * */
 	createDetachedRow(): FluidRow {
-		return new FluidTable.Row({ id: crypto.randomUUID(), cells: [] });
+		return new FluidRowSchema({ id: crypto.randomUUID(), cells: {} });
 	}
 
 	/**
@@ -215,11 +219,92 @@ export class FluidTable extends Table({
 	deleteColumn(column: FluidColumn): void {
 		if (Tree.status(column) !== TreeStatus.InDocument) return;
 		Tree.runTransaction(this, () => {
+			// Remove all cells for this column from all rows
 			for (const row of this.rows) {
-				row.deleteCell(column);
+				row.removeCell(column);
 			}
+			// Remove the column from the table
 			this.removeColumn(column);
 		});
+	}
+
+	/**
+	 * Get a column by cell ID (for backward compatibility)
+	 * Cell IDs are typically in the format "columnId_rowId"
+	 */
+	getColumnByCellId(cellId: string): FluidColumn | undefined {
+		// Extract column ID from cell ID (assuming format "columnId_rowId")
+		const columnId = cellId.split("_")[0];
+		return this.getColumn(columnId);
+	}
+
+	/**
+	 * Add a new column to the table
+	 */
+	addColumn(): void {
+		Tree.runTransaction(this, () => {
+			const columnCount = this.columns.length;
+			this.insertColumn({
+				column: new FluidColumnSchema({
+					id: crypto.randomUUID(),
+					props: {
+						name: `Column ${columnCount + 1}`,
+						hint: hintValues.string,
+					},
+				}),
+				index: columnCount,
+			});
+		});
+	}
+
+	/**
+	 * Add a new row to the table
+	 */
+	addRow(): void {
+		Tree.runTransaction(this, () => {
+			const newRow = { id: crypto.randomUUID(), cells: [] };
+			this.insertRows({ rows: [newRow] });
+		});
+	}
+
+	/**
+	 * Move a column to the left (swap with the column to its left)
+	 */
+	moveColumnLeft(column: FluidColumn): boolean {
+		const currentIndex = this.columns.indexOf(column);
+		if (currentIndex <= 0) return false;
+		this.columns.moveToIndex(currentIndex - 1, currentIndex);
+		return true;
+	}
+
+	/**
+	 * Move a column to the right (swap with the column to its right)
+	 */
+	moveColumnRight(column: FluidColumn): boolean {
+		const currentIndex = this.columns.indexOf(column);
+		if (currentIndex < 0 || currentIndex >= this.columns.length - 1) return false;
+		this.columns.moveToIndex(currentIndex + 2, currentIndex);
+		return true;
+	}
+
+	/**
+	 * Move a row up (swap with the row above it)
+	 */
+	moveRowUp(row: FluidRow): boolean {
+		const currentIndex = this.rows.indexOf(row);
+		if (currentIndex <= 0) return false;
+		this.rows.moveToIndex(currentIndex - 1, currentIndex);
+		return true;
+	}
+
+	/**
+	 * Move a row down (swap with the row below it)
+	 */
+	moveRowDown(row: FluidRow): boolean {
+		const currentIndex = this.rows.indexOf(row);
+		if (currentIndex < 0 || currentIndex >= this.rows.length - 1) return false;
+		this.rows.moveToIndex(currentIndex + 2, currentIndex);
+		return true;
 	}
 }
 export class Item extends sf.object("Item", {
@@ -263,15 +348,67 @@ export class Group extends sf.object("Group", {
 }) {}
 
 // TODO: Support groups
-export class Items extends sf.array("Items", [Item]) {}
+export class Items extends sf.array("Items", [Item]) {
+	/**
+	 * Move an item forward one position (higher z-order)
+	 */
+	moveItemForward(item: Item): boolean {
+		const itemIndex = this.indexOf(item);
+		if (itemIndex < 0 || itemIndex >= this.length - 1) return false;
+
+		Tree.runTransaction(this, () => {
+			this.moveToIndex(itemIndex, itemIndex + 1);
+		});
+		return true;
+	}
+
+	/**
+	 * Move an item backward one position (lower z-order)
+	 */
+	moveItemBackward(item: Item): boolean {
+		const itemIndex = this.indexOf(item);
+		if (itemIndex <= 0) return false;
+
+		Tree.runTransaction(this, () => {
+			this.moveToIndex(itemIndex - 1, itemIndex);
+		});
+		return true;
+	}
+
+	/**
+	 * Bring an item to the front (highest z-order)
+	 */
+	bringItemToFront(item: Item): boolean {
+		const itemIndex = this.indexOf(item);
+		if (itemIndex < 0 || itemIndex >= this.length - 1) return false;
+
+		Tree.runTransaction(this, () => {
+			this.moveToEnd(itemIndex);
+		});
+		return true;
+	}
+
+	/**
+	 * Send an item to the back (lowest z-order)
+	 */
+	sendItemToBack(item: Item): boolean {
+		const itemIndex = this.indexOf(item);
+		if (itemIndex <= 0) return false;
+
+		Tree.runTransaction(this, () => {
+			this.moveToStart(itemIndex);
+		});
+		return true;
+	}
+}
 
 export class App extends sf.object("App", {
 	items: Items,
 	comments: Comments,
 }) {}
 
-export type FluidRow = NodeFromSchema<typeof FluidTable.Row>;
-export type FluidColumn = NodeFromSchema<typeof FluidTable.Column>;
+export type FluidRow = InstanceType<typeof FluidRowSchema>;
+export type FluidColumn = InstanceType<typeof FluidColumnSchema>;
 
 /**
  * Export the tree config appropriate for this schema.
