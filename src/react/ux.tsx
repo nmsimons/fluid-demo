@@ -35,6 +35,7 @@ import {
 	SendItemToBackButton,
 	SHAPE_COLORS,
 } from "./appbuttonux.js";
+import { DeleteSelectedRowsButton } from "./tablebuttonux.js";
 import { TooltipButton } from "./buttonux.js";
 import {
 	Avatar,
@@ -807,6 +808,10 @@ export function ReactApp(props: {
 											<ToolbarGroup>
 												<AddColumnButton table={selectedItem.content} />
 												<AddRowButton table={selectedItem.content} />
+												<DeleteSelectedRowsButton
+													table={selectedItem.content}
+													selection={tableSelection}
+												/>
 												<MoveColumnLeftButton
 													table={selectedItem.content}
 													selectedColumnId={selectedColumnId}
