@@ -1,28 +1,17 @@
 {
 	"navigationFallback": {
-		"rewrite": "/index.html",
-		"exclude": ["/static/*", "/images/*", "/favicon.ico", "/.auth/*"]
+		"rewrite": "/index.html"
 	},
 	"routes": [
 		{
-			"route": "/signin-oidc",
-			"allowedRoles": ["anonymous"],
-			"rewrite": "/index.html"
-		},
-		{
-			"route": "/redirect",
-			"allowedRoles": ["anonymous"],
-			"rewrite": "/index.html"
+			"route": "/*",
+			"allowedRoles": ["authenticated"]
 		}
 	],
 	"responseOverrides": {
-		"404": {
-			"rewrite": "/index.html"
+		"401": {
+			"statusCode": 302,
+			"redirect": "/.auth/login/aad"
 		}
-	},
-	"globalHeaders": {
-		"X-Content-Type-Options": "nosniff",
-		"X-Frame-Options": "DENY",
-		"X-XSS-Protection": "1; mode=block"
 	}
 }
