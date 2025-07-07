@@ -11,5 +11,7 @@ export interface ResizeManager<TResizePackage extends ResizePackage | null = Res
 
 export type ResizePackage = {
 	id: string;
+	x: number;
+	y: number;
 	size: number;
 };

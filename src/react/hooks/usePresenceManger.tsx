@@ -2,7 +2,7 @@
 // It takes in a presence manager and a function to run when the presence state changes
 
 import { useEffect } from "react";
-import { PresenceManager } from "../../utils/Interfaces/PresenceManager.js";
+import { PresenceManager } from "../../utils/presence/Interfaces/PresenceManager.js";
 import { Attendee } from "@fluidframework/presence/alpha";
 
 export function usePresenceManager<TState>(

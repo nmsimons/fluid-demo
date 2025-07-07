@@ -7,7 +7,7 @@ import { TreeView, Tree } from "fluid-framework";
 import { App, FluidTable } from "../../schema/app_schema.js";
 import { KeyboardShortcut } from "./useKeyboardShortcuts.js";
 import { undoRedo } from "../../utils/undo.js";
-import { UsersManager } from "../../utils/Interfaces/UsersManager.js";
+import { UsersManager } from "../../utils/presence/Interfaces/UsersManager.js";
 import { SHAPE_COLORS } from "../appbuttonux.js";
 
 export interface UseAppKeyboardShortcutsProps {
@@ -244,15 +244,9 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 			shiftKey: true,
 			action: () => {
 				const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
-				if (
-					selectedItem &&
-					Tree.is(selectedItem.content, FluidTable) &&
-					selectedColumnId
-				) {
+				if (selectedItem && Tree.is(selectedItem.content, FluidTable) && selectedColumnId) {
 					const table = selectedItem.content as FluidTable;
-					const selectedColumn = table.columns.find(
-						(col) => col.id === selectedColumnId
-					);
+					const selectedColumn = table.columns.find((col) => col.id === selectedColumnId);
 					if (selectedColumn) {
 						table.moveColumnLeft(selectedColumn);
 					}
@@ -261,11 +255,7 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 			disabled: (() => {
 				const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
 				if (
-					!(
-						selectedItem &&
-						Tree.is(selectedItem.content, FluidTable) &&
-						selectedColumnId
-					)
+					!(selectedItem && Tree.is(selectedItem.content, FluidTable) && selectedColumnId)
 				) {
 					return true;
 				}
@@ -282,15 +272,9 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 			shiftKey: true,
 			action: () => {
 				const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
-				if (
-					selectedItem &&
-					Tree.is(selectedItem.content, FluidTable) &&
-					selectedColumnId
-				) {
+				if (selectedItem && Tree.is(selectedItem.content, FluidTable) && selectedColumnId) {
 					const table = selectedItem.content as FluidTable;
-					const selectedColumn = table.columns.find(
-						(col) => col.id === selectedColumnId
-					);
+					const selectedColumn = table.columns.find((col) => col.id === selectedColumnId);
 					if (selectedColumn) {
 						table.moveColumnRight(selectedColumn);
 					}
@@ -299,11 +283,7 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 			disabled: (() => {
 				const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
 				if (
-					!(
-						selectedItem &&
-						Tree.is(selectedItem.content, FluidTable) &&
-						selectedColumnId
-					)
+					!(selectedItem && Tree.is(selectedItem.content, FluidTable) && selectedColumnId)
 				) {
 					return true;
 				}
@@ -320,11 +300,7 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 			shiftKey: true,
 			action: () => {
 				const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
-				if (
-					selectedItem &&
-					Tree.is(selectedItem.content, FluidTable) &&
-					selectedRowId
-				) {
+				if (selectedItem && Tree.is(selectedItem.content, FluidTable) && selectedRowId) {
 					const table = selectedItem.content as FluidTable;
 					const selectedRow = table.rows.find((row) => row.id === selectedRowId);
 					if (selectedRow) {
@@ -334,13 +310,7 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 			},
 			disabled: (() => {
 				const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
-				if (
-					!(
-						selectedItem &&
-						Tree.is(selectedItem.content, FluidTable) &&
-						selectedRowId
-					)
-				) {
+				if (!(selectedItem && Tree.is(selectedItem.content, FluidTable) && selectedRowId)) {
 					return true;
 				}
 				const table = selectedItem.content as FluidTable;
@@ -356,11 +326,7 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 			shiftKey: true,
 			action: () => {
 				const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
-				if (
-					selectedItem &&
-					Tree.is(selectedItem.content, FluidTable) &&
-					selectedRowId
-				) {
+				if (selectedItem && Tree.is(selectedItem.content, FluidTable) && selectedRowId) {
 					const table = selectedItem.content as FluidTable;
 					const selectedRow = table.rows.find((row) => row.id === selectedRowId);
 					if (selectedRow) {
@@ -370,13 +336,7 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 			},
 			disabled: (() => {
 				const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
-				if (
-					!(
-						selectedItem &&
-						Tree.is(selectedItem.content, FluidTable) &&
-						selectedRowId
-					)
-				) {
+				if (!(selectedItem && Tree.is(selectedItem.content, FluidTable) && selectedRowId)) {
 					return true;
 				}
 				const table = selectedItem.content as FluidTable;

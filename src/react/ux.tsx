@@ -8,7 +8,7 @@ import { App } from "../schema/app_schema.js";
 import "../output.css";
 import { ConnectionState, IFluidContainer, TreeView } from "fluid-framework";
 import { Canvas } from "./canvasux.js";
-import type { SelectionManager } from "../utils/Interfaces/SelectionManager.js";
+import type { SelectionManager } from "../utils/presence/Interfaces/SelectionManager.js";
 import { undoRedo } from "../utils/undo.js";
 import {
 	Avatar,
@@ -21,13 +21,13 @@ import {
 import { Text } from "@fluentui/react-text";
 import { ToolbarDivider } from "@fluentui/react-toolbar";
 import { Tooltip } from "@fluentui/react-tooltip";
-import { User, UsersManager } from "../utils/Interfaces/UsersManager.js";
+import { User, UsersManager } from "../utils/presence/Interfaces/UsersManager.js";
 import { PresenceContext } from "./contexts/PresenceContext.js";
-import { DragManager } from "../utils/Interfaces/DragManager.js";
-import { ResizeManager } from "../utils/Interfaces/ResizeManager.js";
-import { DragAndRotatePackage } from "../utils/drag.js";
-import { ResizePackage } from "../utils/Interfaces/ResizeManager.js";
-import { TypedSelection } from "../utils/selection.js";
+import { DragManager } from "../utils/presence/Interfaces/DragManager.js";
+import { ResizeManager } from "../utils/presence/Interfaces/ResizeManager.js";
+import { DragAndRotatePackage } from "../utils/presence/drag.js";
+import { ResizePackage } from "../utils/presence/Interfaces/ResizeManager.js";
+import { TypedSelection } from "../utils/presence/selection.js";
 import { CommentPane, CommentPaneRef } from "./commentux.js";
 import { useTree } from "./hooks/useTree.js";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts.js";

@@ -3,12 +3,12 @@ import { Comments, FluidTable, Item, Note, Shape } from "../schema/app_schema.js
 import { PresenceContext } from "./contexts/PresenceContext.js";
 import { ShapeView } from "./shapeux.js";
 import { Tree } from "fluid-framework";
-import { DragAndRotatePackage } from "../utils/drag.js";
-import { ResizePackage } from "../utils/Interfaces/ResizeManager.js";
+import { DragAndRotatePackage } from "../utils/presence/drag.js";
+import { ResizePackage } from "../utils/presence/Interfaces/ResizeManager.js";
 import { NoteView } from "./noteux.js";
 import { objectIdNumber, useTree } from "./hooks/useTree.js";
 import { usePresenceManager } from "./hooks/usePresenceManger.js";
-import { PresenceManager } from "../utils/Interfaces/PresenceManager.js";
+import { PresenceManager } from "../utils/presence/Interfaces/PresenceManager.js";
 import { TableView } from "./tableux.js";
 import { Comment20Filled } from "@fluentui/react-icons";
 import { PaneContext } from "./contexts/PaneContext.js";

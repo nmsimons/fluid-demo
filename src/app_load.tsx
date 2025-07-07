@@ -11,12 +11,12 @@ import { FluentProvider } from "@fluentui/react-provider";
 import { webLightTheme } from "@fluentui/react-theme";
 
 import { getPresence } from "@fluidframework/presence/beta";
-import { createTypedSelectionManager } from "./utils/selection.js";
-import { createUsersManager } from "./utils/users.js";
-import { UserInfo } from "./utils/Interfaces/UsersManager.js";
+import { createTypedSelectionManager } from "./utils/presence/selection.js";
+import { createUsersManager } from "./utils/presence/users.js";
+import { UserInfo } from "./utils/presence/Interfaces/UsersManager.js";
 import { AccountInfo } from "@azure/msal-browser";
-import { createDragManager } from "./utils/drag.js";
-import { createResizeManager } from "./utils/resize.js";
+import { createDragManager } from "./utils/presence/drag.js";
+import { createResizeManager } from "./utils/presence/resize.js";
 
 export async function loadApp(props: {
 	client: AzureClient;

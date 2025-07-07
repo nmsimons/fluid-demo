@@ -1,11 +1,11 @@
 import { createContext } from "react";
-import type { SelectionManager } from "../../utils/Interfaces/SelectionManager.js";
-import { UsersManager } from "../../utils/Interfaces/UsersManager.js";
-import { DragManager } from "../../utils/Interfaces/DragManager.js";
-import { ResizeManager } from "../../utils/Interfaces/ResizeManager.js";
-import { DragAndRotatePackage } from "../../utils/drag.js";
-import { ResizePackage } from "../../utils/Interfaces/ResizeManager.js";
-import { TypedSelection } from "../../utils/selection.js";
+import type { SelectionManager } from "../../utils/presence/Interfaces/SelectionManager.js";
+import { UsersManager } from "../../utils/presence/Interfaces/UsersManager.js";
+import { DragManager } from "../../utils/presence/Interfaces/DragManager.js";
+import { ResizeManager } from "../../utils/presence/Interfaces/ResizeManager.js";
+import { DragAndRotatePackage } from "../../utils/presence/drag.js";
+import { ResizePackage } from "../../utils/presence/Interfaces/ResizeManager.js";
+import { TypedSelection } from "../../utils/presence/selection.js";
 
 export const PresenceContext = createContext<{
 	users: UsersManager;

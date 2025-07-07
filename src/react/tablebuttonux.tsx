@@ -28,8 +28,8 @@ import {
 	TableMoveRightFilled,
 } from "@fluentui/react-icons";
 import { Tree, TreeStatus } from "fluid-framework";
-import { selectionType, TypedSelection } from "../utils/selection.js";
-import { SelectionManager } from "../utils/Interfaces/SelectionManager.js";
+import { selectionType, TypedSelection } from "../utils/presence/selection.js";
+import { SelectionManager } from "../utils/presence/Interfaces/SelectionManager.js";
 import {
 	Menu,
 	MenuItemRadio,

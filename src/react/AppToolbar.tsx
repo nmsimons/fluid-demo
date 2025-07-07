@@ -42,8 +42,8 @@ import {
 	CommentRegular,
 	DeleteRegular,
 } from "@fluentui/react-icons";
-import type { SelectionManager } from "../utils/Interfaces/SelectionManager.js";
-import { TypedSelection } from "../utils/selection.js";
+import type { SelectionManager } from "../utils/presence/Interfaces/SelectionManager.js";
+import { TypedSelection } from "../utils/presence/selection.js";
 
 export interface AppToolbarProps {
 	view: TreeView<typeof App>;
