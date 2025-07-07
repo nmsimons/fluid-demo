@@ -37,7 +37,7 @@ jobs:
                   AZURE_FUNCTION_TOKEN_PROVIDER_URL: https://afr-token-provider.azurewebsites.net/api/getafrtoken
                   FLUID_CLIENT: azure
                   AZURE_CLIENT_ID: 75ed1fd1-3bd2-419d-be57-726ee3adead6
-                  AZURE_REDIRECT_URI: https://yellow-pond-0daee9510.azurestaticapps.net
+                  AZURE_REDIRECT_URI: https://demo.fluid-demo.com
                   ###### End of Repository/Build Configurations ######
     close_pull_request_job:
         if: github.event_name == 'pull_request' && github.event.action == 'closed'
