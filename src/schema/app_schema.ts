@@ -421,7 +421,10 @@ export class Items extends sf.array("Items", [Item]) {
 			comments: [],
 			votes: new Vote({ votes: [] }),
 			content: shape,
-			rotation: this.getRandomNumber(0, 1) === 0 ? this.getRandomNumber(0, 15) : this.getRandomNumber(345, 360),
+			rotation:
+				this.getRandomNumber(0, 1) === 0
+					? this.getRandomNumber(0, 15)
+					: this.getRandomNumber(345, 360),
 		});
 
 		this.insertAtEnd(item);
@@ -431,10 +434,7 @@ export class Items extends sf.array("Items", [Item]) {
 	/**
 	 * Create a new note item and add it to the items collection
 	 */
-	createNoteItem(
-		canvasSize: { width: number; height: number },
-		authorId: string
-	): Item {
+	createNoteItem(canvasSize: { width: number; height: number }, authorId: string): Item {
 		const note = new Note({
 			id: crypto.randomUUID(),
 			text: "",
@@ -448,7 +448,10 @@ export class Items extends sf.array("Items", [Item]) {
 			comments: [],
 			votes: new Vote({ votes: [] }),
 			content: note,
-			rotation: this.getRandomNumber(0, 1) === 0 ? this.getRandomNumber(0, 15) : this.getRandomNumber(345, 360),
+			rotation:
+				this.getRandomNumber(0, 1) === 0
+					? this.getRandomNumber(0, 15)
+					: this.getRandomNumber(345, 360),
 		});
 
 		this.insertAtEnd(item);
@@ -516,10 +519,7 @@ export class Items extends sf.array("Items", [Item]) {
 	/**
 	 * Duplicate an existing item
 	 */
-	duplicateItem(
-		item: Item,
-		canvasSize: { width: number; height: number }
-	): Item {
+	duplicateItem(item: Item, canvasSize: { width: number; height: number }): Item {
 		// Calculate new position with offset
 		const offsetX = 20;
 		const offsetY = 20;

@@ -4,13 +4,7 @@
  */
 
 import React, { JSX, useContext } from "react";
-import {
-	Item,
-	Items,
-	Shape,
-	Vote,
-	FluidTable,
-} from "../schema/app_schema.js";
+import { Item, Items, Shape, Vote, FluidTable } from "../schema/app_schema.js";
 import {
 	DismissFilled,
 	CircleRegular,

@@ -4,11 +4,7 @@
  */
 
 import React, { JSX, useContext, useEffect, useState, useRef } from "react";
-import {
-	App,
-	Shape,
-	FluidTable,
-} from "../schema/app_schema.js";
+import { App, Shape, FluidTable } from "../schema/app_schema.js";
 import "../output.css";
 import { ConnectionState, IFluidContainer, TreeView, Tree } from "fluid-framework";
 import { Canvas } from "./canvasux.js";
