@@ -124,7 +124,7 @@ export function NewRowButton(props: {
 	);
 }
 
-export function NewManysRowsButton(props: { table: FluidTable }): JSX.Element {
+export function NewManyRowsButton(props: { table: FluidTable }): JSX.Element {
 	const { table } = props;
 	useTree(table);
 
