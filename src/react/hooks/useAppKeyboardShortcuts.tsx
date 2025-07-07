@@ -4,6 +4,7 @@ import { KeyboardShortcut } from "./useKeyboardShortcuts.js";
 import { undoRedo } from "../../utils/undo.js";
 import { UsersManager } from "../../utils/presence/Interfaces/UsersManager.js";
 import { SHAPE_COLORS } from "../appbuttonux.js";
+import { SelectionManager } from "../../utils/presence/Interfaces/SelectionManager.js";
 
 export interface UseAppKeyboardShortcutsProps {
 	view: TreeView<typeof App>;
@@ -19,6 +20,7 @@ export interface UseAppKeyboardShortcutsProps {
 	canRedo: boolean;
 	setCommentPaneHidden: (hidden: boolean) => void;
 	openCommentPaneAndFocus: (itemId: string) => void;
+	selectionManager: SelectionManager;
 }
 
 /**
@@ -39,6 +41,7 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 		canRedo,
 		setCommentPaneHidden,
 		openCommentPaneAndFocus,
+		selectionManager,
 	} = props;
 
 	return [
@@ -103,12 +106,14 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 		{
 			key: "Delete",
 			action: () => {
-				// Delete all selected items
-				selectedItemIds.forEach((itemId) => {
-					const selectedItem = view.root.items.find((item) => item.id === itemId);
-					if (selectedItem) {
-						selectedItem.delete();
-					}
+				// Delete all selected items in a transaction
+				Tree.runTransaction(view.root.items, () => {
+					selectedItemIds.forEach((itemId) => {
+						const selectedItem = view.root.items.find((item) => item.id === itemId);
+						if (selectedItem) {
+							selectedItem.delete();
+						}
+					});
 				});
 			},
 			disabled: selectedItemIds.length === 0,
@@ -117,12 +122,17 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 			key: "d",
 			ctrlKey: true,
 			action: () => {
-				// Duplicate all selected items
-				selectedItemIds.forEach((itemId) => {
-					const selectedItem = view.root.items.find((item) => item.id === itemId);
-					if (selectedItem) {
+				// Duplicate all selected items in a transaction
+				Tree.runTransaction(view.root.items, () => {
+					// First collect all the items to duplicate to avoid issues with array modification during iteration
+					const itemsToDuplicate = selectedItemIds
+						.map((itemId) => view.root.items.find((item) => item.id === itemId))
+						.filter((item) => item !== undefined);
+					
+					// Then duplicate each item
+					itemsToDuplicate.forEach((selectedItem) => {
 						view.root.items.duplicateItem(selectedItem, canvasSize);
-					}
+					});
 				});
 			},
 			disabled: selectedItemIds.length === 0,
@@ -131,11 +141,14 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 		{
 			key: "[", // [
 			action: () => {
-				selectedItemIds.forEach((itemId) => {
-					const selectedItem = view.root.items.find((item) => item.id === itemId);
-					if (selectedItem) {
-						view.root.items.moveItemBackward(selectedItem);
-					}
+				// Move all selected items backward in a transaction
+				Tree.runTransaction(view.root.items, () => {
+					selectedItemIds.forEach((itemId) => {
+						const selectedItem = view.root.items.find((item) => item.id === itemId);
+						if (selectedItem) {
+							view.root.items.moveItemBackward(selectedItem);
+						}
+					});
 				});
 			},
 			disabled: selectedItemIds.length === 0,
@@ -143,11 +156,14 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 		{
 			key: "]", // ]
 			action: () => {
-				selectedItemIds.forEach((itemId) => {
-					const selectedItem = view.root.items.find((item) => item.id === itemId);
-					if (selectedItem) {
-						view.root.items.moveItemForward(selectedItem);
-					}
+				// Move all selected items forward in a transaction
+				Tree.runTransaction(view.root.items, () => {
+					selectedItemIds.forEach((itemId) => {
+						const selectedItem = view.root.items.find((item) => item.id === itemId);
+						if (selectedItem) {
+							view.root.items.moveItemForward(selectedItem);
+						}
+					});
 				});
 			},
 			disabled: selectedItemIds.length === 0,
@@ -156,11 +172,14 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 			key: "[", // Ctrl+[
 			ctrlKey: true,
 			action: () => {
-				selectedItemIds.forEach((itemId) => {
-					const selectedItem = view.root.items.find((item) => item.id === itemId);
-					if (selectedItem) {
-						view.root.items.sendItemToBack(selectedItem);
-					}
+				// Send all selected items to back in a transaction
+				Tree.runTransaction(view.root.items, () => {
+					selectedItemIds.forEach((itemId) => {
+						const selectedItem = view.root.items.find((item) => item.id === itemId);
+						if (selectedItem) {
+							view.root.items.sendItemToBack(selectedItem);
+						}
+					});
 				});
 			},
 			disabled: selectedItemIds.length === 0,
@@ -169,11 +188,14 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 			key: "]", // Ctrl+]
 			ctrlKey: true,
 			action: () => {
-				selectedItemIds.forEach((itemId) => {
-					const selectedItem = view.root.items.find((item) => item.id === itemId);
-					if (selectedItem) {
-						view.root.items.bringItemToFront(selectedItem);
-					}
+				// Bring all selected items to front in a transaction
+				Tree.runTransaction(view.root.items, () => {
+					selectedItemIds.forEach((itemId) => {
+						const selectedItem = view.root.items.find((item) => item.id === itemId);
+						if (selectedItem) {
+							view.root.items.bringItemToFront(selectedItem);
+						}
+					});
 				});
 			},
 			disabled: selectedItemIds.length === 0,
@@ -191,9 +213,8 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 			key: "a",
 			ctrlKey: true,
 			action: () => {
-				// TODO: Implement select all when itemSelection is available
-				// const allSelections = view.root.items.map(item => ({ id: item.id }));
-				// itemSelection.setSelection(allSelections);
+				const allSelections = view.root.items.map(item => ({ id: item.id }));
+				selectionManager.setSelection(allSelections);
 			},
 			disabled: view.root.items.length === 0,
 		},
@@ -201,8 +222,7 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 		{
 			key: "Escape",
 			action: () => {
-				// TODO: Implement clear selection when itemSelection is available
-				// itemSelection.clearSelection();
+				selectionManager.clearSelection();
 			},
 			disabled: selectedItemIds.length === 0,
 		},
@@ -217,11 +237,14 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 			key: "v",
 			action: () => {
 				const userId = users.getMyself().value.id;
-				selectedItemIds.forEach((itemId) => {
-					const selectedItem = view.root.items.find((item) => item.id === itemId);
-					if (selectedItem) {
-						selectedItem.votes.toggleVote(userId);
-					}
+				// Vote on all selected items in a transaction
+				Tree.runTransaction(view.root, () => {
+					selectedItemIds.forEach((itemId) => {
+						const selectedItem = view.root.items.find((item) => item.id === itemId);
+						if (selectedItem) {
+							selectedItem.votes.toggleVote(userId);
+						}
+					});
 				});
 			},
 			disabled: selectedItemIds.length === 0,

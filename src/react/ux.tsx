@@ -162,7 +162,7 @@ export function ReactApp(props: {
 		canRedo,
 		setCommentPaneHidden,
 		openCommentPaneAndFocus,
-		// itemSelection, // Temporarily commented out due to import issues
+		selectionManager: itemSelection,
 	});
 
 	useKeyboardShortcuts({

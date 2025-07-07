@@ -201,17 +201,22 @@ export function DeleteButton(props: { delete: () => void; count?: number }): JSX
 }
 
 export function DuplicateButton(props: {
-	item: Item;
+	item?: Item;
 	items: Items;
 	canvasSize: { width: number; height: number };
 	count?: number;
+	duplicate?: () => void;
 }): JSX.Element {
-	const { item, items, canvasSize, count = 1 } = props;
+	const { item, items, canvasSize, count = 1, duplicate } = props;
 	useTree(items);
 
 	const handleDuplicate = (e: React.MouseEvent) => {
 		e.stopPropagation();
-		items.duplicateItem(item, canvasSize);
+		if (duplicate) {
+			duplicate();
+		} else if (item) {
+			items.duplicateItem(item, canvasSize);
+		}
 	};
 
 	const tooltip = count > 1 ? `Duplicate ${count} items` : "Create a copy of this item";

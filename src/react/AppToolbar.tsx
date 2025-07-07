@@ -145,14 +145,24 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 							{hasSelectedItems && (
 								<>
 									<DuplicateButton
-										item={selectedItems[0]!}
 										items={view.root.items}
 										canvasSize={canvasSize}
 										count={selectedItems.length}
+										duplicate={() => {
+											Tree.runTransaction(view.root.items, () => {
+												selectedItems.forEach(item => {
+													if (item) {
+														view.root.items.duplicateItem(item, canvasSize);
+													}
+												});
+											});
+										}}
 									/>
 									<DeleteButton
 										delete={() => {
-											selectedItems.forEach(item => item?.delete());
+											Tree.runTransaction(view.root.items, () => {
+												selectedItems.forEach(item => item?.delete());
+											});
 										}}
 										count={selectedItems.length}
 									/>
