@@ -4,38 +4,12 @@
  */
 
 import React, { JSX, useContext, useEffect, useState, useRef } from "react";
-import { App, Shape, FluidTable } from "../schema/app_schema.js";
+import { App } from "../schema/app_schema.js";
 import "../output.css";
-import { ConnectionState, IFluidContainer, TreeView, Tree } from "fluid-framework";
+import { ConnectionState, IFluidContainer, TreeView } from "fluid-framework";
 import { Canvas } from "./canvasux.js";
 import type { SelectionManager } from "../utils/Interfaces/SelectionManager.js";
 import { undoRedo } from "../utils/undo.js";
-import {
-	NewCircleButton,
-	NewSquareButton,
-	NewTriangleButton,
-	NewStarButton,
-	ShowPaneButton,
-	NewNoteButton,
-	NewTableButton,
-	VoteButton,
-	DeleteButton,
-	DuplicateButton,
-	CommentButton,
-	ColorPicker,
-	AddColumnButton,
-	AddRowButton,
-	MoveColumnLeftButton,
-	MoveColumnRightButton,
-	MoveRowUpButton,
-	MoveRowDownButton,
-	MoveItemForwardButton,
-	MoveItemBackwardButton,
-	BringItemToFrontButton,
-	SendItemToBackButton,
-} from "./appbuttonux.js";
-import { DeleteSelectedRowsButton } from "./tablebuttonux.js";
-import { TooltipButton } from "./buttonux.js";
 import {
 	Avatar,
 	AvatarGroup,
@@ -44,9 +18,8 @@ import {
 	AvatarGroupProps,
 	partitionAvatarGroupItems,
 } from "@fluentui/react-avatar";
-import { MessageBar, MessageBarBody, MessageBarTitle } from "@fluentui/react-message-bar";
 import { Text } from "@fluentui/react-text";
-import { Toolbar, ToolbarDivider, ToolbarGroup } from "@fluentui/react-toolbar";
+import { ToolbarDivider } from "@fluentui/react-toolbar";
 import { Tooltip } from "@fluentui/react-tooltip";
 import { User, UsersManager } from "../utils/Interfaces/UsersManager.js";
 import { PresenceContext } from "./contexts/PresenceContext.js";
@@ -56,17 +29,11 @@ import { DragAndRotatePackage } from "../utils/drag.js";
 import { ResizePackage } from "../utils/Interfaces/ResizeManager.js";
 import { TypedSelection } from "../utils/selection.js";
 import { CommentPane, CommentPaneRef } from "./commentux.js";
-import {
-	ArrowRedoFilled,
-	ArrowUndoFilled,
-	CommentFilled,
-	CommentRegular,
-	DeleteRegular,
-} from "@fluentui/react-icons";
 import { useTree } from "./hooks/useTree.js";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts.js";
 import { useAppKeyboardShortcuts } from "./hooks/useAppKeyboardShortcuts.js";
 import { PaneContext } from "./contexts/PaneContext.js";
+import { AppToolbar } from "./AppToolbar.js";
 
 // Context for comment pane actions
 export const CommentPaneContext = React.createContext<{
@@ -217,148 +184,21 @@ export function ReactApp(props: {
 					id="main"
 					className="flex flex-col bg-transparent h-screen w-full overflow-hidden overscroll-none"
 				>
-					<Header saved={saved} connectionState={connectionState} />{" "}
-					<Toolbar className="h-[48px] shadow-lg flex-nowrap overflow-x-auto overflow-y-hidden whitespace-nowrap min-h-[48px] max-h-[48px]">
-						<ToolbarGroup>
-							<TooltipButton
-								tooltip="Undo"
-								keyboardShortcut="Ctrl+Z"
-								onClick={() => undoRedo.undo()}
-								icon={<ArrowUndoFilled />}
-								disabled={!canUndo}
-							/>
-							<TooltipButton
-								tooltip="Redo"
-								keyboardShortcut="Ctrl+Y"
-								onClick={() => undoRedo.redo()}
-								icon={<ArrowRedoFilled />}
-								disabled={!canRedo}
-							/>
-						</ToolbarGroup>
-						<ToolbarDivider />
-						<ToolbarGroup>
-							<NewCircleButton items={view.root.items} canvasSize={canvasSize} />
-							<NewSquareButton items={view.root.items} canvasSize={canvasSize} />
-							<NewTriangleButton items={view.root.items} canvasSize={canvasSize} />
-							<NewStarButton items={view.root.items} canvasSize={canvasSize} />
-							<NewNoteButton items={view.root.items} canvasSize={canvasSize} />
-							<NewTableButton items={view.root.items} canvasSize={canvasSize} />
-						</ToolbarGroup>
-						{(() => {
-							const selectedItem = view.root.items.find(
-								(item) => item.id === selectedItemId
-							);
-
-							// Only show divider and buttons when an item is selected
-							if (!selectedItem) {
-								return null;
-							}
-
-							return (
-								<div className="flex items-center h-full toolbar-slide-in">
-									<ToolbarDivider />
-									<ToolbarGroup>
-										<VoteButton vote={selectedItem.votes} />
-										<CommentButton item={selectedItem} />
-										<DuplicateButton
-											item={selectedItem}
-											items={view.root.items}
-											canvasSize={canvasSize}
-										/>
-										<DeleteButton
-											delete={() => {
-												selectedItem.delete();
-											}}
-										/>
-									</ToolbarGroup>
-									<ToolbarDivider />
-									<ToolbarGroup>
-										<SendItemToBackButton
-											items={view.root.items}
-											selectedItemId={selectedItemId}
-										/>
-										<MoveItemBackwardButton
-											items={view.root.items}
-											selectedItemId={selectedItemId}
-										/>
-										<MoveItemForwardButton
-											items={view.root.items}
-											selectedItemId={selectedItemId}
-										/>
-										<BringItemToFrontButton
-											items={view.root.items}
-											selectedItemId={selectedItemId}
-										/>
-									</ToolbarGroup>
-									{Tree.is(selectedItem.content, Shape) && (
-										<div className="flex items-center h-full toolbar-slide-in-delayed">
-											<ToolbarDivider />
-											<ToolbarGroup>
-												<ColorPicker shape={selectedItem.content} />
-											</ToolbarGroup>
-										</div>
-									)}
-									{Tree.is(selectedItem.content, FluidTable) && (
-										<div className="flex items-center h-full toolbar-slide-in-delayed">
-											<ToolbarDivider />
-											<ToolbarGroup>
-												<AddColumnButton table={selectedItem.content} />
-												<AddRowButton table={selectedItem.content} />
-												<DeleteSelectedRowsButton
-													table={selectedItem.content}
-													selection={tableSelection}
-												/>
-												<MoveColumnLeftButton
-													table={selectedItem.content}
-													selectedColumnId={selectedColumnId}
-												/>
-												<MoveColumnRightButton
-													table={selectedItem.content}
-													selectedColumnId={selectedColumnId}
-												/>
-												<MoveRowUpButton
-													table={selectedItem.content}
-													selectedRowId={selectedRowId}
-												/>
-												<MoveRowDownButton
-													table={selectedItem.content}
-													selectedRowId={selectedRowId}
-												/>
-											</ToolbarGroup>
-										</div>
-									)}
-								</div>
-							);
-						})()}
-						<ToolbarDivider />
-						<ToolbarGroup>
-							<TooltipButton
-								tooltip="Remove all items from the canvas"
-								keyboardShortcut="Ctrl+Shift+Delete"
-								icon={<DeleteRegular />}
-								onClick={() => view.root.items.removeRange()}
-								disabled={view.root.items.length === 0}
-							/>
-						</ToolbarGroup>
-						<ToolbarDivider />
-						<ToolbarGroup>
-							<ShowPaneButton
-								hiddenIcon={<CommentRegular />}
-								shownIcon={<CommentFilled />}
-								hidePane={setCommentPaneHidden}
-								paneHidden={commentPaneHidden}
-								tooltip="Comments"
-								keyboardShortcut="Ctrl+M"
-							/>
-						</ToolbarGroup>
-						{view !== tree ? (
-							<ToolbarGroup style={{ marginLeft: "auto" }}>
-								<MessageBarComponent message="While viewing an AI Task, others will not see your changes (and you will not see theirs) until you complete the task." />
-							</ToolbarGroup>
-						) : (
-							<></>
-						)}
-					</Toolbar>
+					<Header saved={saved} connectionState={connectionState} />
+					<AppToolbar
+						view={view}
+						tree={tree}
+						canvasSize={canvasSize}
+						selectedItemId={selectedItemId}
+						selectedColumnId={selectedColumnId}
+						selectedRowId={selectedRowId}
+						commentPaneHidden={commentPaneHidden}
+						setCommentPaneHidden={setCommentPaneHidden}
+						undoRedo={undoRedo}
+						canUndo={canUndo}
+						canRedo={canRedo}
+						tableSelection={tableSelection}
+					/>
 					<div className="flex h-[calc(100vh-96px)] w-full flex-row ">
 						<PaneContext.Provider
 							value={{
@@ -517,13 +357,4 @@ export const Facepile = (props: Partial<AvatarGroupProps>) => {
 	);
 };
 
-export function MessageBarComponent(props: { message: string }): JSX.Element {
-	const { message } = props;
-	return (
-		<MessageBar>
-			<MessageBarBody>
-				<MessageBarTitle>{message}</MessageBarTitle>
-			</MessageBarBody>
-		</MessageBar>
-	);
-}
+
