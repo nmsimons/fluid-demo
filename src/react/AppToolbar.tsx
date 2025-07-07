@@ -35,6 +35,7 @@ import { DeleteSelectedRowsButton } from "./tablebuttonux.js";
 import { TooltipButton } from "./buttonux.js";
 import { MessageBar, MessageBarBody, MessageBarTitle } from "@fluentui/react-message-bar";
 import { Toolbar, ToolbarDivider, ToolbarGroup } from "@fluentui/react-toolbar";
+import { Badge } from "@fluentui/react-badge";
 import {
 	ArrowRedoFilled,
 	ArrowUndoFilled,
@@ -50,6 +51,7 @@ export interface AppToolbarProps {
 	tree: TreeView<typeof App>;
 	canvasSize: { width: number; height: number };
 	selectedItemId: string;
+	selectedItemIds: string[];
 	selectedColumnId: string;
 	selectedRowId: string;
 	commentPaneHidden: boolean;
@@ -66,6 +68,7 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 		tree,
 		canvasSize,
 		selectedItemId,
+		selectedItemIds,
 		selectedColumnId,
 		selectedRowId,
 		commentPaneHidden,
@@ -104,29 +107,57 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 				<NewTableButton items={view.root.items} canvasSize={canvasSize} />
 			</ToolbarGroup>
 			{(() => {
-				const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
+				const selectedItems = selectedItemIds.map(id => view.root.items.find(item => item.id === id)).filter(Boolean);
+				const hasSelectedItems = selectedItems.length > 0;
+				const singleSelectedItem = selectedItems.length === 1 ? selectedItems[0] : null;
 
-				// Only show divider and buttons when an item is selected
-				if (!selectedItem) {
+				// Only show divider and buttons when items are selected
+				if (!hasSelectedItems) {
 					return null;
 				}
 
 				return (
 					<div className="flex items-center h-full toolbar-slide-in">
 						<ToolbarDivider />
+						{/* Multi-selection indicator */}
+						{selectedItems.length > 1 && (
+							<ToolbarGroup>
+								<div className="flex items-center px-2">
+									<Badge 
+										appearance="filled" 
+										color="brand" 
+										size="small"
+									>
+										{selectedItems.length} selected
+									</Badge>
+								</div>
+							</ToolbarGroup>
+						)}
 						<ToolbarGroup>
-							<VoteButton vote={selectedItem.votes} />
-							<CommentButton item={selectedItem} />
-							<DuplicateButton
-								item={selectedItem}
-								items={view.root.items}
-								canvasSize={canvasSize}
-							/>
-							<DeleteButton
-								delete={() => {
-									selectedItem.delete();
-								}}
-							/>
+							{/* Single-item actions: only show when exactly one item is selected */}
+							{singleSelectedItem && (
+								<>
+									<VoteButton vote={singleSelectedItem.votes} />
+									<CommentButton item={singleSelectedItem} />
+								</>
+							)}
+							{/* Multi-item actions: show when any items are selected */}
+							{hasSelectedItems && (
+								<>
+									<DuplicateButton
+										item={selectedItems[0]!}
+										items={view.root.items}
+										canvasSize={canvasSize}
+										count={selectedItems.length}
+									/>
+									<DeleteButton
+										delete={() => {
+											selectedItems.forEach(item => item?.delete());
+										}}
+										count={selectedItems.length}
+									/>
+								</>
+							)}
 						</ToolbarGroup>
 						<ToolbarDivider />
 						<ToolbarGroup>
@@ -147,38 +178,39 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 								selectedItemId={selectedItemId}
 							/>
 						</ToolbarGroup>
-						{Tree.is(selectedItem.content, Shape) && (
+						{/* Single-item specific UI: only show when exactly one item is selected */}
+						{singleSelectedItem && Tree.is(singleSelectedItem.content, Shape) && (
 							<div className="flex items-center h-full toolbar-slide-in-delayed">
 								<ToolbarDivider />
 								<ToolbarGroup>
-									<ColorPicker shape={selectedItem.content} />
+									<ColorPicker shape={singleSelectedItem.content} />
 								</ToolbarGroup>
 							</div>
 						)}
-						{Tree.is(selectedItem.content, FluidTable) && (
+						{singleSelectedItem && Tree.is(singleSelectedItem.content, FluidTable) && (
 							<div className="flex items-center h-full toolbar-slide-in-delayed">
 								<ToolbarDivider />
 								<ToolbarGroup>
-									<AddColumnButton table={selectedItem.content} />
-									<AddRowButton table={selectedItem.content} />
+									<AddColumnButton table={singleSelectedItem.content} />
+									<AddRowButton table={singleSelectedItem.content} />
 									<DeleteSelectedRowsButton
-										table={selectedItem.content}
+										table={singleSelectedItem.content}
 										selection={tableSelection}
 									/>
 									<MoveColumnLeftButton
-										table={selectedItem.content}
+										table={singleSelectedItem.content}
 										selectedColumnId={selectedColumnId}
 									/>
 									<MoveColumnRightButton
-										table={selectedItem.content}
+										table={singleSelectedItem.content}
 										selectedColumnId={selectedColumnId}
 									/>
 									<MoveRowUpButton
-										table={selectedItem.content}
+										table={singleSelectedItem.content}
 										selectedRowId={selectedRowId}
 									/>
 									<MoveRowDownButton
-										table={selectedItem.content}
+										table={singleSelectedItem.content}
 										selectedRowId={selectedRowId}
 									/>
 								</ToolbarGroup>

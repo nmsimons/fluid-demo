@@ -187,13 +187,14 @@ export function NewTableButton(props: {
 
 // (Removed - moved to Items class as getRandomNumber method)
 
-export function DeleteButton(props: { delete: () => void }): JSX.Element {
-	const { delete: deleteFunc } = props;
+export function DeleteButton(props: { delete: () => void; count?: number }): JSX.Element {
+	const { delete: deleteFunc, count = 1 } = props;
+	const tooltip = count > 1 ? `Delete ${count} items` : "Delete item";
 	return (
 		<TooltipButton
 			onClick={() => deleteFunc()}
 			icon={<DismissFilled />}
-			tooltip="Delete item"
+			tooltip={tooltip}
 			keyboardShortcut="Delete"
 		/>
 	);
@@ -203,8 +204,9 @@ export function DuplicateButton(props: {
 	item: Item;
 	items: Items;
 	canvasSize: { width: number; height: number };
+	count?: number;
 }): JSX.Element {
-	const { item, items, canvasSize } = props;
+	const { item, items, canvasSize, count = 1 } = props;
 	useTree(items);
 
 	const handleDuplicate = (e: React.MouseEvent) => {
@@ -212,11 +214,13 @@ export function DuplicateButton(props: {
 		items.duplicateItem(item, canvasSize);
 	};
 
+	const tooltip = count > 1 ? `Duplicate ${count} items` : "Create a copy of this item";
+
 	return (
 		<TooltipButton
 			onClick={(e) => handleDuplicate(e)}
 			icon={<CopyRegular />}
-			tooltip="Create a copy of this item"
+			tooltip={tooltip}
 			keyboardShortcut="Ctrl+D"
 		/>
 	);

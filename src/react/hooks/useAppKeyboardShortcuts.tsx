@@ -1,8 +1,3 @@
-/*!
- * Copyright (c) Microsoft Corporation and contributors. All rights reserved.
- * Licensed under the MIT License.
- */
-
 import { TreeView, Tree } from "fluid-framework";
 import { App, FluidTable } from "../../schema/app_schema.js";
 import { KeyboardShortcut } from "./useKeyboardShortcuts.js";
@@ -14,6 +9,7 @@ export interface UseAppKeyboardShortcutsProps {
 	view: TreeView<typeof App>;
 	canvasSize: { width: number; height: number };
 	selectedItemId: string;
+	selectedItemIds: string[];
 	selectedColumnId: string;
 	selectedRowId: string;
 	commentPaneHidden: boolean;
@@ -33,6 +29,7 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 		view,
 		canvasSize,
 		selectedItemId,
+		selectedItemIds,
 		selectedColumnId,
 		selectedRowId,
 		commentPaneHidden,
@@ -106,66 +103,80 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 		{
 			key: "Delete",
 			action: () => {
-				const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
-				if (selectedItem) {
-					selectedItem.delete();
-				}
+				// Delete all selected items
+				selectedItemIds.forEach((itemId) => {
+					const selectedItem = view.root.items.find((item) => item.id === itemId);
+					if (selectedItem) {
+						selectedItem.delete();
+					}
+				});
 			},
-			disabled: !selectedItemId,
+			disabled: selectedItemIds.length === 0,
 		},
 		{
 			key: "d",
 			ctrlKey: true,
 			action: () => {
-				const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
-				if (selectedItem) {
-					view.root.items.duplicateItem(selectedItem, canvasSize);
-				}
+				// Duplicate all selected items
+				selectedItemIds.forEach((itemId) => {
+					const selectedItem = view.root.items.find((item) => item.id === itemId);
+					if (selectedItem) {
+						view.root.items.duplicateItem(selectedItem, canvasSize);
+					}
+				});
 			},
-			disabled: !selectedItemId,
+			disabled: selectedItemIds.length === 0,
 		},
 		// Z-order shortcuts
 		{
 			key: "[", // [
 			action: () => {
-				const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
-				if (selectedItem) {
-					view.root.items.moveItemBackward(selectedItem);
-				}
+				selectedItemIds.forEach((itemId) => {
+					const selectedItem = view.root.items.find((item) => item.id === itemId);
+					if (selectedItem) {
+						view.root.items.moveItemBackward(selectedItem);
+					}
+				});
 			},
-			disabled: !selectedItemId,
+			disabled: selectedItemIds.length === 0,
 		},
 		{
 			key: "]", // ]
 			action: () => {
-				const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
-				if (selectedItem) {
-					view.root.items.moveItemForward(selectedItem);
-				}
+				selectedItemIds.forEach((itemId) => {
+					const selectedItem = view.root.items.find((item) => item.id === itemId);
+					if (selectedItem) {
+						view.root.items.moveItemForward(selectedItem);
+					}
+				});
 			},
-			disabled: !selectedItemId,
+			disabled: selectedItemIds.length === 0,
 		},
 		{
 			key: "[", // Ctrl+[
 			ctrlKey: true,
 			action: () => {
-				const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
-				if (selectedItem) {
-					view.root.items.sendItemToBack(selectedItem);
-				}
+				selectedItemIds.forEach((itemId) => {
+					const selectedItem = view.root.items.find((item) => item.id === itemId);
+					if (selectedItem) {
+						view.root.items.sendItemToBack(selectedItem);
+					}
+				});
 			},
-			disabled: !selectedItemId,
+			disabled: selectedItemIds.length === 0,
 		},
 		{
 			key: "]", // Ctrl+]
 			ctrlKey: true,
 			action: () => {
-				const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
-				if (selectedItem) {
-					view.root.items.bringItemToFront(selectedItem);
-				}
+				selectedItemIds.forEach((itemId) => {
+					const selectedItem = view.root.items.find((item) => item.id === itemId);
+					if (selectedItem) {
+						view.root.items.bringItemToFront(selectedItem);
+					}
+				});
 			},
-			disabled: !selectedItemId,
+			disabled: selectedItemIds.length === 0,
 		},
 		// Clear all shortcut
 		{
@@ -174,6 +185,26 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 			shiftKey: true,
 			action: () => view.root.items.removeRange(),
 			disabled: view.root.items.length === 0,
+		},
+		// Select All shortcut
+		{
+			key: "a",
+			ctrlKey: true,
+			action: () => {
+				// TODO: Implement select all when itemSelection is available
+				// const allSelections = view.root.items.map(item => ({ id: item.id }));
+				// itemSelection.setSelection(allSelections);
+			},
+			disabled: view.root.items.length === 0,
+		},
+		// Clear selection shortcut
+		{
+			key: "Escape",
+			action: () => {
+				// TODO: Implement clear selection when itemSelection is available
+				// itemSelection.clearSelection();
+			},
+			disabled: selectedItemIds.length === 0,
 		},
 		// Toggle comment pane
 		{
@@ -185,25 +216,32 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 		{
 			key: "v",
 			action: () => {
-				const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
-				if (selectedItem) {
-					const userId = users.getMyself().value.id;
-					selectedItem.votes.toggleVote(userId);
-				}
+				const userId = users.getMyself().value.id;
+				selectedItemIds.forEach((itemId) => {
+					const selectedItem = view.root.items.find((item) => item.id === itemId);
+					if (selectedItem) {
+						selectedItem.votes.toggleVote(userId);
+					}
+				});
 			},
-			disabled: !selectedItemId,
+			disabled: selectedItemIds.length === 0,
 		},
 		// Comment shortcut
 		{
 			key: "/",
 			ctrlKey: true,
 			action: () => {
-				const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
-				if (selectedItem) {
-					openCommentPaneAndFocus(selectedItem.id);
+				// Comment on the first selected item
+				if (selectedItemIds.length > 0) {
+					const selectedItem = view.root.items.find(
+						(item) => item.id === selectedItemIds[0]
+					);
+					if (selectedItem) {
+						openCommentPaneAndFocus(selectedItem.id);
+					}
 				}
 			},
-			disabled: !selectedItemId,
+			disabled: selectedItemIds.length === 0,
 		},
 		// Table operation shortcuts (only work when a table is selected)
 		{

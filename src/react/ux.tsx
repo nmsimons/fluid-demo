@@ -56,6 +56,7 @@ export function ReactApp(props: {
 	const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
 	const [commentPaneHidden, setCommentPaneHidden] = useState(true);
 	const [selectedItemId, setSelectedItemId] = useState<string>("");
+	const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
 	const [selectedColumnId, setSelectedColumnId] = useState<string>("");
 	const [selectedRowId, setSelectedRowId] = useState<string>("");
 	const [view] = useState<TreeView<typeof App>>(tree);
@@ -125,14 +126,12 @@ export function ReactApp(props: {
 
 	useEffect(() => {
 		const unsubscribe = itemSelection.events.on("localUpdated", () => {
-			const itemId =
-				itemSelection.getLocalSelection().length !== 0
-					? itemSelection.getLocalSelection()[0].id
-					: undefined;
-
-			const selectedItem = view.root.items.find((item) => item.id === itemId);
-
-			setSelectedItemId(selectedItem?.id ?? "");
+			const selections = itemSelection.getLocalSelection();
+			const selectedIds = selections.map(sel => sel.id);
+			
+			// Update both states for backwards compatibility
+			setSelectedItemIds(selectedIds);
+			setSelectedItemId(selectedIds.length > 0 ? selectedIds[0] : "");
 		});
 		return unsubscribe;
 	}, [view, itemSelection]);
@@ -153,6 +152,7 @@ export function ReactApp(props: {
 		view,
 		canvasSize,
 		selectedItemId,
+		selectedItemIds,
 		selectedColumnId,
 		selectedRowId,
 		commentPaneHidden,
@@ -162,6 +162,7 @@ export function ReactApp(props: {
 		canRedo,
 		setCommentPaneHidden,
 		openCommentPaneAndFocus,
+		// itemSelection, // Temporarily commented out due to import issues
 	});
 
 	useKeyboardShortcuts({
@@ -190,6 +191,7 @@ export function ReactApp(props: {
 						tree={tree}
 						canvasSize={canvasSize}
 						selectedItemId={selectedItemId}
+						selectedItemIds={selectedItemIds}
 						selectedColumnId={selectedColumnId}
 						selectedRowId={selectedRowId}
 						commentPaneHidden={commentPaneHidden}

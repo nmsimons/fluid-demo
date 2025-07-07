@@ -202,9 +202,11 @@ export function ItemView(props: {
 	const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
 		e.stopPropagation();
 		if (presence.itemSelection) {
-			if (selected) {
-				// presence.itemSelection.clearSelection();
+			if (e.ctrlKey || e.metaKey) {
+				// Multi-select: toggle selection of this item
+				presence.itemSelection.toggleSelection({ id: item.id });
 			} else {
+				// Single-select: clear other selections and select this item
 				presence.itemSelection.setSelection({ id: item.id });
 			}
 		}
