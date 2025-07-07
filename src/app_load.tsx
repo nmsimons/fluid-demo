@@ -53,20 +53,17 @@ export async function loadApp(props: {
 	const itemSelection = createTypedSelectionManager({
 		name: "selection:item", // The name of the workspace
 		workspace, // The presence workspace
-		presence, // The presence data object
 	});
 
 	const tableSelection = createTypedSelectionManager({
 		name: "selection:table", // The name of the workspace
 		workspace, // The presence workspace
-		presence, // The presence data object
 	});
 
 	// Create a users manager to manage the users in the app
 	const users = createUsersManager({
 		name: "users:main", // The name of the users manager
 		workspace, // The presence workspace
-		presence, // The presence data object
 		me: userInfo, // The current user
 	});
 
@@ -79,7 +76,6 @@ export async function loadApp(props: {
 	const resize = createResizeManager({
 		name: "resize:main",
 		workspace,
-		presence,
 	});
 
 	// create the root element for React

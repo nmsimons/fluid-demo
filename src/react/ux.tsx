@@ -312,7 +312,7 @@ export const Facepile = (props: Partial<AvatarGroupProps>) => {
 
 	useEffect(() => {
 		// Update the user roster when users disconnect
-		const unsubscribe = users.clients.events.on("attendeeDisconnected", () => {
+		const unsubscribe = users.clients.getEvents().on("attendeeDisconnected", () => {
 			setUserRoster(users.getConnectedUsers());
 		});
 		return unsubscribe;
@@ -356,5 +356,3 @@ export const Facepile = (props: Partial<AvatarGroupProps>) => {
 		</AvatarGroup>
 	);
 };
-
-

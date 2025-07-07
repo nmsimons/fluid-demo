@@ -26,10 +26,12 @@ export function usePresenceManager<TState>(
 	}, [presenceManager, runOnChange]);
 
 	useEffect(() => {
-		const unsubscribe = presenceManager.clients.events.on("attendeeDisconnected", (updated) => {
-			if (!runOnDisconnect) return;
-			runOnDisconnect(updated);
-		});
+		const unsubscribe = presenceManager.clients
+			.getEvents()
+			.on("attendeeDisconnected", (updated) => {
+				if (!runOnDisconnect) return;
+				runOnDisconnect(updated);
+			});
 		return unsubscribe;
 	}, [presenceManager, runOnChange]);
 }

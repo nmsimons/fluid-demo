@@ -42,5 +42,5 @@ export type User<TUserInfo extends UserInfo = UserInfo> = {
 export type UserInfo = {
 	id: string; // The unique identifier for the user
 	name: string; // Name of the user
-	image?: string; // Optional profile picture URL
+	image?: string; // Optional profile picture
 };

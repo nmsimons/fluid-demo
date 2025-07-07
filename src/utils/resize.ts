@@ -2,7 +2,6 @@
 // A function that creates a new ResizeManager instance
 
 import {
-	type Presence,
 	StateFactory,
 	StatesWorkspace,
 	AttendeeId,
@@ -15,21 +14,16 @@ import { ResizeManager, ResizePackage } from "./Interfaces/ResizeManager.js";
 
 // with the given presence and workspace.
 export function createResizeManager(props: {
-	presence: Presence;
 	workspace: StatesWorkspace<{}>;
 	name: string;
 }): ResizeManager<ResizePackage | null> {
-	const { presence, workspace, name } = props;
+	const { workspace, name } = props;
 
 	class ResizeManagerImpl implements ResizeManager<ResizePackage | null> {
 		initialState: ResizePackage | null = null;
 		state: LatestRaw<ResizePackage | null>;
 
-		constructor(
-			name: string,
-			workspace: StatesWorkspace<{}>,
-			private presence: Presence
-		) {
+		constructor(name: string, workspace: StatesWorkspace<{}>) {
 			workspace.add(
 				name,
 				StateFactory.latest<ResizePackage | null>({ local: this.initialState })
@@ -39,10 +33,12 @@ export function createResizeManager(props: {
 
 		public clients = {
 			getAttendee: (clientId: ClientConnectionId | AttendeeId) =>
-				this.presence.attendees.getAttendee(clientId),
-			getAttendees: () => this.presence.attendees.getAttendees(),
-			getMyself: () => this.presence.attendees.getMyself(),
-			events: this.presence.attendees.events,
+				this.state.presence.attendees.getAttendee(clientId),
+			getAttendees: () => this.state.presence.attendees.getAttendees(),
+			getMyself: () => this.state.presence.attendees.getMyself(),
+			getEvents: () => {
+				return this.state.presence.attendees.events;
+			},
 		};
 
 		public get events(): Listenable<LatestRawEvents<ResizePackage | null>> {
@@ -60,5 +56,5 @@ export function createResizeManager(props: {
 		}
 	}
 
-	return new ResizeManagerImpl(name, workspace, presence);
+	return new ResizeManagerImpl(name, workspace);
 }

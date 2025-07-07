@@ -3,7 +3,6 @@
 // with the given presence and workspace.
 
 import {
-	type Presence,
 	StateFactory,
 	LatestRawEvents,
 	StatesWorkspace,
@@ -16,22 +15,17 @@ import { UsersManager, User, UserInfo } from "./Interfaces/UsersManager.js";
 import { Listenable } from "fluid-framework";
 
 export function createUsersManager(props: {
-	presence: Presence;
 	workspace: StatesWorkspace<{}>;
 	name: string;
 	me: UserInfo;
 }): UsersManager {
-	const { presence, workspace, name, me } = props;
+	const { workspace, name, me } = props;
 
 	class UsersManagerImpl implements UsersManager {
 		initialState: UserInfo = me; // Default initial state for the user manager
 		state: LatestRaw<UserInfo>;
 
-		constructor(
-			name: string,
-			workspace: StatesWorkspace<{}>,
-			private presence: Presence
-		) {
+		constructor(name: string, workspace: StatesWorkspace<{}>) {
 			workspace.add(name, StateFactory.latest({ local: this.initialState }));
 			this.state = workspace.states[name];
 		}
@@ -42,15 +36,15 @@ export function createUsersManager(props: {
 
 		public clients = {
 			getAttendee: (clientId: ClientConnectionId | AttendeeId) => {
-				return this.presence.attendees.getAttendee(clientId);
+				return this.state.presence.attendees.getAttendee(clientId);
 			},
 			getAttendees: () => {
-				return this.presence.attendees.getAttendees();
+				return this.state.presence.attendees.getAttendees();
 			},
 			getMyself: () => {
-				return this.presence.attendees.getMyself();
+				return this.state.presence.attendees.getMyself();
 			},
-			events: this.presence.attendees.events,
+			getEvents: () => this.state.presence.attendees.events,
 		};
 
 		getUsers(): readonly User[] {
@@ -74,9 +68,9 @@ export function createUsersManager(props: {
 		}
 
 		getMyself(): User {
-			return { value: this.state.local, client: this.presence.attendees.getMyself() };
+			return { value: this.state.local, client: this.state.presence.attendees.getMyself() };
 		}
 	}
 
-	return new UsersManagerImpl(name, workspace, presence);
+	return new UsersManagerImpl(name, workspace);
 }

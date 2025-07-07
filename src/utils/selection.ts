@@ -5,7 +5,6 @@
  */
 
 import {
-	type Presence,
 	StateFactory,
 	LatestRawEvents,
 	StatesWorkspace,
@@ -19,22 +18,17 @@ import { SelectionManager, Selection } from "./Interfaces/SelectionManager.js";
 // A function that creates a new SelectionManager instance
 // with the given presence and workspace.
 export function createTypedSelectionManager(props: {
-	presence: Presence;
 	workspace: StatesWorkspace<{}>;
 	name: string;
 }): SelectionManager<TypedSelection> {
-	const { presence, workspace, name } = props;
+	const { workspace, name } = props;
 
 	class SelectionManagerImpl implements SelectionManager<TypedSelection> {
 		initialState: TypedSelection[] = []; // Default initial state for the selection manager
 
 		state: LatestRaw<TypedSelection[]>;
 
-		constructor(
-			name: string,
-			workspace: StatesWorkspace<{}>,
-			private presence: Presence
-		) {
+		constructor(name: string, workspace: StatesWorkspace<{}>) {
 			workspace.add(name, StateFactory.latest({ local: this.initialState }));
 			this.state = workspace.states[name];
 		}
@@ -45,15 +39,15 @@ export function createTypedSelectionManager(props: {
 
 		public clients = {
 			getAttendee: (clientId: ClientConnectionId | AttendeeId) => {
-				return this.presence.attendees.getAttendee(clientId);
+				return this.state.presence.attendees.getAttendee(clientId);
 			},
 			getAttendees: () => {
-				return this.presence.attendees.getAttendees();
+				return this.state.presence.attendees.getAttendees();
 			},
 			getMyself: () => {
-				return this.presence.attendees.getMyself();
+				return this.state.presence.attendees.getMyself();
 			},
-			events: this.presence.attendees.events,
+			getEvents: () => this.state.presence.attendees.events,
 		};
 
 		/** Test if the given id is selected by the local client */
@@ -150,26 +144,21 @@ export function createTypedSelectionManager(props: {
 		}
 	}
 
-	return new SelectionManagerImpl(name, workspace, presence);
+	return new SelectionManagerImpl(name, workspace);
 }
 
 export function createSelectionManager(props: {
-	presence: Presence;
 	workspace: StatesWorkspace<{}>;
 	name: string;
 }): SelectionManager {
-	const { presence, workspace, name } = props;
+	const { workspace, name } = props;
 
 	class SelectionManagerImpl implements SelectionManager {
 		initialState: Selection[] = []; // Default initial state for the selection manager
 
 		state: LatestRaw<Selection[]>;
 
-		constructor(
-			name: string,
-			workspace: StatesWorkspace<{}>,
-			private presence: Presence
-		) {
+		constructor(name: string, workspace: StatesWorkspace<{}>) {
 			workspace.add(name, StateFactory.latest({ local: this.initialState }));
 			this.state = workspace.states[name];
 		}
@@ -180,15 +169,15 @@ export function createSelectionManager(props: {
 
 		public clients = {
 			getAttendee: (clientId: ClientConnectionId | AttendeeId) => {
-				return this.presence.attendees.getAttendee(clientId);
+				return this.state.presence.attendees.getAttendee(clientId);
 			},
 			getAttendees: () => {
-				return this.presence.attendees.getAttendees();
+				return this.state.presence.attendees.getAttendees();
 			},
 			getMyself: () => {
-				return this.presence.attendees.getMyself();
+				return this.state.presence.attendees.getMyself();
 			},
-			events: this.presence.attendees.events,
+			getEvents: () => this.state.presence.attendees.events,
 		};
 
 		/** Test if the given id is selected by the local client */
@@ -275,7 +264,7 @@ export function createSelectionManager(props: {
 		}
 	}
 
-	return new SelectionManagerImpl(name, workspace, presence);
+	return new SelectionManagerImpl(name, workspace);
 }
 
 export type TypedSelection = {

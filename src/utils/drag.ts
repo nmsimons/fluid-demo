@@ -19,17 +19,13 @@ export function createDragManager(props: {
 	workspace: StatesWorkspace<{}>;
 	name: string;
 }): DragManager<DragAndRotatePackage | null> {
-	const { presence, workspace, name } = props;
+	const { workspace, name } = props;
 
 	class DragManagerImpl implements DragManager<DragAndRotatePackage | null> {
 		initialState: DragAndRotatePackage | null = null;
 		state: LatestRaw<DragAndRotatePackage | null>;
 
-		constructor(
-			name: string,
-			workspace: StatesWorkspace<{}>,
-			private presence: Presence
-		) {
+		constructor(name: string, workspace: StatesWorkspace<{}>) {
 			workspace.add(
 				name,
 				StateFactory.latest<DragAndRotatePackage | null>({ local: this.initialState })
@@ -39,10 +35,12 @@ export function createDragManager(props: {
 
 		public clients = {
 			getAttendee: (clientId: ClientConnectionId | AttendeeId) =>
-				this.presence.attendees.getAttendee(clientId),
-			getAttendees: () => this.presence.attendees.getAttendees(),
-			getMyself: () => this.presence.attendees.getMyself(),
-			events: this.presence.attendees.events,
+				this.state.presence.attendees.getAttendee(clientId),
+			getAttendees: () => this.state.presence.attendees.getAttendees(),
+			getMyself: () => this.state.presence.attendees.getMyself(),
+			getEvents: () => {
+				return this.state.presence.attendees.events;
+			},
 		};
 
 		public get events(): Listenable<LatestRawEvents<DragAndRotatePackage | null>> {
@@ -60,7 +58,7 @@ export function createDragManager(props: {
 		}
 	}
 
-	return new DragManagerImpl(name, workspace, presence);
+	return new DragManagerImpl(name, workspace);
 }
 
 export type DragAndRotatePackage = {

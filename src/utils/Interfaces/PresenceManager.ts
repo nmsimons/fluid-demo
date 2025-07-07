@@ -14,7 +14,7 @@ export interface PresenceClients {
 	getAttendee: (clientId: ClientConnectionId | AttendeeId) => Attendee;
 	getAttendees: () => ReadonlySet<Attendee>;
 	getMyself: () => Attendee;
-	events: Listenable<AttendeesEvents>;
+	getEvents: () => Listenable<AttendeesEvents>;
 }
 
 export interface PresenceManager<TState> {
