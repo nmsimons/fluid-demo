@@ -25,14 +25,51 @@ export async function azureStart() {
 		// If there are no accounts, the user is not signed in.
 		if (currentAccounts === null || currentAccounts.length === 0) {
 			msalInstance.loginRedirect();
-		} else {
-			// There are accounts, but the user is not signed in via redirect flow.
-			// You may choose to operate on these accounts or ignore them.
-			// For this sample, we will ignore them.
-			const account = msalInstance.getAllAccounts()[0];
+		} else if (currentAccounts.length === 1) {
+			// Single account, use it directly
+			const account = currentAccounts[0];
 			signedInAzureStart(msalInstance, account);
+		} else {
+			// Multiple accounts, show account selector
+			await showAccountSelector(msalInstance, currentAccounts);
 		}
 	}
+}
+
+async function showAccountSelector(msalInstance: PublicClientApplication, accounts: AccountInfo[]): Promise<void> {
+	// Create account selection UI
+	return new Promise((resolve) => {
+		// Create account list message
+		let message = "Multiple accounts found. Please choose:\n\n";
+		accounts.forEach((account, index) => {
+			message += `${index + 1}. ${account.name || account.username} (${account.username})\n`;
+		});
+		message += `\n${accounts.length + 1}. Use a different account\n`;
+		message += `${accounts.length + 2}. Cancel`;
+
+		// Show prompt
+		const choice = prompt(message + "\n\nEnter your choice (1-" + (accounts.length + 2) + "):");
+		
+		if (!choice) {
+			// User cancelled
+			resolve();
+			return;
+		}
+
+		const choiceNum = parseInt(choice);
+		
+		if (choiceNum >= 1 && choiceNum <= accounts.length) {
+			// User selected an existing account
+			const selectedAccount = accounts[choiceNum - 1];
+			signedInAzureStart(msalInstance, selectedAccount);
+		} else if (choiceNum === accounts.length + 1) {
+			// User wants to use a different account
+			msalInstance.loginRedirect();
+		}
+		// For any other choice or cancel, do nothing
+		
+		resolve();
+	});
 }
 
 async function signedInAzureStart(msalInstance: PublicClientApplication, account: AccountInfo) {

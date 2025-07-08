@@ -29,6 +29,7 @@
 		"@azure/msal-browser": "^3.28.0",
 		"@fluentui/react-avatar": "^9.7.5",
 		"@fluentui/react-button": "^9.4.4",
+		"@fluentui/react-dialog": "^9.13.6",
 		"@fluentui/react-icons": "^2.0.292",
 		"@fluentui/react-menu": "^9.16.7",
 		"@fluentui/react-message-bar": "^9.3.5",
