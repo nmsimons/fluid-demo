@@ -314,7 +314,10 @@ export const CurrentUser = (): JSX.Element => {
 	return (
 		<Menu>
 			<MenuTrigger disableButtonEnhancement>
-				<Tooltip content={`${currentUser.name} (${userEmail}) - Click for options`} relationship="label">
+				<Tooltip
+					content={`${currentUser.name} (${userEmail}) - Click for options`}
+					relationship="label"
+				>
 					<Avatar
 						name={currentUser.name}
 						image={currentUser.image ? { src: currentUser.image } : undefined}
