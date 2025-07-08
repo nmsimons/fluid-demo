@@ -21,13 +21,7 @@ import {
 import { Text } from "@fluentui/react-text";
 import { ToolbarDivider } from "@fluentui/react-toolbar";
 import { Tooltip } from "@fluentui/react-tooltip";
-import {
-	Menu,
-	MenuTrigger,
-	MenuPopover,
-	MenuList,
-	MenuItem,
-} from "@fluentui/react-menu";
+import { Menu, MenuTrigger, MenuPopover, MenuList, MenuItem } from "@fluentui/react-menu";
 import { SignOut20Regular } from "@fluentui/react-icons";
 import { User, UsersManager } from "../utils/presence/Interfaces/UsersManager.js";
 import { PresenceContext } from "./contexts/PresenceContext.js";
@@ -299,10 +293,14 @@ export const CurrentUser = (): JSX.Element => {
 	const currentUser = users.getMyself().value;
 	const { msalInstance } = useContext(AuthContext);
 
+	// Get the user's email from MSAL account
+	const userEmail = msalInstance?.getActiveAccount()?.username || currentUser.name;
+
 	// Debug logging
 	console.log("CurrentUser component - user data:", {
 		name: currentUser.name,
 		id: currentUser.id,
+		email: userEmail,
 		hasImage: !!currentUser.image,
 		imageLength: currentUser.image?.length,
 	});
@@ -316,7 +314,7 @@ export const CurrentUser = (): JSX.Element => {
 	return (
 		<Menu>
 			<MenuTrigger disableButtonEnhancement>
-				<Tooltip content={`${currentUser.name} - Click for options`} relationship="label">
+				<Tooltip content={`${currentUser.name} (${userEmail}) - Click for options`} relationship="label">
 					<Avatar
 						name={currentUser.name}
 						image={currentUser.image ? { src: currentUser.image } : undefined}

@@ -24,11 +24,8 @@ export async function authHelper(): Promise<PublicClientApplication> {
 		auth: {
 			clientId,
 			redirectUri,
-			authority:
-				fluidClient === "azure"
-					? "https://login.microsoftonline.com/consumers/"
-					: "https://login.microsoftonline.com/common/",
-			tenantId: fluidClient === "azure" ? "consumers" : "common",
+			authority: "https://login.microsoftonline.com/common/",
+			tenantId: "common",
 			scopes: ["User.Read", "openid", "profile"],
 		},
 		cache: {
@@ -48,12 +45,12 @@ export async function signOutHelper(msalInstance: PublicClientApplication): Prom
 	try {
 		// Get the active account
 		const account = msalInstance.getActiveAccount();
-		
+
 		if (account) {
 			// Logout with redirect to ensure proper cleanup
 			await msalInstance.logoutRedirect({
 				account: account,
-				postLogoutRedirectUri: window.location.origin
+				postLogoutRedirectUri: window.location.origin,
 			});
 		} else {
 			// If no active account, just redirect to the main page
