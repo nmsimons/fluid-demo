@@ -127,8 +127,8 @@ export function ReactApp(props: {
 	useEffect(() => {
 		const unsubscribe = itemSelection.events.on("localUpdated", () => {
 			const selections = itemSelection.getLocalSelection();
-			const selectedIds = selections.map(sel => sel.id);
-			
+			const selectedIds = selections.map((sel) => sel.id);
+
 			// Update both states for backwards compatibility
 			setSelectedItemIds(selectedIds);
 			setSelectedItemId(selectedIds.length > 0 ? selectedIds[0] : "");

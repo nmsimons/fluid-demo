@@ -128,7 +128,7 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 					const itemsToDuplicate = selectedItemIds
 						.map((itemId) => view.root.items.find((item) => item.id === itemId))
 						.filter((item) => item !== undefined);
-					
+
 					// Then duplicate each item
 					itemsToDuplicate.forEach((selectedItem) => {
 						view.root.items.duplicateItem(selectedItem, canvasSize);
@@ -213,7 +213,7 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 			key: "a",
 			ctrlKey: true,
 			action: () => {
-				const allSelections = view.root.items.map(item => ({ id: item.id }));
+				const allSelections = view.root.items.map((item) => ({ id: item.id }));
 				selectionManager.setSelection(allSelections);
 			},
 			disabled: view.root.items.length === 0,

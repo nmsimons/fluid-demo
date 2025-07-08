@@ -305,20 +305,31 @@ export function ShowPaneButton(props: {
 	);
 }
 
-export function ColorPicker(props: { shape: Shape }): JSX.Element {
-	const { shape } = props;
-	useTree(shape);
+export function ColorPicker(props: { shapes: Shape[]; count?: number }): JSX.Element {
+	const { shapes, count = shapes.length } = props;
+
+	// Use the first shape for tree updates (they should all update together)
+	useTree(shapes[0]);
 
 	const handleColorChange = (color: string) => {
-		Tree.runTransaction(shape, () => {
-			shape.color = color;
+		// Update all shapes in a single transaction
+		Tree.runTransaction(shapes[0], () => {
+			shapes.forEach((shape) => {
+				shape.color = color;
+			});
 		});
 	};
 
+	// Determine the selected color - if all shapes have the same color, show it as selected
+	const allSameColor = shapes.every((shape) => shape.color === shapes[0].color);
+	const selectedColor = allSameColor ? shapes[0].color : undefined;
+
+	const ariaLabel = count === 1 ? "Shape color picker" : `Color picker for ${count} shapes`;
+
 	return (
 		<SwatchPicker
-			aria-label="Shape color picker"
-			selectedValue={shape.color}
+			aria-label={ariaLabel}
+			selectedValue={selectedColor}
 			onSelectionChange={(event, data) => {
 				if (data.selectedValue) {
 					handleColorChange(data.selectedValue);

@@ -107,7 +107,9 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 				<NewTableButton items={view.root.items} canvasSize={canvasSize} />
 			</ToolbarGroup>
 			{(() => {
-				const selectedItems = selectedItemIds.map(id => view.root.items.find(item => item.id === id)).filter(Boolean);
+				const selectedItems = selectedItemIds
+					.map((id) => view.root.items.find((item) => item.id === id))
+					.filter(Boolean);
 				const hasSelectedItems = selectedItems.length > 0;
 				const singleSelectedItem = selectedItems.length === 1 ? selectedItems[0] : null;
 
@@ -123,11 +125,7 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 						{selectedItems.length > 1 && (
 							<ToolbarGroup>
 								<div className="flex items-center px-2">
-									<Badge 
-										appearance="filled" 
-										color="brand" 
-										size="small"
-									>
+									<Badge appearance="filled" color="brand" size="small">
 										{selectedItems.length} selected
 									</Badge>
 								</div>
@@ -150,9 +148,12 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 										count={selectedItems.length}
 										duplicate={() => {
 											Tree.runTransaction(view.root.items, () => {
-												selectedItems.forEach(item => {
+												selectedItems.forEach((item) => {
 													if (item) {
-														view.root.items.duplicateItem(item, canvasSize);
+														view.root.items.duplicateItem(
+															item,
+															canvasSize
+														);
 													}
 												});
 											});
@@ -161,7 +162,7 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 									<DeleteButton
 										delete={() => {
 											Tree.runTransaction(view.root.items, () => {
-												selectedItems.forEach(item => item?.delete());
+												selectedItems.forEach((item) => item?.delete());
 											});
 										}}
 										count={selectedItems.length}
@@ -188,15 +189,29 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 								selectedItemId={selectedItemId}
 							/>
 						</ToolbarGroup>
-						{/* Single-item specific UI: only show when exactly one item is selected */}
-						{singleSelectedItem && Tree.is(singleSelectedItem.content, Shape) && (
-							<div className="flex items-center h-full toolbar-slide-in-delayed">
-								<ToolbarDivider />
-								<ToolbarGroup>
-									<ColorPicker shape={singleSelectedItem.content} />
-								</ToolbarGroup>
-							</div>
-						)}
+						{/* Shape color picker: show when any shapes are selected */}
+						{(() => {
+							const selectedShapes = selectedItems
+								.filter(
+									(item): item is NonNullable<typeof item> =>
+										item !== undefined && Tree.is(item.content, Shape)
+								)
+								.map((item) => item.content as Shape);
+
+							return (
+								selectedShapes.length > 0 && (
+									<div className="flex items-center h-full toolbar-slide-in-delayed">
+										<ToolbarDivider />
+										<ToolbarGroup>
+											<ColorPicker
+												shapes={selectedShapes}
+												count={selectedShapes.length}
+											/>
+										</ToolbarGroup>
+									</div>
+								)
+							);
+						})()}
 						{singleSelectedItem && Tree.is(singleSelectedItem.content, FluidTable) && (
 							<div className="flex items-center h-full toolbar-slide-in-delayed">
 								<ToolbarDivider />
