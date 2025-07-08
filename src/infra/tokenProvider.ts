@@ -10,16 +10,6 @@ import { KJUR as jsrsasign } from "jsrsasign";
 import { v4 as uuid } from "uuid";
 
 /**
- * Insecure user definition.
- */
-export interface IInsecureUser extends IUser {
-	/**
-	 * Name of the user making the connection to the service.
-	 */
-	name: string;
-}
-
-/**
  * Token Provider implementation for connecting to an Azure Function endpoint for
  * Azure Fluid Relay token resolution.
  */
@@ -60,66 +50,6 @@ export class AzureFunctionTokenProvider implements ITokenProvider {
 }
 
 /**
- * Provides an in memory implementation of a Fluid Token Provider that can be
- * used to insecurely connect to the Fluid Relay.
- *
- * As the name implies, this is not secure and should not be used in production.
- * It simply makes examples where authentication is not relevant easier to bootstrap.
- */
-export class InsecureTokenProvider implements ITokenProvider {
-	constructor(
-		/**
-		 * Private server tenantKey for generating tokens.
-		 */
-		private readonly tenantKey: string,
-
-		/**
-		 * User with whom generated tokens will be associated.
-		 */
-		private readonly user: IInsecureUser
-	) {}
-
-	/**
-	 * {@inheritDoc @fluidframework/routerlicious-driver#ITokenProvider.fetchOrdererToken}
-	 */
-	public async fetchOrdererToken(tenantId: string, documentId?: string): Promise<ITokenResponse> {
-		return {
-			fromCache: true,
-			jwt: generateToken(
-				tenantId,
-				this.tenantKey,
-				[ScopeType.DocRead, ScopeType.DocWrite, ScopeType.SummaryWrite],
-				documentId,
-				this.user
-			),
-		};
-	}
-
-	/**
-	 * {@inheritDoc @fluidframework/routerlicious-driver#ITokenProvider.fetchStorageToken}
-	 */
-	public async fetchStorageToken(tenantId: string, documentId: string): Promise<ITokenResponse> {
-		return {
-			fromCache: true,
-			jwt: generateToken(
-				tenantId,
-				this.tenantKey,
-				[ScopeType.DocRead, ScopeType.DocWrite, ScopeType.SummaryWrite],
-				documentId,
-				this.user
-			),
-		};
-	}
-}
-
-export const user = generateUser();
-
-export const azureUser = {
-	userId: user.id,
-	userName: user.name,
-};
-
-/**
  * Generates a {@link https://en.wikipedia.org/wiki/JSON_Web_Token | JSON Web Token} (JWT)
  * to authorize access to a Routerlicious-based Fluid service.
  *
@@ -147,15 +77,12 @@ export function generateToken(
 	tenantId: string,
 	key: string,
 	scopes: ScopeType[],
+	user: IUser,
 	documentId?: string,
-	user?: IInsecureUser,
 	lifetime: number = 60 * 60,
 	ver = "1.0"
 ): string {
-	let userClaim = user ? user : generateUser();
-	if (userClaim.id === "" || userClaim.id === undefined) {
-		userClaim = generateUser();
-	}
+	const userClaim = user;
 
 	// Current time in seconds
 	const now = Math.round(Date.now() / 1000);
@@ -179,17 +106,4 @@ export function generateToken(
 		claims,
 		utf8Key
 	);
-}
-
-/**
- * Generates an arbitrary ("random") {@link IInsecureUser} by generating a
- * random UUID for its {@link @fluidframework/protocol-definitions#IUser.id | id} and {@link IInsecureUser.name | name} properties.
- */
-export function generateUser(): IInsecureUser {
-	const randomUser = {
-		id: uuid(),
-		name: uuid(),
-	};
-
-	return randomUser;
 }
