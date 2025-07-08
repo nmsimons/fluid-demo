@@ -262,7 +262,7 @@ export class FluidTable extends TableSchema.table({
 	 */
 	addRow(): void {
 		Tree.runTransaction(this, () => {
-			const newRow = { id: crypto.randomUUID(), cells: [] };
+			const newRow = { id: crypto.randomUUID(), cells: {} };
 			this.insertRows({ rows: [newRow] });
 		});
 	}
