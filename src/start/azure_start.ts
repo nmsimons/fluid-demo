@@ -68,15 +68,13 @@ async function showAccountSelector(
 			if (displayName !== email) {
 				message += ` (${email})`;
 			}
-			message += '\n';
+			message += "\n";
 		});
 		message += `\n${accounts.length + 1}. Sign in with a different account\n`;
 		message += `${accounts.length + 2}. Cancel`;
 
 		// Show prompt with better instruction
-		const choice = prompt(
-			message + "\n\nEnter your choice (1-" + (accounts.length + 2) + "):"
-		);
+		const choice = prompt(message + "\n\nEnter your choice (1-" + (accounts.length + 2) + "):");
 
 		if (!choice) {
 			// User cancelled - use the first account as fallback
@@ -98,7 +96,7 @@ async function showAccountSelector(
 			console.log("User chose to sign in with a different account");
 			msalInstance.loginRedirect({
 				prompt: "login",
-				scopes: ["openid", "profile", "email"]
+				scopes: ["openid", "profile", "email"],
 			});
 		} else {
 			// Invalid choice or cancel - use the first account as fallback
