@@ -4,7 +4,11 @@ import { getClientProps } from "../infra/azure/azureClientProps.js";
 import { AttachState } from "fluid-framework";
 import { AccountInfo, PublicClientApplication } from "@azure/msal-browser";
 import { authHelper } from "../infra/auth.js";
-import { getGraphAccessToken, getUserProfilePicture } from "../utils/graphService.js";
+import {
+	getGraphAccessToken,
+	getUserProfilePicture,
+	generateFallbackAvatar,
+} from "../utils/graphService.js";
 
 export async function azureStart() {
 	// Get the user info
@@ -79,10 +83,27 @@ async function signedInAzureStart(msalInstance: PublicClientApplication, account
 	// Set the active account
 	msalInstance.setActiveAccount(account);
 
-	// Fetch the user's profile picture
-	console.log("Fetching user profile picture...");
+	// Fetch the user's profile picture with improved fallback handling
+	console.log("🖼️ Fetching user profile picture...");
+	let profilePicture = null;
+
+	// Try to get access token and fetch profile picture from Microsoft Graph
+	console.log("🔑 Requesting Microsoft Graph access...");
 	const accessToken = await getGraphAccessToken(msalInstance);
-	const profilePicture = accessToken ? await getUserProfilePicture(accessToken) : null;
+	if (accessToken) {
+		console.log("✅ Microsoft Graph access granted");
+		profilePicture = await getUserProfilePicture(accessToken);
+	} else {
+		console.log(
+			"ℹ️ Microsoft Graph access not available - this is normal for some account types"
+		);
+	}
+
+	// If Microsoft Graph didn't work, try generating a fallback avatar
+	if (!profilePicture) {
+		console.log("🎨 Generating personalized avatar...");
+		profilePicture = await generateFallbackAvatar(account);
+	}
 
 	// Create the azureUser from the account
 	const user = {

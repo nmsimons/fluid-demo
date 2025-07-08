@@ -25,8 +25,6 @@ export async function authHelper(): Promise<PublicClientApplication> {
 			clientId,
 			redirectUri,
 			authority: "https://login.microsoftonline.com/common/",
-			tenantId: "common",
-			scopes: ["User.Read", "openid", "profile"],
 		},
 		cache: {
 			cacheLocation: "localStorage",
