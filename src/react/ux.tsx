@@ -22,11 +22,11 @@ import { Text } from "@fluentui/react-text";
 import { ToolbarDivider } from "@fluentui/react-toolbar";
 import { Tooltip } from "@fluentui/react-tooltip";
 import { Menu, MenuTrigger, MenuPopover, MenuList, MenuItem } from "@fluentui/react-menu";
-import { SignOut20Regular } from "@fluentui/react-icons";
+import { SignOut20Regular, PersonSwap20Regular } from "@fluentui/react-icons";
 import { User, UsersManager } from "../utils/presence/Interfaces/UsersManager.js";
 import { PresenceContext } from "./contexts/PresenceContext.js";
 import { AuthContext } from "./contexts/AuthContext.js";
-import { signOutHelper } from "../infra/auth.js";
+import { signOutHelper, switchAccountHelper } from "../infra/auth.js";
 import { DragManager } from "../utils/presence/Interfaces/DragManager.js";
 import { ResizeManager } from "../utils/presence/Interfaces/ResizeManager.js";
 import { DragAndRotatePackage } from "../utils/presence/drag.js";
@@ -311,6 +311,12 @@ export const CurrentUser = (): JSX.Element => {
 		}
 	};
 
+	const handleSwitchAccount = async () => {
+		if (msalInstance) {
+			await switchAccountHelper(msalInstance);
+		}
+	};
+
 	return (
 		<Menu>
 			<MenuTrigger disableButtonEnhancement>
@@ -328,6 +334,9 @@ export const CurrentUser = (): JSX.Element => {
 			</MenuTrigger>
 			<MenuPopover>
 				<MenuList>
+					<MenuItem icon={<PersonSwap20Regular />} onClick={handleSwitchAccount}>
+						Switch account
+					</MenuItem>
 					<MenuItem icon={<SignOut20Regular />} onClick={handleSignOut}>
 						Sign out
 					</MenuItem>

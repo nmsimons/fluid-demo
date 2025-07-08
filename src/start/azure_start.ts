@@ -22,8 +22,14 @@ export async function azureStart() {
 	// If the tokenResponse is not null, then the user is signed in
 	// and the tokenResponse is the result of the redirect.
 	if (tokenResponse !== null && tokenResponse !== undefined) {
-		const account = msalInstance.getAllAccounts()[0];
-		signedInAzureStart(msalInstance, account);
+		// Use the account from the token response to ensure we have the correct one
+		const account = tokenResponse.account || msalInstance.getAllAccounts()[0];
+		if (account) {
+			signedInAzureStart(msalInstance, account);
+		} else {
+			// Fallback if no account in response
+			msalInstance.loginRedirect();
+		}
 	} else {
 		const currentAccounts = msalInstance.getAllAccounts();
 		// If there are no accounts, the user is not signed in.
@@ -34,8 +40,15 @@ export async function azureStart() {
 			const account = currentAccounts[0];
 			signedInAzureStart(msalInstance, account);
 		} else {
-			// Multiple accounts, show account selector
-			await showAccountSelector(msalInstance, currentAccounts);
+			// Multiple accounts, check if there's an active account
+			const activeAccount = msalInstance.getActiveAccount();
+			if (activeAccount) {
+				// Use the active account if one is set
+				signedInAzureStart(msalInstance, activeAccount);
+			} else {
+				// No active account, show account selector
+				await showAccountSelector(msalInstance, currentAccounts);
+			}
 		}
 	}
 }
@@ -44,21 +57,31 @@ async function showAccountSelector(
 	msalInstance: PublicClientApplication,
 	accounts: AccountInfo[]
 ): Promise<void> {
-	// Create account selection UI
+	// Create account selection UI with improved messaging
 	return new Promise((resolve) => {
 		// Create account list message
-		let message = "Multiple accounts found. Please choose:\n\n";
+		let message = "Multiple Microsoft accounts are available. Please choose:\n\n";
 		accounts.forEach((account, index) => {
-			message += `${index + 1}. ${account.name || account.username} (${account.username})\n`;
+			const displayName = account.name || account.username;
+			const email = account.username;
+			message += `${index + 1}. ${displayName}`;
+			if (displayName !== email) {
+				message += ` (${email})`;
+			}
+			message += '\n';
 		});
-		message += `\n${accounts.length + 1}. Use a different account\n`;
+		message += `\n${accounts.length + 1}. Sign in with a different account\n`;
 		message += `${accounts.length + 2}. Cancel`;
 
-		// Show prompt
-		const choice = prompt(message + "\n\nEnter your choice (1-" + (accounts.length + 2) + "):");
+		// Show prompt with better instruction
+		const choice = prompt(
+			message + "\n\nEnter your choice (1-" + (accounts.length + 2) + "):"
+		);
 
 		if (!choice) {
-			// User cancelled
+			// User cancelled - use the first account as fallback
+			console.log("Account selection cancelled, using first available account");
+			signedInAzureStart(msalInstance, accounts[0]);
 			resolve();
 			return;
 		}
@@ -68,12 +91,20 @@ async function showAccountSelector(
 		if (choiceNum >= 1 && choiceNum <= accounts.length) {
 			// User selected an existing account
 			const selectedAccount = accounts[choiceNum - 1];
+			console.log(`Selected account: ${selectedAccount.name || selectedAccount.username}`);
 			signedInAzureStart(msalInstance, selectedAccount);
 		} else if (choiceNum === accounts.length + 1) {
 			// User wants to use a different account
-			msalInstance.loginRedirect();
+			console.log("User chose to sign in with a different account");
+			msalInstance.loginRedirect({
+				prompt: "login",
+				scopes: ["openid", "profile", "email"]
+			});
+		} else {
+			// Invalid choice or cancel - use the first account as fallback
+			console.log("Invalid choice, using first available account");
+			signedInAzureStart(msalInstance, accounts[0]);
 		}
-		// For any other choice or cancel, do nothing
 
 		resolve();
 	});

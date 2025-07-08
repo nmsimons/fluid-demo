@@ -61,3 +61,43 @@ export async function signOutHelper(msalInstance: PublicClientApplication): Prom
 		window.location.href = window.location.origin;
 	}
 }
+
+/**
+ * Helper function to switch to a different Microsoft account.
+ * This function will show the account selection UI and allow the user to
+ * either pick a different cached account or sign in with a new account.
+ * 
+ * @param msalInstance - The MSAL instance
+ * @returns Promise that resolves when account switching is complete
+ */
+export async function switchAccountHelper(msalInstance: PublicClientApplication): Promise<void> {
+	try {
+		// Get all cached accounts
+		const allAccounts = msalInstance.getAllAccounts();
+		
+		if (allAccounts.length > 1) {
+			// Multiple accounts available, trigger account selection
+			// Clear the active account to force account selection
+			msalInstance.setActiveAccount(null);
+			
+			// Redirect to login with account selection prompt
+			await msalInstance.loginRedirect({
+				prompt: "select_account",
+				scopes: ["openid", "profile", "email"]
+			});
+		} else {
+			// Only one or no accounts, force a new login
+			await msalInstance.loginRedirect({
+				prompt: "login",
+				scopes: ["openid", "profile", "email"]
+			});
+		}
+	} catch (error) {
+		console.error("Account switching failed:", error);
+		// Fallback: try a simple login redirect
+		await msalInstance.loginRedirect({
+			prompt: "select_account",
+			scopes: ["openid", "profile", "email"]
+		});
+	}
+}
