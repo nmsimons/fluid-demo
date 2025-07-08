@@ -1,3 +1,34 @@
+/**
+ * App Keyboard Shortcuts Hook
+ *
+ * Custom React hook that defines and manages all keyboard shortcuts for the
+ * Fluid Framework demo application. This hook provides a comprehensive set of
+ * keyboard shortcuts for productivity and accessibility, including creation,
+ * manipulation, navigation, and collaboration features.
+ *
+ * Key Features:
+ * - Undo/Redo operations (Ctrl+Z, Ctrl+Y, Ctrl+Shift+Z)
+ * - Shape creation shortcuts (C=circle, S=square, T=triangle, R=star)
+ * - Item creation shortcuts (N=note, B=table)
+ * - Selection operations (A=select all, Delete=delete selected)
+ * - Multi-select support with keyboard modifiers
+ * - Color picker shortcuts (1-9 for different colors)
+ * - Comment system shortcuts (M=toggle comments, Enter=add comment)
+ * - Navigation shortcuts (arrow keys, Escape=clear selection)
+ * - Table-specific shortcuts for row/column operations
+ * - Context-aware enabling/disabling based on current state
+ *
+ * The hook integrates with:
+ * - Fluid Framework tree view for data operations
+ * - Selection manager for multi-select operations
+ * - Presence managers for collaborative features
+ * - Undo/redo system for operation history
+ * - Comment system for collaborative feedback
+ *
+ * All shortcuts are designed to be intuitive and follow common application
+ * conventions while providing powerful collaborative editing capabilities.
+ */
+
 import { TreeView, Tree } from "fluid-framework";
 import { App, FluidTable } from "../../schema/app_schema.js";
 import { KeyboardShortcut } from "./useKeyboardShortcuts.js";
@@ -6,25 +37,77 @@ import { UsersManager } from "../../utils/presence/Interfaces/UsersManager.js";
 import { SHAPE_COLORS } from "../appbuttonux.js";
 import { SelectionManager } from "../../utils/presence/Interfaces/SelectionManager.js";
 
+/**
+ * Props interface for the useAppKeyboardShortcuts hook.
+ * Contains all the dependencies needed for keyboard shortcut operations.
+ */
 export interface UseAppKeyboardShortcutsProps {
+	/** Fluid Framework tree view for data operations */
 	view: TreeView<typeof App>;
+
+	/** Current canvas dimensions for positioning new items */
 	canvasSize: { width: number; height: number };
+
+	/** Currently selected single item ID (for single selection operations) */
 	selectedItemId: string;
+
+	/** Array of all currently selected item IDs (for multi-selection operations) */
 	selectedItemIds: string[];
+
+	/** Currently selected table column ID */
 	selectedColumnId: string;
+
+	/** Currently selected table row ID */
 	selectedRowId: string;
+
+	/** Whether the comment pane is currently hidden */
 	commentPaneHidden: boolean;
+
+	/** Undo/redo manager for operation history */
 	undoRedo: undoRedo;
+
+	/** Users manager for accessing current user information */
 	users: UsersManager;
+
+	/** Whether undo operation is currently available */
 	canUndo: boolean;
+
+	/** Whether redo operation is currently available */
 	canRedo: boolean;
+
+	/** Function to show/hide the comment pane */
 	setCommentPaneHidden: (hidden: boolean) => void;
+
+	/** Function to open comment pane and focus on specific item */
 	openCommentPaneAndFocus: (itemId: string) => void;
+
+	/** Selection manager for handling multi-select operations */
 	selectionManager: SelectionManager;
 }
 
 /**
- * Hook that returns all keyboard shortcuts for the ReactApp component
+ * Custom hook that returns all keyboard shortcuts for the ReactApp component.
+ * Provides a comprehensive set of keyboard shortcuts for productivity and accessibility.
+ *
+ * @param props - Configuration object containing all dependencies for shortcuts
+ * @returns Array of KeyboardShortcut objects defining all available shortcuts
+ *
+ * Keyboard Shortcuts:
+ * - Ctrl+Z: Undo last operation
+ * - Ctrl+Y / Ctrl+Shift+Z: Redo last undone operation
+ * - C: Create circle shape
+ * - S: Create square shape
+ * - T: Create triangle shape
+ * - R: Create star shape
+ * - N: Create note item
+ * - B: Create table
+ * - A: Select all items
+ * - Delete: Delete selected items
+ * - 1-9: Apply color to selected shapes
+ * - M: Toggle comment pane visibility
+ * - Enter: Add comment to selected item
+ * - Escape: Clear all selections
+ * - Arrow keys: Navigate table selections
  */
 export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): KeyboardShortcut[] {
 	const {
@@ -45,7 +128,7 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 	} = props;
 
 	return [
-		// Undo/Redo shortcuts
+		// Undo/Redo shortcuts - Essential for collaborative editing
 		{
 			key: "z",
 			ctrlKey: true,
