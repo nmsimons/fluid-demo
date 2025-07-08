@@ -42,3 +42,27 @@ export async function authHelper(): Promise<PublicClientApplication> {
 
 	return msalInstance;
 }
+
+// Helper function to sign out the user
+export async function signOutHelper(msalInstance: PublicClientApplication): Promise<void> {
+	try {
+		// Get the active account
+		const account = msalInstance.getActiveAccount();
+		
+		if (account) {
+			// Logout with redirect to ensure proper cleanup
+			await msalInstance.logoutRedirect({
+				account: account,
+				postLogoutRedirectUri: window.location.origin
+			});
+		} else {
+			// If no active account, just redirect to the main page
+			window.location.href = window.location.origin;
+		}
+	} catch (error) {
+		console.error("Sign out failed:", error);
+		// Fallback: clear local storage and redirect
+		localStorage.clear();
+		window.location.href = window.location.origin;
+	}
+}

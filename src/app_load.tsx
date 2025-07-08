@@ -9,12 +9,13 @@ import { loadFluidData } from "./infra/fluid.js";
 import { IFluidContainer } from "fluid-framework";
 import { FluentProvider } from "@fluentui/react-provider";
 import { webLightTheme } from "@fluentui/react-theme";
+import { AuthContext } from "./react/contexts/AuthContext.js";
 
 import { getPresence } from "@fluidframework/presence/beta";
 import { createTypedSelectionManager } from "./utils/presence/selection.js";
 import { createUsersManager } from "./utils/presence/users.js";
 import { UserInfo } from "./utils/presence/Interfaces/UsersManager.js";
-import { AccountInfo } from "@azure/msal-browser";
+import { AccountInfo, PublicClientApplication } from "@azure/msal-browser";
 import { createDragManager } from "./utils/presence/drag.js";
 import { createResizeManager } from "./utils/presence/resize.js";
 
@@ -23,8 +24,9 @@ export async function loadApp(props: {
 	containerId: string;
 	account: AccountInfo;
 	user?: UserInfo;
+	msalInstance: PublicClientApplication;
 }): Promise<IFluidContainer> {
-	const { client, containerId, account, user } = props;
+	const { client, containerId, account, user, msalInstance } = props;
 
 	// Initialize Fluid Container
 	const { container } = await loadFluidData(containerId, containerSchema, client);
@@ -92,16 +94,18 @@ export async function loadApp(props: {
 	// interactive immediately.
 	root.render(
 		<FluentProvider theme={webLightTheme}>
-			<ReactApp
-				tree={appTree}
-				itemSelection={itemSelection}
-				tableSelection={tableSelection}
-				drag={drag}
-				resize={resize}
-				users={users}
-				container={container}
-				undoRedo={undoRedo}
-			/>
+			<AuthContext.Provider value={{ msalInstance }}>
+				<ReactApp
+					tree={appTree}
+					itemSelection={itemSelection}
+					tableSelection={tableSelection}
+					drag={drag}
+					resize={resize}
+					users={users}
+					container={container}
+					undoRedo={undoRedo}
+				/>
+			</AuthContext.Provider>
 		</FluentProvider>
 	);
 

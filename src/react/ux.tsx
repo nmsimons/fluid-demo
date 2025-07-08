@@ -21,8 +21,18 @@ import {
 import { Text } from "@fluentui/react-text";
 import { ToolbarDivider } from "@fluentui/react-toolbar";
 import { Tooltip } from "@fluentui/react-tooltip";
+import {
+	Menu,
+	MenuTrigger,
+	MenuPopover,
+	MenuList,
+	MenuItem,
+} from "@fluentui/react-menu";
+import { SignOut20Regular } from "@fluentui/react-icons";
 import { User, UsersManager } from "../utils/presence/Interfaces/UsersManager.js";
 import { PresenceContext } from "./contexts/PresenceContext.js";
+import { AuthContext } from "./contexts/AuthContext.js";
+import { signOutHelper } from "../infra/auth.js";
 import { DragManager } from "../utils/presence/Interfaces/DragManager.js";
 import { ResizeManager } from "../utils/presence/Interfaces/ResizeManager.js";
 import { DragAndRotatePackage } from "../utils/presence/drag.js";
@@ -279,9 +289,15 @@ export const HeaderDivider = (): JSX.Element => {
 	return <ToolbarDivider />;
 };
 
+/**
+ * CurrentUser component displays the current user's avatar with a context menu.
+ * The context menu includes a sign-out option that uses MSAL to properly
+ * log out the user and redirect them to the login page.
+ */
 export const CurrentUser = (): JSX.Element => {
 	const users = useContext(PresenceContext).users;
 	const currentUser = users.getMyself().value;
+	const { msalInstance } = useContext(AuthContext);
 
 	// Debug logging
 	console.log("CurrentUser component - user data:", {
@@ -291,12 +307,32 @@ export const CurrentUser = (): JSX.Element => {
 		imageLength: currentUser.image?.length,
 	});
 
+	const handleSignOut = async () => {
+		if (msalInstance) {
+			await signOutHelper(msalInstance);
+		}
+	};
+
 	return (
-		<Avatar
-			name={currentUser.name}
-			image={currentUser.image ? { src: currentUser.image } : undefined}
-			size={24}
-		/>
+		<Menu>
+			<MenuTrigger disableButtonEnhancement>
+				<Tooltip content={`${currentUser.name} - Click for options`} relationship="label">
+					<Avatar
+						name={currentUser.name}
+						image={currentUser.image ? { src: currentUser.image } : undefined}
+						size={24}
+						style={{ cursor: "pointer" }}
+					/>
+				</Tooltip>
+			</MenuTrigger>
+			<MenuPopover>
+				<MenuList>
+					<MenuItem icon={<SignOut20Regular />} onClick={handleSignOut}>
+						Sign out
+					</MenuItem>
+				</MenuList>
+			</MenuPopover>
+		</Menu>
 	);
 };
 
