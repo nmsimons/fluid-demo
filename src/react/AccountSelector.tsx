@@ -32,7 +32,9 @@ export const AccountSelector: React.FC<AccountSelectorProps> = ({
 				<DialogBody>
 					<DialogTitle>Choose an Account</DialogTitle>
 					<DialogContent>
-						<Text>Multiple accounts are available. Please choose which account to use:</Text>
+						<Text>
+							Multiple accounts are available. Please choose which account to use:
+						</Text>
 						<div className="mt-4 space-y-2">
 							{accounts.map((account, index) => (
 								<Button
@@ -56,7 +58,13 @@ export const AccountSelector: React.FC<AccountSelectorProps> = ({
 										icon={<PersonRegular />}
 										size={32}
 									/>
-									<div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+									<div
+										style={{
+											display: "flex",
+											flexDirection: "column",
+											alignItems: "flex-start",
+										}}
+									>
 										<Text weight="semibold">
 											{account.name || account.username}
 										</Text>
@@ -82,11 +90,14 @@ export const AccountSelector: React.FC<AccountSelectorProps> = ({
 									borderStyle: "dashed",
 								}}
 							>
-								<Avatar
-									icon={<AddRegular />}
-									size={32}
-								/>
-								<div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start" }}>
+								<Avatar icon={<AddRegular />} size={32} />
+								<div
+									style={{
+										display: "flex",
+										flexDirection: "column",
+										alignItems: "flex-start",
+									}}
+								>
 									<Text weight="semibold">Use a different account</Text>
 									<Text size={200} style={{ color: "#666" }}>
 										Sign in with a new account

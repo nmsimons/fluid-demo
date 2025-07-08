@@ -14,15 +14,20 @@ export function useAccountSelector(): UseAccountSelectorReturn {
 	const [isOpen, setIsOpen] = useState(false);
 	const [accounts, setAccounts] = useState<AccountInfo[]>([]);
 	const [selectedAccount, setSelectedAccount] = useState<AccountInfo | null>(null);
-	const [resolvePromise, setResolvePromise] = useState<((account: AccountInfo | null) => void) | null>(null);
+	const [resolvePromise, setResolvePromise] = useState<
+		((account: AccountInfo | null) => void) | null
+	>(null);
 
-	const showAccountSelector = useCallback((accountList: AccountInfo[]): Promise<AccountInfo | null> => {
-		return new Promise((resolve) => {
-			setAccounts(accountList);
-			setIsOpen(true);
-			setResolvePromise(() => resolve);
-		});
-	}, []);
+	const showAccountSelector = useCallback(
+		(accountList: AccountInfo[]): Promise<AccountInfo | null> => {
+			return new Promise((resolve) => {
+				setAccounts(accountList);
+				setIsOpen(true);
+				setResolvePromise(() => resolve);
+			});
+		},
+		[]
+	);
 
 	const hideAccountSelector = useCallback(() => {
 		setIsOpen(false);
@@ -33,15 +38,18 @@ export function useAccountSelector(): UseAccountSelectorReturn {
 		}
 	}, [resolvePromise]);
 
-	const selectAccount = useCallback((account: AccountInfo) => {
-		setSelectedAccount(account);
-		setIsOpen(false);
-		setAccounts([]);
-		if (resolvePromise) {
-			resolvePromise(account);
-			setResolvePromise(null);
-		}
-	}, [resolvePromise]);
+	const selectAccount = useCallback(
+		(account: AccountInfo) => {
+			setSelectedAccount(account);
+			setIsOpen(false);
+			setAccounts([]);
+			if (resolvePromise) {
+				resolvePromise(account);
+				setResolvePromise(null);
+			}
+		},
+		[resolvePromise]
+	);
 
 	return {
 		isOpen,

@@ -36,7 +36,10 @@ export async function azureStart() {
 	}
 }
 
-async function showAccountSelector(msalInstance: PublicClientApplication, accounts: AccountInfo[]): Promise<void> {
+async function showAccountSelector(
+	msalInstance: PublicClientApplication,
+	accounts: AccountInfo[]
+): Promise<void> {
 	// Create account selection UI
 	return new Promise((resolve) => {
 		// Create account list message
@@ -49,7 +52,7 @@ async function showAccountSelector(msalInstance: PublicClientApplication, accoun
 
 		// Show prompt
 		const choice = prompt(message + "\n\nEnter your choice (1-" + (accounts.length + 2) + "):");
-		
+
 		if (!choice) {
 			// User cancelled
 			resolve();
@@ -57,7 +60,7 @@ async function showAccountSelector(msalInstance: PublicClientApplication, accoun
 		}
 
 		const choiceNum = parseInt(choice);
-		
+
 		if (choiceNum >= 1 && choiceNum <= accounts.length) {
 			// User selected an existing account
 			const selectedAccount = accounts[choiceNum - 1];
@@ -67,7 +70,7 @@ async function showAccountSelector(msalInstance: PublicClientApplication, accoun
 			msalInstance.loginRedirect();
 		}
 		// For any other choice or cancel, do nothing
-		
+
 		resolve();
 	});
 }
