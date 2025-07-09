@@ -14,6 +14,49 @@ import { Comment20Filled } from "@fluentui/react-icons";
 import { PaneContext } from "./contexts/PaneContext.js";
 import { LayoutContext } from "./hooks/useLayoutManger.js";
 
+/**
+ * Utility function to generate consistent user colors
+ * Creates a unique color for each user based on their ID
+ */
+const getUserColor = (userId: string): string => {
+	const colors = [
+		"#3b82f6", // blue
+		"#ef4444", // red
+		"#10b981", // green
+		"#f59e0b", // yellow
+		"#8b5cf6", // purple
+		"#06b6d4", // cyan
+		"#f97316", // orange
+		"#84cc16", // lime
+		"#ec4899", // pink
+		"#6366f1", // indigo
+		"#f43f5e", // rose
+		"#06b6d4", // cyan
+		"#14b8a6", // teal
+		"#a855f7", // violet
+		"#0ea5e9", // sky
+	];
+
+	// Simple hash function to get consistent color
+	let hash = 0;
+	for (let i = 0; i < userId.length; i++) {
+		hash = userId.charCodeAt(i) + ((hash << 5) - hash);
+	}
+	return colors[Math.abs(hash) % colors.length];
+};
+
+/**
+ * Utility function to extract initials from a user name
+ */
+const getInitials = (name: string): string => {
+	if (!name) return "?";
+	const words = name.trim().split(/\s+/);
+	if (words.length === 1) {
+		return words[0].charAt(0).toUpperCase();
+	}
+	return (words[0].charAt(0) + words[words.length - 1].charAt(0)).toUpperCase();
+};
+
 const getContentType = (item: Item): string => {
 	if (Tree.is(item.content, Shape)) {
 		return "shape";
@@ -243,7 +286,7 @@ export function ItemView(props: {
 		>
 			<CommentIndicator comments={item.comments} selected={selected} />
 			<SelectionBox selected={selected} item={item} onResizeEnd={clearShapeProps} />
-			<PresenceBox remoteSelected={remoteSelected.length > 0} />
+			<RemoteSelectionIndicators remoteSelectedUsers={remoteSelected} />
 			<ContentElement item={item} shapeProps={shapeProps} />
 		</div>
 	);
@@ -275,6 +318,82 @@ export function CommentIndicator(props: { comments: Comments; selected: boolean 
 	);
 }
 
+/**
+ * RemoteSelectionIndicators Component
+ *
+ * Displays user-specific selection indicators for remote selections.
+ * Shows a circle with the remote user's initials in the top right corner
+ * of items selected by remote users, replacing the generic grey box.
+ */
+export function RemoteSelectionIndicators(props: { remoteSelectedUsers: string[] }): JSX.Element {
+	const { remoteSelectedUsers } = props;
+	const presence = useContext(PresenceContext);
+
+	if (remoteSelectedUsers.length === 0) {
+		return <></>;
+	}
+
+	// Get user information for each remote selection
+	const remoteUsers = remoteSelectedUsers
+		.map((userId) => {
+			// Find the user in the connected users list
+			const connectedUsers = presence.users.getConnectedUsers();
+			const user = connectedUsers.find((u) => u.client.attendeeId === userId);
+			return user;
+		})
+		.filter((user) => user !== undefined);
+
+	// If no valid users found, don't show anything
+	if (remoteUsers.length === 0) {
+		return <></>;
+	}
+
+	return (
+		<div className="absolute pointer-events-none" style={{ top: 0, right: 0, zIndex: 1001 }}>
+			{remoteUsers.map((user, index) => (
+				<RemoteUserIndicator key={user.client.attendeeId} user={user} index={index} />
+			))}
+		</div>
+	);
+}
+
+/**
+ * RemoteUserIndicator Component
+ *
+ * Displays a single user's selection indicator with their initials and color.
+ * Shows as a circle positioned in the top right corner of the selected item.
+ */
+function RemoteUserIndicator(props: {
+	user: { value: { name: string; id: string; image?: string }; client: { attendeeId: string } };
+	index: number;
+}): JSX.Element {
+	const { user, index } = props;
+
+	const initials = getInitials(user.value.name);
+	const backgroundColor = getUserColor(user.client.attendeeId);
+
+	// Offset multiple indicators so they don't overlap
+	const offset = index * 26; // 24px circle + 2px margin
+
+	return (
+		<div
+			className="flex items-center justify-center text-white text-xs font-semibold rounded-full border-2 border-white shadow-lg"
+			style={{
+				width: "24px",
+				height: "24px",
+				backgroundColor,
+				position: "absolute",
+				top: -12,
+				right: -12 - offset,
+				zIndex: 1001,
+			}}
+			title={`Selected by ${user.value.name}`}
+		>
+			{initials}
+		</div>
+	);
+}
+
 // calculate the mouse coordinates relative to the canvas div
 const calculateCanvasMouseCoordinates = (
 	e: React.MouseEvent<HTMLDivElement>
@@ -301,24 +420,6 @@ const calculateOffsetFromCanvasOrigin = (
 		y: newY,
 	};
 };
-
-export function PresenceBox(props: { remoteSelected: boolean }): JSX.Element {
-	const { remoteSelected } = props;
-	const padding = 8;
-	return (
-		<div
-			className={`absolute border-3 border-dashed border-black bg-transparent opacity-40 ${remoteSelected ? "" : " hidden"}`}
-			style={{
-				left: -padding,
-				top: -padding,
-				width: `calc(100% + ${padding * 2}px)`,
-				height: `calc(100% + ${padding * 2}px)`,
-				zIndex: 1000,
-				pointerEvents: "none",
-			}}
-		></div>
-	);
-}
 
 export function SelectionBox(props: {
 	selected: boolean;
