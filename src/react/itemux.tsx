@@ -322,12 +322,13 @@ export function CommentIndicator(props: { comments: Comments; selected: boolean 
  * RemoteSelectionIndicators Component
  *
  * Displays user-specific selection indicators for remote selections.
- * Shows a circle with the remote user's initials in the top right corner
- * of items selected by remote users, replacing the generic grey box.
+ * Shows a collapsible badge system: when multiple users select an item,
+ * shows a count badge that expands to individual user badges when clicked.
  */
 export function RemoteSelectionIndicators(props: { remoteSelectedUsers: string[] }): JSX.Element {
 	const { remoteSelectedUsers } = props;
 	const presence = useContext(PresenceContext);
+	const [expanded, setExpanded] = useState(false);
 
 	if (remoteSelectedUsers.length === 0) {
 		return <></>;
@@ -348,11 +349,130 @@ export function RemoteSelectionIndicators(props: { remoteSelectedUsers: string[]
 		return <></>;
 	}
 
+	// If only one user, show their badge directly
+	if (remoteUsers.length === 1) {
+		return (
+			<div
+				className="absolute pointer-events-none"
+				style={{ top: 0, right: 0, zIndex: 1001 }}
+			>
+				<RemoteUserIndicator user={remoteUsers[0]} index={0} />
+			</div>
+		);
+	}
+
+	const handleExpand = () => {
+		setExpanded(true);
+	};
+
+	const handleCollapse = () => {
+		setExpanded(false);
+	};
+
+	// Multiple users: show collapsible system
 	return (
-		<div className="absolute pointer-events-none" style={{ top: 0, right: 0, zIndex: 1001 }}>
-			{remoteUsers.map((user, index) => (
-				<RemoteUserIndicator key={user.client.attendeeId} user={user} index={index} />
-			))}
+		<div className="absolute" style={{ top: 0, right: 0, zIndex: 1001 }}>
+			{expanded ? (
+				// Expanded view: show individual user badges with staggered animation
+				<div className="pointer-events-none relative">
+					{remoteUsers.map((user, index) => (
+						<div
+							key={user.client.attendeeId}
+							className="transition-all duration-300 ease-out"
+							style={{
+								transform: `translateX(${expanded ? 0 : 20}px)`,
+								opacity: expanded ? 1 : 0,
+								transitionDelay: `${index * 50}ms`,
+							}}
+						>
+							<RemoteUserIndicator user={user} index={index} />
+						</div>
+					))}
+					{/* Collapse button */}
+					<div
+						className="absolute pointer-events-auto cursor-pointer flex items-center justify-center text-white text-xs font-semibold rounded-full bg-gray-600 hover:bg-gray-700 transition-all duration-200 border-2 border-white shadow-lg"
+						style={{
+							width: "24px",
+							height: "24px",
+							top: -12,
+							right: -12 - remoteUsers.length * 26,
+							zIndex: 1002,
+							transform: `scale(${expanded ? 1 : 0})`,
+							opacity: expanded ? 1 : 0,
+							transitionDelay: `${remoteUsers.length * 50}ms`,
+						}}
+						onClick={(e) => {
+							e.stopPropagation();
+							handleCollapse();
+						}}
+						title="Collapse user list"
+					>
+						×
+					</div>
+				</div>
+			) : (
+				// Collapsed view: show count badge with smooth transition
+				<div
+					className="transition-all duration-300 ease-out"
+					style={{
+						transform: `scale(${expanded ? 0 : 1})`,
+						opacity: expanded ? 0 : 1,
+					}}
+				>
+					<MultiUserCountBadge
+						userCount={remoteUsers.length}
+						users={remoteUsers}
+						onExpand={handleExpand}
+					/>
+				</div>
+			)}
+		</div>
+	);
+}
+
+/**
+ * MultiUserCountBadge Component
+ *
+ * Displays a count badge showing the number of users who have selected an item.
+ * Includes a preview of the first few users and can be clicked to expand.
+ */
+function MultiUserCountBadge(props: {
+	userCount: number;
+	users: Array<{
+		value: { name: string; id: string; image?: string };
+		client: { attendeeId: string };
+	}>;
+	onExpand: () => void;
+}): JSX.Element {
+	const { userCount, users, onExpand } = props;
+
+	// Get names of first few users for tooltip
+	const previewUsers = users.slice(0, 3);
+	const remainingCount = Math.max(0, userCount - 3);
+
+	const tooltipText =
+		previewUsers.map((u) => u.value.name).join(", ") +
+		(remainingCount > 0 ? ` and ${remainingCount} more` : "") +
+		` selected this item`;
+
+	return (
+		<div
+			className="pointer-events-auto cursor-pointer flex items-center justify-center text-white text-xs font-semibold rounded-full bg-black hover:bg-gray-800 transition-colors duration-200 border-2 border-white shadow-lg hover:shadow-xl"
+			style={{
+				width: "24px",
+				height: "24px",
+				position: "absolute",
+				top: -12,
+				right: -12,
+				zIndex: 1001,
+			}}
+			onClick={(e) => {
+				e.stopPropagation();
+				onExpand();
+			}}
+			title={tooltipText}
+		>
+			{userCount}
 		</div>
 	);
 }
