@@ -19,16 +19,13 @@
  */
 
 import {
-	type Presence,
 	StateFactory,
 	StatesWorkspace,
-	AttendeeId,
-	ClientConnectionId,
 	LatestRaw,
 	LatestRawEvents,
 } from "@fluidframework/presence/alpha";
 import { Listenable } from "fluid-framework";
-import { DragManager } from "./Interfaces/DragManager.js";
+import { DragManager, DragPackage } from "./Interfaces/DragManager.js";
 
 /**
  * Creates a new DragManager instance with the given presence and workspace.
@@ -36,13 +33,11 @@ import { DragManager } from "./Interfaces/DragManager.js";
  * returns a fully configured drag manager.
  *
  * @param props - Configuration object containing presence, workspace, and name
- * @param props.presence - The Fluid presence instance for client management
  * @param props.workspace - The states workspace for state synchronization
  * @param props.name - Unique name for this drag manager instance
  * @returns A configured DragManager instance
  */
 export function createDragManager(props: {
-	presence: Presence;
 	workspace: StatesWorkspace<{}>;
 	name: string;
 }): DragManager<DragAndRotatePackage | null> {
@@ -53,9 +48,6 @@ export function createDragManager(props: {
 	 * Handles all drag operations and state synchronization.
 	 */
 	class DragManagerImpl implements DragManager<DragAndRotatePackage | null> {
-		/** Default state when no drag operation is active */
-		initialState: DragAndRotatePackage | null = null;
-
 		/** Fluid Framework state object for real-time synchronization */
 		state: LatestRaw<DragAndRotatePackage | null>;
 
@@ -68,30 +60,17 @@ export function createDragManager(props: {
 		 */
 		constructor(name: string, workspace: StatesWorkspace<{}>) {
 			// Register this drag manager's state with the Fluid workspace
-			workspace.add(
-				name,
-				StateFactory.latest<DragAndRotatePackage | null>({ local: this.initialState })
-			);
+			workspace.add(name, StateFactory.latest<DragAndRotatePackage | null>({ local: null }));
 			this.state = workspace.states[name];
 		}
 
 		/**
 		 * Client management interface providing access to attendees and their information.
-		 * This allows the drag manager to know who is connected and get their details.
+		 * This allows the selection manager to know who is connected and get their details.
 		 */
-		public clients = {
-			/** Get a specific attendee by their client or attendee ID */
-			getAttendee: (clientId: ClientConnectionId | AttendeeId) =>
-				this.state.presence.attendees.getAttendee(clientId),
-			/** Get all currently connected attendees */
-			getAttendees: () => this.state.presence.attendees.getAttendees(),
-			/** Get the current user's attendee object */
-			getMyself: () => this.state.presence.attendees.getMyself(),
-			/** Get event emitter for attendee-related events (join/leave) */
-			getEvents: () => {
-				return this.state.presence.attendees.events;
-			},
-		};
+		public get attendees() {
+			return this.state.presence.attendees;
+		}
 
 		/**
 		 * Event emitter for drag state changes.
@@ -128,15 +107,9 @@ export function createDragManager(props: {
  * Extended drag package type that includes rotation and branch information.
  * This is more comprehensive than the base DragPackage to support the demo's features.
  */
-export type DragAndRotatePackage = {
-	/** Unique identifier of the element being dragged */
-	id: string;
-	/** Current X coordinate of the dragged element */
-	x: number;
-	/** Current Y coordinate of the dragged element */
-	y: number;
+export interface DragAndRotatePackage extends DragPackage {
 	/** Current rotation angle of the dragged element in degrees */
 	rotation: number;
 	/** Whether this is a branch drag operation (for tree structures) */
 	branch: boolean;
-};
+}

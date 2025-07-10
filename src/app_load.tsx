@@ -72,7 +72,6 @@ export async function loadApp(props: {
 	const drag = createDragManager({
 		name: "drag:main",
 		workspace,
-		presence,
 	});
 
 	const resize = createResizeManager({

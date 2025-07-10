@@ -42,24 +42,55 @@ import { ToolbarButton } from "@fluentui/react-toolbar";
 import { Tooltip } from "@fluentui/react-tooltip";
 import { useTree } from "./hooks/useTree.js";
 
+/**
+ * Ensure that all selected rows are still in the document.
+ * If a row is not in the document, it will be removed from the selection.
+ * @param table
+ * @param selection
+ */
+const removeInvalidRows = (
+	table: FluidTable,
+	selection: SelectionManager<TypedSelection>
+): void => {
+	const selectedRows = selection.getLocalSelection().filter((s) => s.type === "row");
+
+	for (const row of selectedRows) {
+		const r = table.getRow(row.id);
+		if (r === undefined || Tree.status(r) !== TreeStatus.InDocument) {
+			// If the row is not in the document, remove it from the selection
+			selection.removeFromSelection({ id: row.id, type: "row" });
+		}
+	}
+};
+
+/**
+ * Get the last selected row from the table. If there are no selected rows,
+ * returns undefined. If there are selected rows, it returns the last one.
+ * @param table
+ * @param selection
+ * @returns FluidRow | undefined
+ */
 const getLastSelectedRow = (
 	table: FluidTable,
 	selection: SelectionManager<TypedSelection>
 ): FluidRow | undefined => {
+	// Ensure that all selected rows are still in the document.
+	// Remove any rows that are not in the document from the selection.
+	removeInvalidRows(table, selection);
+
+	// Get all selected rows from the selection manager.
 	const selectedRows = selection.getLocalSelection().filter((s) => {
 		return s.type === "row";
 	});
+
+	// If there are selected rows, return the last one
 	if (selectedRows.length > 0) {
 		const lastSelectedRow = table.getRow(selectedRows[selectedRows.length - 1].id);
-		// If the last selected row is not in the table, we will return undefined
 		if (!lastSelectedRow) return undefined;
-		if (Tree.status(lastSelectedRow) === TreeStatus.InDocument) {
-			return lastSelectedRow;
-		} else {
-			// Remove the last selected row from the selection
-			selection.removeFromSelection({ id: lastSelectedRow.id, type: "row" });
-			return getLastSelectedRow(table, selection);
-		}
+		return lastSelectedRow;
+	} else {
+		// If there are no selected rows, return undefined
+		return undefined;
 	}
 };
 

@@ -10,7 +10,7 @@ import { objectIdNumber, useTree } from "./hooks/useTree.js";
 import { usePresenceManager } from "./hooks/usePresenceManger.js";
 import { PresenceManager } from "../utils/presence/Interfaces/PresenceManager.js";
 import { TableView } from "./tableux.js";
-import { Comment20Filled } from "@fluentui/react-icons";
+import { Comment20Filled, ChevronLeft16Filled } from "@fluentui/react-icons";
 import { PaneContext } from "./contexts/PaneContext.js";
 import { LayoutContext } from "./hooks/useLayoutManger.js";
 
@@ -306,8 +306,9 @@ export function CommentIndicator(props: { comments: Comments; selected: boolean 
 		<div
 			className={`absolute pointer-events-none flex flex-row justify-center items-center ${visible ? "" : " hidden"}`}
 			style={{
-				top: -12, // Position near the top-right corner
-				right: -12, // Position to the right of the item
+				top: -35, // Position above the item, same as rotation handle
+				left: "50%", // Center horizontally
+				transform: "translateX(-50%)", // Center the icon
 				zIndex: 10000,
 				width: "24px",
 				height: "24px",
@@ -390,10 +391,8 @@ export function RemoteSelectionIndicators(props: { remoteSelectedUsers: string[]
 					))}
 					{/* Collapse button */}
 					<div
-						className="absolute pointer-events-auto cursor-pointer flex items-center justify-center text-white text-xs font-semibold rounded-full bg-gray-600 hover:bg-gray-700 transition-all duration-200 border-2 border-white shadow-lg"
+						className="absolute pointer-events-auto cursor-pointer w-6 h-6 rounded-full bg-gray-600 hover:bg-gray-700 transition-all duration-200 border-2 border-white shadow-lg flex items-center justify-center"
 						style={{
-							width: "24px",
-							height: "24px",
 							top: -12,
 							right: -12 - remoteUsers.length * 26,
 							zIndex: 1002,
@@ -407,7 +406,7 @@ export function RemoteSelectionIndicators(props: { remoteSelectedUsers: string[]
 						}}
 						title="Collapse user list"
 					>
-						×
+						<ChevronLeft16Filled className="text-white" />
 					</div>
 				</div>
 			) : (
@@ -497,7 +496,7 @@ function RemoteUserIndicator(props: {
 
 	return (
 		<div
-			className="flex items-center justify-center text-white text-xs font-semibold rounded-full border-2 border-white shadow-lg"
+			className="flex items-center justify-center text-white font-semibold rounded-full border-2 border-white shadow-lg"
 			style={{
 				width: "24px",
 				height: "24px",
@@ -506,6 +505,8 @@ function RemoteUserIndicator(props: {
 				top: -12,
 				right: -12 - offset,
 				zIndex: 1001,
+				fontSize: "10px",
+				lineHeight: "1",
 			}}
 			title={`Selected by ${user.value.name}`}
 		>

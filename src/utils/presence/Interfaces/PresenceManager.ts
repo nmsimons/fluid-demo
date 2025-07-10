@@ -10,47 +10,16 @@
  */
 
 import {
-	ClientConnectionId,
-	AttendeeId,
-	Attendee,
 	LatestRaw,
 	LatestRawEvents,
 	LatestMapRaw,
 	LatestMapRawEvents,
 	AttendeesEvents,
-} from "@fluidframework/presence/alpha";
+	Attendee,
+	AttendeeId,
+	ClientConnectionId,
+} from "@fluidframework/presence/beta";
 import { Listenable } from "fluid-framework";
-
-/**
- * PresenceClients interface for managing client connections and attendees.
- * Provides access to information about all connected users in the collaboration session.
- */
-export interface PresenceClients {
-	/**
-	 * Retrieves an attendee by their client or attendee ID.
-	 * @param clientId - The client connection ID or attendee ID
-	 * @returns The attendee object containing user information
-	 */
-	getAttendee: (clientId: ClientConnectionId | AttendeeId) => Attendee;
-
-	/**
-	 * Gets all currently connected attendees.
-	 * @returns A read-only set of all attendees in the session
-	 */
-	getAttendees: () => ReadonlySet<Attendee>;
-
-	/**
-	 * Gets the current user's attendee object.
-	 * @returns The current user's attendee information
-	 */
-	getMyself: () => Attendee;
-
-	/**
-	 * Gets the event emitter for attendee-related events.
-	 * @returns Listenable for attendee join/leave events
-	 */
-	getEvents: () => Listenable<AttendeesEvents>;
-}
 
 /**
  * PresenceManager interface for managing real-time state synchronization.
@@ -59,14 +28,18 @@ export interface PresenceClients {
  * @template TState - The type of state being managed (e.g., selection, drag, resize)
  */
 export interface PresenceManager<TState> {
-	/** The initial/default state value */
-	initialState: TState;
-
 	/** The current state wrapped in Fluid's LatestRaw for real-time sync */
 	state: LatestRaw<TState>;
 
-	/** Interface for managing client connections and attendees */
-	clients: PresenceClients;
+	/** Interface for managing client connections and attendees
+	 * Provides methods to get attendees, their details, and the current user.
+	 */
+	attendees: {
+		readonly events: Listenable<AttendeesEvents>;
+		getAttendees(): ReadonlySet<Attendee>;
+		getAttendee(clientId: ClientConnectionId | AttendeeId): Attendee;
+		getMyself(): Attendee;
+	};
 
 	/** Event emitter for state change notifications */
 	events: Listenable<LatestRawEvents<TState>>;
@@ -83,7 +56,12 @@ export interface PresenceMapManager<TState> {
 	state: LatestMapRaw<TState>;
 
 	/** Interface for managing client connections and attendees */
-	clients: PresenceClients;
+	attendees: {
+		readonly events: Listenable<AttendeesEvents>;
+		getAttendees(): ReadonlySet<Attendee>;
+		getAttendee(clientId: ClientConnectionId | AttendeeId): Attendee;
+		getMyself(): Attendee;
+	};
 
 	/** Event emitter for map state change notifications */
 	events: Listenable<LatestMapRawEvents<TState, string>>;

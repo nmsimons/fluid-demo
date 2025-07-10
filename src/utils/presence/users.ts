@@ -24,8 +24,6 @@ import {
 	LatestRawEvents,
 	StatesWorkspace,
 	LatestRaw,
-	AttendeeId,
-	ClientConnectionId,
 	AttendeeStatus,
 } from "@fluidframework/presence/alpha";
 import { UsersManager, User, UserInfo } from "./Interfaces/UsersManager.js";
@@ -53,9 +51,6 @@ export function createUsersManager(props: {
 	 * Handles user presence tracking and profile management.
 	 */
 	class UsersManagerImpl implements UsersManager {
-		/** Default initial state with the current user's information */
-		initialState: UserInfo = me;
-
 		/** Fluid Framework state object for real-time synchronization */
 		state: LatestRaw<UserInfo>;
 
@@ -68,7 +63,7 @@ export function createUsersManager(props: {
 		 */
 		constructor(name: string, workspace: StatesWorkspace<{}>) {
 			// Register this users manager's state with the Fluid workspace
-			workspace.add(name, StateFactory.latest({ local: this.initialState }));
+			workspace.add(name, StateFactory.latest({ local: me }));
 			this.state = workspace.states[name];
 		}
 
@@ -82,24 +77,11 @@ export function createUsersManager(props: {
 
 		/**
 		 * Client management interface providing access to attendees and their information.
-		 * This allows the users manager to track all connected and disconnected users.
+		 * This allows the selection manager to know who is connected and get their details.
 		 */
-		public clients = {
-			/** Get a specific attendee by their client or attendee ID */
-			getAttendee: (clientId: ClientConnectionId | AttendeeId) => {
-				return this.state.presence.attendees.getAttendee(clientId);
-			},
-			/** Get all attendees (both connected and disconnected) */
-			getAttendees: () => {
-				return this.state.presence.attendees.getAttendees();
-			},
-			/** Get the current user's attendee object */
-			getMyself: () => {
-				return this.state.presence.attendees.getMyself();
-			},
-			/** Get event emitter for attendee-related events (join/leave) */
-			getEvents: () => this.state.presence.attendees.events,
-		};
+		public get attendees() {
+			return this.state.presence.attendees;
+		}
 
 		/**
 		 * Gets all users (both connected and disconnected) in the collaboration session.

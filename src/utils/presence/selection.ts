@@ -30,8 +30,6 @@ import {
 	LatestRawEvents,
 	StatesWorkspace,
 	LatestRaw,
-	AttendeeId,
-	ClientConnectionId,
 } from "@fluidframework/presence/alpha";
 import { Listenable } from "fluid-framework";
 import { SelectionManager, Selection } from "./Interfaces/SelectionManager.js";
@@ -57,9 +55,6 @@ export function createTypedSelectionManager(props: {
 	 * Handles multi-select operations and real-time state synchronization.
 	 */
 	class SelectionManagerImpl implements SelectionManager<TypedSelection> {
-		/** Default initial state - empty selection array */
-		initialState: TypedSelection[] = [];
-
 		/** Fluid Framework state object for real-time synchronization */
 		state: LatestRaw<TypedSelection[]>;
 
@@ -72,7 +67,7 @@ export function createTypedSelectionManager(props: {
 		 */
 		constructor(name: string, workspace: StatesWorkspace<{}>) {
 			// Register this selection manager's state with the Fluid workspace
-			workspace.add(name, StateFactory.latest({ local: this.initialState }));
+			workspace.add(name, StateFactory.latest<TypedSelection[]>({ local: [] }));
 			this.state = workspace.states[name];
 		}
 
@@ -88,22 +83,9 @@ export function createTypedSelectionManager(props: {
 		 * Client management interface providing access to attendees and their information.
 		 * This allows the selection manager to know who is connected and get their details.
 		 */
-		public clients = {
-			/** Get a specific attendee by their client or attendee ID */
-			getAttendee: (clientId: ClientConnectionId | AttendeeId) => {
-				return this.state.presence.attendees.getAttendee(clientId);
-			},
-			/** Get all currently connected attendees */
-			getAttendees: () => {
-				return this.state.presence.attendees.getAttendees();
-			},
-			/** Get the current user's attendee object */
-			getMyself: () => {
-				return this.state.presence.attendees.getMyself();
-			},
-			/** Get event emitter for attendee-related events (join/leave) */
-			getEvents: () => this.state.presence.attendees.events,
-		};
+		public get attendees() {
+			return this.state.presence.attendees;
+		}
 
 		/**
 		 * Tests if the given selection is currently selected by the local client.
@@ -139,7 +121,7 @@ export function createTypedSelectionManager(props: {
 		 * This will notify all other clients that this user has deselected everything.
 		 */
 		public clearSelection() {
-			this.state.local = this.initialState;
+			this.state.local = [];
 		}
 
 		/**
@@ -296,20 +278,12 @@ export function createSelectionManager(props: {
 		}
 
 		/**
-		 * Client management interface for basic selection manager.
+		 * Client management interface providing access to attendees and their information.
+		 * This allows the selection manager to know who is connected and get their details.
 		 */
-		public clients = {
-			getAttendee: (clientId: ClientConnectionId | AttendeeId) => {
-				return this.state.presence.attendees.getAttendee(clientId);
-			},
-			getAttendees: () => {
-				return this.state.presence.attendees.getAttendees();
-			},
-			getMyself: () => {
-				return this.state.presence.attendees.getMyself();
-			},
-			getEvents: () => this.state.presence.attendees.events,
-		};
+		public get attendees() {
+			return this.state.presence.attendees;
+		}
 
 		/** Tests if the given selection is currently selected by the local client */
 		public testSelection(sel: Selection) {

@@ -102,11 +102,12 @@ export function usePresenceManager<TState>(
 			return;
 		}
 
-		const unsubscribe = presenceManager.clients
-			.getEvents()
-			.on("attendeeDisconnected", (updated) => {
+		const unsubscribe = presenceManager.attendees.events.on(
+			"attendeeDisconnected",
+			(updated) => {
 				runOnDisconnect(updated);
-			});
+			}
+		);
 		return unsubscribe;
 	}, [presenceManager, runOnDisconnect]);
 }

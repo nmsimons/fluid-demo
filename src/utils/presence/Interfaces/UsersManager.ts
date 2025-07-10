@@ -115,6 +115,6 @@ export type UserInfo = {
 	id: string;
 	/** Display name of the user */
 	name: string;
-	/** Optional profile picture URL or data URI */
+	/** Optional profile picture base 64 encoded*/
 	image?: string;
 };

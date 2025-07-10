@@ -22,8 +22,6 @@
 import {
 	StateFactory,
 	StatesWorkspace,
-	AttendeeId,
-	ClientConnectionId,
 	LatestRaw,
 	LatestRawEvents,
 } from "@fluidframework/presence/alpha";
@@ -51,9 +49,6 @@ export function createResizeManager(props: {
 	 * Handles all resize operations and state synchronization.
 	 */
 	class ResizeManagerImpl implements ResizeManager<ResizePackage | null> {
-		/** Default state when no resize operation is active */
-		initialState: ResizePackage | null = null;
-
 		/** Fluid Framework state object for real-time synchronization */
 		state: LatestRaw<ResizePackage | null>;
 
@@ -66,30 +61,17 @@ export function createResizeManager(props: {
 		 */
 		constructor(name: string, workspace: StatesWorkspace<{}>) {
 			// Register this resize manager's state with the Fluid workspace
-			workspace.add(
-				name,
-				StateFactory.latest<ResizePackage | null>({ local: this.initialState })
-			);
+			workspace.add(name, StateFactory.latest<ResizePackage | null>({ local: null }));
 			this.state = workspace.states[name];
 		}
 
 		/**
 		 * Client management interface providing access to attendees and their information.
-		 * This allows the resize manager to know who is connected and get their details.
+		 * This allows the selection manager to know who is connected and get their details.
 		 */
-		public clients = {
-			/** Get a specific attendee by their client or attendee ID */
-			getAttendee: (clientId: ClientConnectionId | AttendeeId) =>
-				this.state.presence.attendees.getAttendee(clientId),
-			/** Get all currently connected attendees */
-			getAttendees: () => this.state.presence.attendees.getAttendees(),
-			/** Get the current user's attendee object */
-			getMyself: () => this.state.presence.attendees.getMyself(),
-			/** Get event emitter for attendee-related events (join/leave) */
-			getEvents: () => {
-				return this.state.presence.attendees.events;
-			},
-		};
+		public get attendees() {
+			return this.state.presence.attendees;
+		}
 
 		/**
 		 * Event emitter for resize state changes.
