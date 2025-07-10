@@ -63,13 +63,13 @@ All the code required to set up the Fluid Framework and SharedTree data structur
 The application uses a comprehensive SharedTree schema defined in the `src/schema/` folder:
 
 - **`app_schema.ts`**: Main schema definitions including:
-  - `Shape`: Geometric shapes (circle, square, triangle, star) with size, color, and type
-  - `Note`: Text-based sticky notes with authorship
-  - `FluidTable`: Collaborative tables with multiple column types
-  - `Item`: Canvas items that can contain shapes, notes, or tables
-  - `Vote`: Voting system for comments and items
-  - `Comment`: Threaded comments with user attribution
-  - `DateTime`: Date/time values for timestamps
+    - `Shape`: Geometric shapes (circle, square, triangle, star) with size, color, and type
+    - `Note`: Text-based sticky notes with authorship
+    - `FluidTable`: Collaborative tables with multiple column types
+    - `Item`: Canvas items that can contain shapes, notes, or tables
+    - `Vote`: Voting system for comments and items
+    - `Comment`: Threaded comments with user attribution
+    - `DateTime`: Date/time values for timestamps
 - **`container_schema.ts`**: Fluid container configuration
 - **`table_schema.ts`**: Extended table functionality and column definitions
 
@@ -89,7 +89,21 @@ The application leverages two key Fluid Framework technologies for real-time col
 
 ### Presence API for Real-time Collaboration
 
-The **Fluid Framework Presence API** is a separate system from SharedTree that handles ephemeral, real-time user interactions:
+The **Fluid Framework Presence API** is a separate system from SharedTree that handles ephemeral, real-time user interactions. This implementation wraps a sophisticated **signal-based state management system** into an easy-to-use API with custom helpers for optimal performance and developer experience.
+
+#### Core Architecture & Benefits
+
+**Signal-Based State Management:**
+
+- **Optimized WebSocket Usage**: Manages signals automatically to prevent unintended flooding of the WebSocket endpoint
+- **Efficient Updates**: Only sends necessary state changes, reducing network overhead
+- **Smart Batching**: Groups related updates to minimize communication costs
+
+**Automatic State Synchronization:**
+
+- **New Client Onboarding**: When clients join, they automatically receive current presence state without querying persistent data
+- **Clean Disconnections**: When clients leave, their presence state is automatically cleaned up across all remaining clients
+- **Always Up-to-Date**: Every client maintains consistent presence state without relying on SharedTree persistence
 
 #### Selection Management
 
@@ -112,13 +126,24 @@ The **Fluid Framework Presence API** is a separate system from SharedTree that h
 
 #### Implementation in This App
 
-The presence system is implemented through several key components:
+The presence system is implemented through several key components with custom helper utilities for simplified usage:
+
+**Core Managers:**
 
 - **`PresenceManager<T>`**: Generic presence manager for different interaction types
-- **`SelectionManager<T>`**: Handles multi-user selection state
+- **`SelectionManager<T>`**: Handles multi-user selection state with signal optimization
 - **`DragManager`**: Manages real-time drag and rotation operations
-- **`ResizeManager`**: Handles collaborative shape resizing
+- **`ResizeManager`**: Handles collaborative shape resizing with live preview
 - **`UsersManager`**: Tracks connected users and their profiles
+
+**Helper Utilities:**
+
+- **`usePresenceManager` Hook**: React hook that simplifies presence subscriptions and automatic cleanup
+- **Signal Optimization**: Built-in batching and debouncing to prevent WebSocket flooding
+- **State Reconciliation**: Automatic handling of client join/leave scenarios
+- **Type-Safe APIs**: Strongly-typed interfaces for all presence operations
+
+This architecture ensures optimal performance while providing a developer-friendly API that abstracts away the complexity of signal management and state synchronization.
 
 Unlike SharedTree data (which persists), presence data is ephemeral and only exists while users are actively connected and interacting.
 
@@ -136,18 +161,25 @@ This application demonstrates a dual-layer architecture using two distinct Fluid
 
 ### Layer 2: Ephemeral Collaboration (Presence API)
 
-- **Purpose**: Handles real-time, temporary user interactions and awareness
+- **Purpose**: Handles real-time, temporary user interactions and awareness using signal-based state management
 - **Data Types**: Selection state, cursor positions, drag operations, user status
 - **Persistence**: Data is lost when users disconnect (intentionally ephemeral)
-- **Synchronization**: Real-time broadcasts to active clients only
+- **Synchronization**: Real-time broadcasts to active clients only, with optimized signal management
 - **Use Cases**: Showing who's selecting what, live drag preview, user avatars/status
+
+**Signal-Based Optimizations:**
+
+- **WebSocket Efficiency**: Prevents flooding by managing signal frequency and batching updates
+- **Automatic State Management**: New clients receive current state instantly without database queries
+- **Clean Resource Management**: Disconnected clients are automatically cleaned up from all remaining clients
 
 This separation allows for:
 
-- **Optimal Performance**: Presence data doesn't clutter persistent storage
+- **Optimal Performance**: Presence data doesn't clutter persistent storage and signals are optimized for minimal network usage
 - **Privacy**: Temporary interactions aren't permanently recorded
-- **Scalability**: Ephemeral data automatically cleans up when users leave
-- **User Experience**: Immediate feedback without waiting for data persistence
+- **Scalability**: Ephemeral data automatically cleans up when users leave, with efficient signal management
+- **User Experience**: Immediate feedback without waiting for data persistence, with smart batching for smooth interactions
+- **Developer Efficiency**: Simple APIs abstract complex signal management and state synchronization
 
 ### Data Operations
 
@@ -215,40 +247,40 @@ Refer to the above article for examples and usage instructions.
 
 You can use the following npm scripts (`npm run SCRIPT-NAME`) to build and run the app.
 
-| Script        | Description                                                                           |
-| ------------- | ------------------------------------------------------------------------------------- |
-| `start`       | Starts the development server (same as `dev`)                                        |
-| `dev`         | Runs the app in development mode with Vite dev server                                |
-| `dev:local`   | Runs the app using local Fluid relay service                                         |
-| `dev:azure`   | Runs the app using Azure Fluid Relay service                                         |
-| `build`       | Builds the app for production (compile + webpack)                                    |
-| `compile`     | Compiles TypeScript source code to JavaScript                                        |
-| `webpack`     | Builds the app using Vite                                                            |
-| `start:server`| Starts the local Azure Fluid Relay service                                          |
-| `format`      | Formats source code using Prettier                                                   |
-| `lint`        | Lints source code using ESLint                                                       |
-| `test`        | Runs end-to-end tests with Playwright                                                |
-| `pretest`     | Installs Playwright dependencies                                                     |
+| Script         | Description                                           |
+| -------------- | ----------------------------------------------------- |
+| `start`        | Starts the development server (same as `dev`)         |
+| `dev`          | Runs the app in development mode with Vite dev server |
+| `dev:local`    | Runs the app using local Fluid relay service          |
+| `dev:azure`    | Runs the app using Azure Fluid Relay service          |
+| `build`        | Builds the app for production (compile + webpack)     |
+| `compile`      | Compiles TypeScript source code to JavaScript         |
+| `webpack`      | Builds the app using Vite                             |
+| `start:server` | Starts the local Azure Fluid Relay service            |
+| `format`       | Formats source code using Prettier                    |
+| `lint`         | Lints source code using ESLint                        |
+| `test`         | Runs end-to-end tests with Playwright                 |
+| `pretest`      | Installs Playwright dependencies                      |
 
 ### Development Workflow
 
 1. **Start Local Service** (for local development):
 
-   ```bash
-   npm run start:server
-   ```
+    ```bash
+    npm run start:server
+    ```
 
 2. **Start Development Server**:
 
-   ```bash
-   npm start          # Uses default configuration
-   npm run dev:local  # Uses local Fluid service
-   npm run dev:azure  # Uses Azure Fluid Relay
-   ```
+    ```bash
+    npm start          # Uses default configuration
+    npm run dev:local  # Uses local Fluid service
+    npm run dev:azure  # Uses Azure Fluid Relay
+    ```
 
 3. **Access the Application**:
 
-   Open [http://localhost:8080/](http://localhost:8080/) in multiple browser tabs to test collaboration features.
+    Open [http://localhost:8080/](http://localhost:8080/) in multiple browser tabs to test collaboration features.
 
 ## Authentication & Azure Integration
 
@@ -288,12 +320,12 @@ src/
 ├── schema/             # SharedTree schema definitions
 ├── start/              # Application initialization
 ├── utils/              # Utility functions and managers
-│   ├── presence/       # Presence API implementations
-│   │   ├── drag.ts     # Real-time drag operations
-│   │   ├── resize.ts   # Shape resize collaboration
-│   │   ├── selection.ts # Multi-user selection tracking
-│   │   ├── users.ts    # User management and profiles
-│   │   └── Interfaces/ # TypeScript interfaces for presence
+│   ├── presence/       # Presence API implementations (signal-based)
+│   │   ├── drag.ts     # Real-time drag operations with signal optimization
+│   │   ├── resize.ts   # Shape resize collaboration with batched updates
+│   │   ├── selection.ts # Multi-user selection tracking with state management
+│   │   ├── users.ts    # User management and profiles with auto-cleanup
+│   │   └── Interfaces/ # TypeScript interfaces for presence and signals
 └── *.ts               # Main application files
 ```
 
@@ -304,7 +336,7 @@ src/
 - **`ux.tsx`**: Main UI component
 - **`itemux.tsx`**: Canvas item rendering and interactions (includes presence indicators)
 - **`tableux.tsx`**: Table component with virtual scrolling and presence
-- **`contexts/PresenceContext.tsx`**: React context for presence data
-- **`hooks/usePresenceManager.tsx`**: React hook for presence subscriptions
+- **`contexts/PresenceContext.tsx`**: React context for presence data with signal management
+- **`hooks/usePresenceManager.tsx`**: React hook for presence subscriptions with automatic optimization
 
-This structure promotes modularity, type safety, and maintainable code organization for collaborative applications.
+This structure promotes modularity, type safety, and maintainable code organization for collaborative applications. The signal-based presence architecture ensures optimal performance while providing simple, developer-friendly APIs.
