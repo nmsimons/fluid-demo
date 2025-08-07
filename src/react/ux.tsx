@@ -53,8 +53,19 @@ export function ReactApp(props: {
 	undoRedo: undoRedo;
 	drag: DragManager<DragAndRotatePackage | null>;
 	resize: ResizeManager<ResizePackage | null>;
+	cursor: import("../utils/presence/Interfaces/CursorManager.js").CursorManager;
 }): JSX.Element {
-	const { tree, itemSelection, tableSelection, users, container, undoRedo, drag, resize } = props;
+	const {
+		tree,
+		itemSelection,
+		tableSelection,
+		users,
+		container,
+		undoRedo,
+		drag,
+		resize,
+		cursor,
+	} = props;
 	const [connectionState, setConnectionState] = useState("");
 	const [saved, setSaved] = useState(false);
 	const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
@@ -181,6 +192,7 @@ export function ReactApp(props: {
 				tableSelection: tableSelection,
 				drag: drag,
 				resize: resize,
+				cursor: cursor,
 				branch: view !== tree,
 			}}
 		>

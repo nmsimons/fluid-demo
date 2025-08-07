@@ -18,6 +18,7 @@ import { UserInfo } from "./utils/presence/Interfaces/UsersManager.js";
 import { AccountInfo, PublicClientApplication } from "@azure/msal-browser";
 import { createDragManager } from "./utils/presence/drag.js";
 import { createResizeManager } from "./utils/presence/resize.js";
+import { createCursorManager } from "./utils/presence/cursor.js";
 
 export async function loadApp(props: {
 	client: AzureClient;
@@ -79,6 +80,11 @@ export async function loadApp(props: {
 		workspace,
 	});
 
+	const cursor = createCursorManager({
+		name: "cursor:note",
+		workspace,
+	});
+
 	// create the root element for React
 	const app = document.createElement("div");
 	app.id = "app";
@@ -100,6 +106,7 @@ export async function loadApp(props: {
 					tableSelection={tableSelection}
 					drag={drag}
 					resize={resize}
+					cursor={cursor}
 					users={users}
 					container={container}
 					undoRedo={undoRedo}
