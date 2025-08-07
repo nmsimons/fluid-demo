@@ -164,18 +164,6 @@ export class Comments extends sf.array("Comments", [Comment]) {
 	}
 }
 
-/**
- * A run of text inside a rich text field. Text is segmented to allow efficient
- * concurrent editing without per‑character nodes. Adjacent runs with identical
- * style metadata should be coalesced by helper utilities.
- */
-export class TextRun extends sf.object("TextRun", {
-	text: sf.string,
-	// Serialized style map (JSON) kept optional to minimize schema complexity.
-	// Example: {"bold":true,"color":"#ff0000"}
-	style: sf.optional(sf.string),
-}) {}
-
 export class Note extends sf.object(
 	"Note",
 	// Fields for Notes which SharedTree will store and synchronize across clients.
@@ -188,8 +176,6 @@ export class Note extends sf.object(
 				description: `A unique user id for author of the node, or "AI Agent" if created by an agent`,
 			},
 		}),
-		// Optional rich text run storage. If absent or empty, fall back to `text`.
-		runs: sf.optional(sf.array(TextRun)),
 	}
 ) {}
 
@@ -453,8 +439,6 @@ export class Items extends sf.array("Items", [Item]) {
 			id: crypto.randomUUID(),
 			text: "",
 			author: authorId,
-			// initialize runs with a single empty run for collaborative editing
-			runs: [new TextRun({ text: "" })],
 		});
 
 		const item = new Item({

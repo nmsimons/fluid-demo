@@ -27,7 +27,6 @@ import { ResizeManager } from "../../utils/presence/Interfaces/ResizeManager.js"
 import { DragAndRotatePackage } from "../../utils/presence/drag.js";
 import { ResizePackage } from "../../utils/presence/Interfaces/ResizeManager.js";
 import { TypedSelection } from "../../utils/presence/selection.js";
-import { CursorManager } from "../../utils/presence/Interfaces/CursorManager.js";
 
 /**
  * Type definition for the Presence Context.
@@ -49,9 +48,6 @@ interface PresenceContextType {
 	/** Manager for resize operations with real-time dimension tracking */
 	resize: ResizeManager<ResizePackage | null>;
 
-	/** Manager for note text cursor and selection presence */
-	cursor: CursorManager;
-
 	/** Boolean flag indicating if branch operations are enabled/active */
 	branch: boolean;
 }
@@ -70,6 +66,5 @@ export const PresenceContext = createContext<PresenceContextType>({
 	tableSelection: {} as SelectionManager<TypedSelection>,
 	drag: {} as DragManager<DragAndRotatePackage | null>,
 	resize: {} as ResizeManager<ResizePackage | null>,
-	cursor: {} as CursorManager,
 	branch: false,
 });

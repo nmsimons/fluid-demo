@@ -13,7 +13,37 @@ import { TableView } from "./tableux.js";
 import { Comment20Filled, ChevronLeft16Filled } from "@fluentui/react-icons";
 import { PaneContext } from "./contexts/PaneContext.js";
 import { LayoutContext } from "./hooks/useLayoutManger.js";
-import { userColorFromId as getUserColor } from "../utils/presence/colors.js";
+
+/**
+ * Utility function to generate consistent user colors
+ * Creates a unique color for each user based on their ID
+ */
+const getUserColor = (userId: string): string => {
+	const colors = [
+		"#3b82f6", // blue
+		"#ef4444", // red
+		"#10b981", // green
+		"#f59e0b", // yellow
+		"#8b5cf6", // purple
+		"#06b6d4", // cyan
+		"#f97316", // orange
+		"#84cc16", // lime
+		"#ec4899", // pink
+		"#6366f1", // indigo
+		"#f43f5e", // rose
+		"#06b6d4", // cyan
+		"#14b8a6", // teal
+		"#a855f7", // violet
+		"#0ea5e9", // sky
+	];
+
+	// Simple hash function to get consistent color
+	let hash = 0;
+	for (let i = 0; i < userId.length; i++) {
+		hash = userId.charCodeAt(i) + ((hash << 5) - hash);
+	}
+	return colors[Math.abs(hash) % colors.length];
+};
 
 /**
  * Utility function to extract initials from a user name
