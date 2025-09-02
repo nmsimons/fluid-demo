@@ -33,7 +33,7 @@
 		"@fluentui/react-icons": "^2.0.292",
 		"@fluentui/react-menu": "^9.16.7",
 		"@fluentui/react-message-bar": "^9.3.5",
-		"@fluentui/react-provider": "^9.16.7",
+		"@fluentui/react-provider": "^9.22.4",
 		"@fluentui/react-swatch-picker": "^9.1.82",
 		"@fluentui/react-text": "^9.5.2",
 		"@fluentui/react-textarea": "^9.4.88",
