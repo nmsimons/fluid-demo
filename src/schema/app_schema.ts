@@ -534,8 +534,7 @@ export class Items extends sf.array("Items", [Item]) {
 			newY = item.y - offsetY;
 		}
 
-		newX = Math.max(0, newX);
-		newY = Math.max(0, newY);
+		// Allow negative coordinates; no clamping to 0
 
 		// Create the appropriate content based on the original item's content type
 		let duplicatedContent;

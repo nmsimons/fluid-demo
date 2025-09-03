@@ -29,6 +29,42 @@ export function Canvas(props: {
 	const [pan, setPan] = useState({ x: 0, y: 0 });
 	const [isPanning, setIsPanning] = useState(false);
 	const lastPos = useRef<{ x: number; y: number } | null>(null);
+	const movedRef = useRef(false);
+	const [zoom, setZoom] = useState(1);
+
+	// Non-passive wheel listener for zoom
+	useEffect(() => {
+		const el = svgRef.current;
+		if (!el) return;
+		const onWheel = (e: WheelEvent) => {
+			// Always zoom on wheel over canvas
+			e.preventDefault();
+			const rect = el.getBoundingClientRect();
+			const mouse = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+			const zoomFactor = Math.exp(-e.deltaY * 0.0015);
+			const newZoom = Math.min(4, Math.max(0.25, (zoomRef.current ?? 1) * zoomFactor));
+			if (newZoom === (zoomRef.current ?? 1)) return;
+			const panNow = panRef.current ?? { x: 0, y: 0 };
+			const p = { x: (mouse.x - panNow.x) / (zoomRef.current ?? 1), y: (mouse.y - panNow.y) / (zoomRef.current ?? 1) };
+			const newPan = { x: mouse.x - newZoom * p.x, y: mouse.y - newZoom * p.y };
+			setPan(newPan);
+			setZoom(newZoom);
+		};
+		// Track latest values without re-binding listener each render
+		const zoomRef = { current: zoom } as { current: number };
+		const panRef = { current: pan } as { current: { x: number; y: number } };
+		const updateRefs = () => {
+			zoomRef.current = zoom;
+			panRef.current = pan;
+		};
+		updateRefs();
+		const raf = requestAnimationFrame(updateRefs);
+		el.addEventListener('wheel', onWheel, { passive: false });
+		return () => {
+			cancelAnimationFrame(raf);
+			el.removeEventListener('wheel', onWheel as EventListener);
+		};
+	}, [svgRef.current, pan, zoom]);
 
 	const handleResize = () => {
 		if (svgRef.current) {
@@ -62,23 +98,28 @@ export function Canvas(props: {
 	const beginPanIfBackground = (e: React.MouseEvent) => {
 		// Don't pan if we are dragging/resizing/rotating an item
 		if (presence.drag.state.local || presence.resize.state?.local) return;
-		// Start only when the user clicks directly on the SVG background
-		if (e.target === svgRef.current) {
-			setIsPanning(true);
-			lastPos.current = { x: (e as React.MouseEvent).clientX, y: (e as React.MouseEvent).clientY };
-			(e as React.MouseEvent).preventDefault();
-		}
+		const target = e.target as Element | null;
+		// Ignore clicks on SVG overlays for items
+		const onOverlay = !!target?.closest('[data-svg-item-id]');
+		if (onOverlay) return;
+		// Ignore clicks that started within an item in the HTML layer
+		const insideItem = !!target?.closest('[data-item-id]');
+		if (insideItem) return;
+		// Start panning when clicking anywhere on the SVG backdrop
+		setIsPanning(true);
+		lastPos.current = { x: (e as React.MouseEvent).clientX, y: (e as React.MouseEvent).clientY };
+		movedRef.current = false;
 	};
 
 	// Also allow panning by dragging the empty HTML background inside foreignObject
 	const handleHtmlBackgroundMouseDown = (e: React.MouseEvent) => {
 		if (presence.drag.state.local || presence.resize.state?.local) return;
 		const target = e.target as HTMLElement;
-		// If click is inside any item container, don't pan
+		// If click is inside any item container or a control, don't pan
 		if (target.closest('[data-item-id]')) return;
 		setIsPanning(true);
 		lastPos.current = { x: e.clientX, y: e.clientY };
-		e.preventDefault();
+		movedRef.current = false;
 	};
 
 	useEffect(() => {
@@ -87,9 +128,11 @@ export function Canvas(props: {
 			if (!lastPos.current) return;
 			const dx = ev.clientX - lastPos.current.x;
 			const dy = ev.clientY - lastPos.current.y;
-			if (dx !== 0 || dy !== 0) {
+			// Use a small threshold to distinguish click vs drag
+			if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
 				setPan((p) => ({ x: p.x + dx, y: p.y + dy }));
 				lastPos.current = { x: ev.clientX, y: ev.clientY };
+				movedRef.current = true;
 			}
 		};
 		const onUp = () => {
@@ -100,9 +143,11 @@ export function Canvas(props: {
 			if (rootEl.dataset) {
 				delete rootEl.dataset.panning;
 			}
-			// Suppress a stray background click immediately after pan
-			const svg = svgRef.current as (SVGSVGElement & { dataset: DOMStringMap }) | null;
-			if (svg) svg.dataset.suppressClearUntil = String(Date.now() + 150);
+			// Suppress a stray background click only if a real pan occurred
+			if (movedRef.current) {
+				const svg = svgRef.current as (SVGSVGElement & { dataset: DOMStringMap }) | null;
+				if (svg) svg.dataset.suppressClearUntil = String(Date.now() + 150);
+			}
 		};
 		document.addEventListener('mousemove', onMove);
 		document.addEventListener('mouseup', onUp);
@@ -143,40 +188,38 @@ export function Canvas(props: {
 	<svg
 			id="canvas"
 			ref={svgRef}
-			className="relative flex h-full w-full bg-transparent overflow-auto"
+			className="relative flex h-full w-full bg-transparent"
 			onClick={handleBackgroundClick}
 			onMouseDown={beginPanIfBackground}
 		>
 			{/* Full-size HTML layer hosting existing item views */}
 			<foreignObject x={0} y={0} width="100%" height="100%">
-				<div
-					className="relative h-full w-full"
-					onDragOver={(e) => {
-						e.preventDefault();
-						e.dataTransfer.dropEffect = "move";
-					}}
-					// Avoid accidental text selection during drags
-					style={{ userSelect: "none", left: `${pan.x}px`, top: `${pan.y}px` }}
-					onMouseDown={handleHtmlBackgroundMouseDown}
-				>
-					{items.map((item, index) =>
-						item instanceof Item ? (
-							<ItemView
-								item={item}
-								key={item.id}
-								index={index}
-								canvasPosition={{ left: canvasPosition.left, top: canvasPosition.top }}
-								hideSelectionControls
-								pan={pan}
-							/>
-						) : (
-							<></>
-						)
-					)}
+				{/* Full-size wrapper to capture background drags anywhere inside the foreignObject */}
+				<div className="relative h-full w-full" onMouseDown={handleHtmlBackgroundMouseDown}
+					onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }}
+					style={{ userSelect: "none" }}>
+					{/* Pan/zoomed content container */}
+					<div className="relative h-full w-full" style={{ left: `${pan.x}px`, top: `${pan.y}px`, transform: `scale(${zoom})`, transformOrigin: "0 0" }}>
+						{items.map((item, index) =>
+							item instanceof Item ? (
+								<ItemView
+									item={item}
+									key={item.id}
+									index={index}
+									canvasPosition={{ left: canvasPosition.left, top: canvasPosition.top }}
+									hideSelectionControls
+									pan={pan}
+									zoom={zoom}
+								/>
+							) : (
+								<></>
+							)
+						)}
+					</div>
 				</div>
 			</foreignObject>
 			{/* Per-item SVG wrappers (overlay), built from measured layout */}
-			<g key={`sel-${selKey}-${motionKey}`} transform={`translate(${pan.x}, ${pan.y})`}>
+			<g key={`sel-${selKey}-${motionKey}`} transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
 				{items.map((item) => {
 					if (!(item instanceof Item)) return null;
 					const isSelected = presence.itemSelection?.testSelection({ id: item.id });
@@ -191,7 +234,7 @@ export function Canvas(props: {
 					let angle = localDrag && localDrag.id === item.id ? localDrag.rotation : item.rotation;
 					if (Tree.is(item.content, FluidTable)) angle = 0;
 					return (
-						<g key={`wrap-${item.id}`} transform={`translate(${b.left}, ${b.top}) rotate(${angle}, ${w/2}, ${h/2})`}>
+						<g key={`wrap-${item.id}`} data-svg-item-id={item.id} transform={`translate(${b.left}, ${b.top}) rotate(${angle}, ${w/2}, ${h/2})`}>
 							{/* selection box */}
 							<g pointerEvents="none">
 								<rect x={-padding} y={-padding} width={w + padding * 2} height={h + padding * 2} fill="none" stroke="#000" strokeDasharray="6 4" strokeWidth={2} opacity={0.9} />

@@ -99,6 +99,7 @@ export function ItemView(props: {
 	canvasPosition: { left: number; top: number };
 	hideSelectionControls?: boolean;
 	pan?: { x: number; y: number };
+	zoom?: number;
 }): JSX.Element {
 	const { item, index, hideSelectionControls } = props;
 	const itemInval = useTree(item);
@@ -222,7 +223,7 @@ export function ItemView(props: {
 	const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
 		e.stopPropagation();
 		presence.itemSelection.setSelection({ id: item.id });
-		setOffset(calculateOffsetFromCanvasOrigin(e, item));
+		setOffset(calculateOffsetFromCanvasOrigin(e, item, props.pan, props.zoom));
 		e.dataTransfer.setDragImage(new Image(), 0, 0);
 	};
 
@@ -237,10 +238,8 @@ export function ItemView(props: {
 	};
 
 	const getOffsetCoordinates = (e: React.DragEvent<HTMLDivElement>): { x: number; y: number } => {
-		const mouseCoordinates = calculateCanvasMouseCoordinates(e);
+		const mouseCoordinates = calculateCanvasMouseCoordinates(e, props.pan, props.zoom);
 		const coordinates = { x: mouseCoordinates.x - offset.x, y: mouseCoordinates.y - offset.y };
-		coordinates.x = coordinates.x < 0 ? itemProps.left : coordinates.x;
-		coordinates.y = coordinates.y < 0 ? itemProps.top : coordinates.y;
 		return coordinates;
 	};
 
@@ -273,16 +272,18 @@ export function ItemView(props: {
 			const h0 = el.offsetHeight || bb.height;
 			const panX = props.pan?.x ?? 0;
 			const panY = props.pan?.y ?? 0;
+			const zoom = props.zoom ?? 1;
+			// Map from screen back to model space: x_model = (x_screen - canvasLeft - panX)/zoom
 			const relativeBb = {
-				left: centerX - w0 / 2 - props.canvasPosition.left - panX,
-				top: centerY - h0 / 2 - props.canvasPosition.top - panY,
-				right: centerX + w0 / 2 - props.canvasPosition.left - panX,
-				bottom: centerY + h0 / 2 - props.canvasPosition.top - panY,
+				left: (centerX - props.canvasPosition.left - panX) / zoom - w0 / 2,
+				top: (centerY - props.canvasPosition.top - panY) / zoom - h0 / 2,
+				right: (centerX - props.canvasPosition.left - panX) / zoom + w0 / 2,
+				bottom: (centerY - props.canvasPosition.top - panY) / zoom + h0 / 2,
 			};
 			layout.set(item.id, relativeBb);
 		}
 	// Update when item moves/sizes so SVG overlay tracks it
-	}, [item.id, layout, itemProps, shapeProps, props.pan?.x, props.pan?.y]);
+	}, [item.id, layout, itemProps, shapeProps, props.pan?.x, props.pan?.y, props.zoom]);
 
 	return (
 		<div
@@ -536,13 +537,18 @@ function RemoteUserIndicator(props: {
 
 // calculate the mouse coordinates relative to the canvas div
 const calculateCanvasMouseCoordinates = (
-	e: React.MouseEvent<HTMLDivElement>
+	e: React.MouseEvent<HTMLDivElement>,
+	pan?: { x: number; y: number },
+	zoom: number = 1
 ): { x: number; y: number } => {
 	const canvasElement = document.getElementById("canvas");
 	const canvasRect = canvasElement?.getBoundingClientRect() || { left: 0, top: 0 };
-	const newX = e.pageX - canvasRect.left;
-	const newY = e.pageY - canvasRect.top;
-	return { x: newX, y: newY };
+	// Screen to model: subtract canvas origin and pan, then divide by zoom
+	const sx = e.clientX - canvasRect.left;
+	const sy = e.clientY - canvasRect.top;
+	const x = (sx - (pan?.x ?? 0)) / zoom;
+	const y = (sy - (pan?.y ?? 0)) / zoom;
+	return { x, y };
 };
 
 // calculate the offset of the pointer from the item's origin
@@ -550,9 +556,11 @@ const calculateCanvasMouseCoordinates = (
 // when dragging
 const calculateOffsetFromCanvasOrigin = (
 	e: React.MouseEvent<HTMLDivElement>,
-	item: Item
+	item: Item,
+	pan?: { x: number; y: number },
+	zoom: number = 1
 ): { x: number; y: number } => {
-	const coordinates = calculateCanvasMouseCoordinates(e);
+	const coordinates = calculateCanvasMouseCoordinates(e, pan, zoom);
 	const newX = coordinates.x - item.x;
 	const newY = coordinates.y - item.y;
 	return {
