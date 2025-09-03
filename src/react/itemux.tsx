@@ -118,6 +118,9 @@ export function ItemView(props: {
 		sizeOverride?: number;
 	}>({});
 
+	// Cache intrinsic (unscaled) size to update layout synchronously during drag/resize
+	const intrinsicSizeRef = useRef<{ w: number; h: number }>({ w: 0, h: 0 });
+
 	const [itemProps, setItemProps] = useState<{
 		left: number;
 		top: number;
@@ -151,6 +154,12 @@ export function ItemView(props: {
 							? `rotate(0)`
 							: `rotate(${dragData.rotation}deg)`,
 			});
+			// Update layout immediately to keep overlays in sync (local and remote drags)
+			const w = intrinsicSizeRef.current.w || (Tree.is(item.content, Shape) ? (shapeProps.sizeOverride ?? item.content.size) : 0);
+			const h = intrinsicSizeRef.current.h || (Tree.is(item.content, Shape) ? (shapeProps.sizeOverride ?? item.content.size) : 0);
+			if (w && h) {
+				layout.set(item.id, { left: dragData.x, top: dragData.y, right: dragData.x + w, bottom: dragData.y + h });
+			}
 		}
 	};
 
@@ -167,6 +176,10 @@ export function ItemView(props: {
 			setShapeProps({
 				sizeOverride: resizeData.size,
 			});
+
+			// Update intrinsic size cache and layout immediately
+			intrinsicSizeRef.current = { w: resizeData.size, h: resizeData.size };
+			layout.set(item.id, { left: resizeData.x, top: resizeData.y, right: resizeData.x + resizeData.size, bottom: resizeData.y + resizeData.size });
 		} else if (!resizeData || resizeData.id !== item.id) {
 			// Clear overrides when no resize data for this item
 			setShapeProps({});
@@ -261,29 +274,27 @@ export function ItemView(props: {
 
 	const ref = useRef<HTMLDivElement>(null);
 	useEffect(() => {
-		if (ref.current !== null) {
-			const el = ref.current;
+		const el = ref.current;
+		if (!el) return;
+		// Determine intrinsic (unscaled) size once per change
+		let w0 = 0;
+		let h0 = 0;
+		if (Tree.is(item.content, Shape)) {
+			const size = shapeProps.sizeOverride ?? item.content.size;
+			w0 = size;
+			h0 = size;
+		} else {
 			const bb = el.getBoundingClientRect();
-			// Center in screen coords (rotation doesn't change center)
-			const centerX = (bb.left + bb.right) / 2;
-			const centerY = (bb.top + bb.bottom) / 2;
-			// Use unrotated intrinsic size so overlay stays consistent across rotation
-			const w0 = el.offsetWidth || bb.width;
-			const h0 = el.offsetHeight || bb.height;
-			const panX = props.pan?.x ?? 0;
-			const panY = props.pan?.y ?? 0;
-			const zoom = props.zoom ?? 1;
-			// Map from screen back to model space: x_model = (x_screen - canvasLeft - panX)/zoom
-			const relativeBb = {
-				left: (centerX - props.canvasPosition.left - panX) / zoom - w0 / 2,
-				top: (centerY - props.canvasPosition.top - panY) / zoom - h0 / 2,
-				right: (centerX - props.canvasPosition.left - panX) / zoom + w0 / 2,
-				bottom: (centerY - props.canvasPosition.top - panY) / zoom + h0 / 2,
-			};
-			layout.set(item.id, relativeBb);
+			w0 = el.offsetWidth || bb.width;
+			h0 = el.offsetHeight || bb.height;
 		}
-	// Update when item moves/sizes so SVG overlay tracks it
-	}, [item.id, layout, itemProps, shapeProps, props.pan?.x, props.pan?.y, props.zoom]);
+		intrinsicSizeRef.current = { w: w0, h: h0 };
+		// Use model-space position from itemProps to avoid DOM-measure lag
+		const left = itemProps.left;
+		const top = itemProps.top;
+		layout.set(item.id, { left, top, right: left + w0, bottom: top + h0 });
+	// Recompute when position or intrinsic size changes
+	}, [layout, item.id, itemProps.left, itemProps.top, shapeProps.sizeOverride, item.content]);
 
 	return (
 		<div
