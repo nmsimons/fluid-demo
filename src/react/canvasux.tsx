@@ -4,7 +4,7 @@
  */
 
 import React, { JSX, useContext, useEffect, useRef, useState } from "react";
-import { Items, Item, FluidTable } from "../schema/app_schema.js";
+import { Items, Item, FluidTable, Shape } from "../schema/app_schema.js";
 import { IFluidContainer } from "fluid-framework";
 import { PresenceContext } from "./contexts/PresenceContext.js";
 import { ItemView } from "./itemux.js";
@@ -232,35 +232,38 @@ export function Canvas(props: {
 					// Use live rotation during drag/rotate; tables shouldn't rotate
 					const localDrag = presence.drag?.state?.local;
 					let angle = localDrag && localDrag.id === item.id ? localDrag.rotation : item.rotation;
-					if (Tree.is(item.content, FluidTable)) angle = 0;
+					const isTable = Tree.is(item.content, FluidTable);
+					const isShape = Tree.is(item.content, Shape);
+					if (isTable) angle = 0;
 					return (
 						<g key={`wrap-${item.id}`} data-svg-item-id={item.id} transform={`translate(${b.left}, ${b.top}) rotate(${angle}, ${w/2}, ${h/2})`}>
 							{/* selection box */}
 							<g pointerEvents="none">
 								<rect x={-padding} y={-padding} width={w + padding * 2} height={h + padding * 2} fill="none" stroke="#000" strokeDasharray="6 4" strokeWidth={2} opacity={0.9} />
 							</g>
-							{/* rotation handle above center */}
-							<g transform={`translate(${w/2}, ${-35})`}>
-								<circle r={6} fill="#000" cursor="grab"
-									onClick={(e)=>{ e.stopPropagation(); }}
-									onMouseDown={(e)=>{
-										e.stopPropagation();
-										// Forward to the underlying HTML rotate handle for logic
-										const container = document.querySelector(`[data-item-id='${item.id}']`) as HTMLElement | null;
-										const rotateHandle = container?.querySelector('.cursor-grab') as HTMLElement | null;
-										const target = rotateHandle ?? container;
-										if (target) {
-											const evt = new MouseEvent('mousedown', { bubbles: true, cancelable: true, clientX: e.clientX, clientY: e.clientY });
-											target.dispatchEvent(evt);
-										}
-									}}
-								/>
-							</g>
+							{/* rotation handle above center (not for tables) */}
+							{!isTable && (
+								<g transform={`translate(${w/2}, ${-35})`}>
+									<circle r={6} fill="#000" cursor="grab"
+										onClick={(e)=>{ e.stopPropagation(); }}
+										onMouseDown={(e)=>{
+											e.stopPropagation();
+											// Forward to the underlying HTML rotate handle for logic
+											const container = document.querySelector(`[data-item-id='${item.id}']`) as HTMLElement | null;
+											const rotateHandle = container?.querySelector('.cursor-grab') as HTMLElement | null;
+											const target = rotateHandle ?? container;
+											if (target) {
+												const evt = new MouseEvent('mousedown', { bubbles: true, cancelable: true, clientX: e.clientX, clientY: e.clientY });
+												target.dispatchEvent(evt);
+											}
+										}}
+									/>
+								</g>
+							)}
 							{/* corner resize handles for shapes only, mirror HTML locations but offset outward */}
 							<g>
 								{(() => {
-									const isTable = Tree.is(item.content, FluidTable);
-									if (isTable) return null; // no resize handles for tables
+									if (!isShape) return null; // only shapes get resize handles
 									const handleSize = 8;
 									const half = handleSize / 2;
 									const outward = padding + 2; // move slightly inward toward center by 2px
