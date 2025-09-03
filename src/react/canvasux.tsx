@@ -31,6 +31,26 @@ export function Canvas(props: {
 	const lastPos = useRef<{ x: number; y: number } | null>(null);
 	const movedRef = useRef(false);
 	const [zoom, setZoom] = useState(1);
+	// Track expanded state for presence indicators per item
+	const [expandedPresence, setExpandedPresence] = useState<Set<string>>(new Set());
+
+	// Helpers for presence indicator visuals
+	const getInitials = (name: string): string => {
+		if (!name) return "?";
+		const words = name.trim().split(/\s+/);
+		return words.length === 1
+			? words[0].charAt(0).toUpperCase()
+			: (words[0].charAt(0) + words[words.length - 1].charAt(0)).toUpperCase();
+	};
+
+	const getUserColor = (userId: string): string => {
+		const colors = [
+			"#3b82f6","#ef4444","#10b981","#f59e0b","#8b5cf6","#06b6d4","#f97316","#84cc16","#ec4899","#6366f1","#f43f5e","#06b6d4","#14b8a6","#a855f7","#0ea5e9",
+		];
+		let hash = 0;
+		for (let i = 0; i < userId.length; i++) hash = userId.charCodeAt(i) + ((hash << 5) - hash);
+		return colors[Math.abs(hash) % colors.length];
+	};
 
 	// Non-passive wheel listener for zoom
 	useEffect(() => {
@@ -184,6 +204,43 @@ export function Canvas(props: {
 		return () => { offDragLocal(); offDragRemote(); offResizeLocal(); offResizeRemote(); };
 	}, [presence.drag, presence.resize]);
 
+	// Single source of truth for live drag/rotate state (local or remote) for an item
+	const getActiveDragForItem = (itemId: string): { id: string; x: number; y: number; rotation: number } | null => {
+		const local = presence.drag?.state?.local as { id: string; x: number; y: number; rotation: number } | null;
+		if (local && local.id === itemId) return local;
+		const remotesIter = (presence.drag?.state as unknown as { getRemotes?: () => unknown })?.getRemotes?.();
+		const isIterable = (obj: unknown): obj is Iterable<unknown> => {
+			return !!obj && typeof (obj as { [k: symbol]: unknown })[Symbol.iterator] === "function";
+		};
+		const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null;
+		if (isIterable(remotesIter)) {
+			for (const cv of remotesIter) {
+				let connected = true;
+				if (isRecord(cv) && "attendee" in cv && isRecord((cv as Record<string, unknown>)["attendee"])) {
+					const att = (cv as Record<string, unknown>)["attendee"] as Record<string, unknown>;
+					let status: unknown = "Connected";
+					if (typeof att["getConnectionStatus"] === "function") {
+						// Call with correct "this" to avoid undefined context inside implementation
+						status = (att["getConnectionStatus"] as (this: unknown) => unknown).call(att);
+					}
+					connected = status === "Connected";
+				}
+				if (!connected) continue;
+				const val = isRecord(cv) ? (cv["value"] as unknown) : undefined;
+				if (isRecord(val) && typeof val["id"] === "string") {
+					const id = val["id"] as string;
+					if (id === itemId) {
+						const x = typeof val["x"] === "number" ? (val["x"] as number) : 0;
+						const y = typeof val["y"] === "number" ? (val["y"] as number) : 0;
+						const rotation = typeof val["rotation"] === "number" ? (val["rotation"] as number) : 0;
+						return { id, x, y, rotation };
+					}
+				}
+			}
+		}
+		return null;
+	};
+
 	return (
 	<svg
 			id="canvas"
@@ -223,85 +280,157 @@ export function Canvas(props: {
 				{items.map((item) => {
 					if (!(item instanceof Item)) return null;
 					const isSelected = presence.itemSelection?.testSelection({ id: item.id });
-					if (!isSelected) return null; // only draw overlays for selected items
+					if (!isSelected) return null; // only draw selection overlays for selected items
 					const b = layout.get(item.id);
-					if (!b) return null;
-					const w = Math.max(0, b.right - b.left);
-					const h = Math.max(0, b.bottom - b.top);
+					// Fallback sizing if layout is missing or zero-sized
+					const left = b?.left ?? item.x;
+					const top = b?.top ?? item.y;
+					let w = b ? Math.max(0, b.right - b.left) : 0;
+					let h = b ? Math.max(0, b.bottom - b.top) : 0;
+					if (w === 0 || h === 0) {
+						const container = document.querySelector(`[data-item-id='${item.id}']`) as HTMLElement | null;
+						if (container) {
+							const rect = container.getBoundingClientRect();
+							// Convert from screen-space to model by dividing by zoom
+							w = rect.width / (zoom || 1);
+							h = rect.height / (zoom || 1);
+						}
+						// If we still don't have valid size, skip rendering this overlay
+						if (w === 0 || h === 0) return null;
+					}
 					const padding = 8;
-					// Use live rotation during drag/rotate; tables shouldn't rotate
-					const localDrag = presence.drag?.state?.local;
-					let angle = localDrag && localDrag.id === item.id ? localDrag.rotation : item.rotation;
+					// Use live rotation during drag/rotate from unified active drag; tables shouldn't rotate
+					const active = getActiveDragForItem(item.id);
+					let angle = active ? active.rotation : item.rotation;
 					const isTable = Tree.is(item.content, FluidTable);
 					const isShape = Tree.is(item.content, Shape);
 					if (isTable) angle = 0;
 					return (
-						<g key={`wrap-${item.id}`} data-svg-item-id={item.id} transform={`translate(${b.left}, ${b.top}) rotate(${angle}, ${w/2}, ${h/2})`}>
-							{/* selection box */}
+						<g key={`wrap-${item.id}`} data-svg-item-id={item.id} transform={`translate(${left}, ${top}) rotate(${angle}, ${w/2}, ${h/2})`}>
+							{/* selection box (rotates with the item) */}
 							<g pointerEvents="none">
 								<rect x={-padding} y={-padding} width={w + padding * 2} height={h + padding * 2} fill="none" stroke="#000" strokeDasharray="6 4" strokeWidth={2} opacity={0.9} />
 							</g>
-							{/* rotation handle above center (not for tables) */}
-							{!isTable && (
-								<g transform={`translate(${w/2}, ${-35})`}>
-									<circle r={6} fill="#000" cursor="grab"
-										onClick={(e)=>{ e.stopPropagation(); }}
-										onMouseDown={(e)=>{
-											e.stopPropagation();
-											// Forward to the underlying HTML rotate handle for logic
-											const container = document.querySelector(`[data-item-id='${item.id}']`) as HTMLElement | null;
-											const rotateHandle = container?.querySelector('.cursor-grab') as HTMLElement | null;
-											const target = rotateHandle ?? container;
-											if (target) {
-												const evt = new MouseEvent('mousedown', { bubbles: true, cancelable: true, clientX: e.clientX, clientY: e.clientY });
-												target.dispatchEvent(evt);
-											}
-										}}
-									/>
-								</g>
-							)}
-							{/* corner resize handles for shapes only, mirror HTML locations but offset outward */}
-							<g>
-								{(() => {
-									if (!isShape) return null; // only shapes get resize handles
-									const handleSize = 8;
-									const half = handleSize / 2;
-									const outward = padding + 2; // move slightly inward toward center by 2px
-									const positions = [
-										{ x: -outward, y: -outward, cursor: 'nwse-resize' as const }, // top-left
-										{ x: w + outward, y: -outward, cursor: 'nesw-resize' as const }, // top-right
-										{ x: -outward, y: h + outward, cursor: 'nesw-resize' as const }, // bottom-left
-										{ x: w + outward, y: h + outward, cursor: 'nwse-resize' as const }, // bottom-right
-									];
-									return positions.map((pos, i) => (
-										<rect
-											key={i}
-											x={pos.x - half}
-											y={pos.y - half}
-											width={handleSize}
-											height={handleSize}
-											fill="#000"
-											stroke="none"
-											cursor={pos.cursor}
-											onClick={(e) => {
+								{/* rotation handle above center (not for tables) */}
+								{!isTable && (
+									<g transform={`translate(${w/2}, ${-35})`}>
+										<circle r={6} fill="#000" cursor="grab"
+											onClick={(e)=>{ e.stopPropagation(); }}
+											onMouseDown={(e)=>{
 												e.stopPropagation();
-											}}
-											onMouseDown={(e) => {
-												e.stopPropagation();
-												// Forward to the corresponding HTML resize handle (by index/order)
+												// Forward to the underlying HTML rotate handle for logic
 												const container = document.querySelector(`[data-item-id='${item.id}']`) as HTMLElement | null;
-												const handles = Array.from(container?.querySelectorAll('.cursor-nw-resize') ?? []) as HTMLElement[];
-												const handle = handles[i] ?? container;
-												if (handle) {
+												const rotateHandle = container?.querySelector('.cursor-grab') as HTMLElement | null;
+												const target = rotateHandle ?? container;
+												if (target) {
 													const evt = new MouseEvent('mousedown', { bubbles: true, cancelable: true, clientX: e.clientX, clientY: e.clientY });
-													handle.dispatchEvent(evt);
+													target.dispatchEvent(evt);
 												}
 											}}
 										/>
-									));
-								})()}
-							</g>
+									</g>
+								)}
+								{/* corner resize handles for shapes only, mirror HTML locations but offset outward */}
+								<g>
+									{(() => {
+										if (!isShape) return null; // only shapes get resize handles
+										const handleSize = 8;
+										const half = handleSize / 2;
+										const outward = padding + 2; // move slightly inward toward center by 2px
+										const positions = [
+											{ x: -outward, y: -outward, cursor: 'nwse-resize' as const }, // top-left
+											{ x: w + outward, y: -outward, cursor: 'nesw-resize' as const }, // top-right
+											{ x: -outward, y: h + outward, cursor: 'nesw-resize' as const }, // bottom-left
+											{ x: w + outward, y: h + outward, cursor: 'nwse-resize' as const }, // bottom-right
+										];
+										return positions.map((pos, i) => (
+											<rect
+												key={i}
+												x={pos.x - half}
+												y={pos.y - half}
+												width={handleSize}
+												height={handleSize}
+												fill="#000"
+												stroke="none"
+												cursor={pos.cursor}
+												onClick={(e) => {
+													e.stopPropagation();
+												}}
+												onMouseDown={(e) => {
+													e.stopPropagation();
+													// Forward to the corresponding HTML resize handle (by index/order)
+													const container = document.querySelector(`[data-item-id='${item.id}']`) as HTMLElement | null;
+													const handles = Array.from(container?.querySelectorAll('.cursor-nw-resize') ?? []) as HTMLElement[];
+													const handle = handles[i] ?? container;
+													if (handle) {
+														const evt = new MouseEvent('mousedown', { bubbles: true, cancelable: true, clientX: e.clientX, clientY: e.clientY });
+														handle.dispatchEvent(evt);
+													}
+												}}
+											/>
+										));
+									})()}
+								</g>
 						</g>
+					);
+				})}
+			</g>
+			{/* Presence indicators overlay for all items with remote selections */}
+			<g key={`presence-${selKey}-${motionKey}`} transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
+				{items.map((item) => {
+					if (!(item instanceof Item)) return null;
+					const remoteIds = presence.itemSelection?.testRemoteSelection({ id: item.id }) ?? [];
+					if (!remoteIds.length) return null;
+					const b = layout.get(item.id);
+					if (!b) return null;
+					const w = Math.max(0, b.right - b.left);
+					const h = Math.max(0, b.bottom - b.top);
+					// Use live rotation during drag/rotate from unified active drag; tables shouldn't rotate
+					const active = getActiveDragForItem(item.id);
+					let angle = active ? active.rotation : item.rotation;
+					if (Tree.is(item.content, FluidTable)) angle = 0;
+					const connected = (presence.users.getConnectedUsers?.() ?? []) as unknown as ReadonlyArray<{ value: { name: string; id: string; image?: string }; client: { attendeeId: string } }>;
+					const users = connected.filter((u) => remoteIds.includes(u.client.attendeeId));
+					const isExpanded = expandedPresence.has(item.id);
+					const toggleExpanded = (e: React.MouseEvent) => {
+						e.stopPropagation();
+						setExpandedPresence((prev) => {
+							const next = new Set(prev);
+							if (next.has(item.id)) next.delete(item.id); else next.add(item.id);
+							return next;
+						});
+					};
+					return (
+						<g key={`presence-${item.id}`} transform={`translate(${b.left}, ${b.top}) rotate(${angle}, ${w/2}, ${h/2})`} data-svg-item-id={item.id}>
+							{users.length === 1 ? (
+								<g transform={`translate(${w - 12}, ${-12})`} onMouseDown={(e)=>e.stopPropagation()}>
+									<circle r={12} fill={getUserColor(users[0].client.attendeeId)} stroke="#fff" strokeWidth={2} />
+									<text x={0} y={4} textAnchor="middle" fontSize={10} fontWeight={600} fill="#fff">{getInitials(users[0].value.name)}</text>
+								</g>
+							) : (
+								<g onMouseDown={(e)=>e.stopPropagation()}>
+									{!isExpanded ? (
+										<g transform={`translate(${w - 12}, ${-12})`} cursor="pointer" onClick={toggleExpanded}>
+											<circle r={12} fill="#000" stroke="#fff" strokeWidth={2} />
+											<text x={0} y={4} textAnchor="middle" fontSize={10} fontWeight={600} fill="#fff">{users.length}</text>
+										</g>
+									) : (
+										<g>
+											{users.map((user: { value: { name: string }; client: { attendeeId: string } }, idx: number) => (
+												<g key={user.client.attendeeId} transform={`translate(${w - 12 - idx * 26}, ${-12})`}>
+													<circle r={12} fill={getUserColor(user.client.attendeeId)} stroke="#fff" strokeWidth={2} />
+													<text x={0} y={4} textAnchor="middle" fontSize={10} fontWeight={600} fill="#fff">{getInitials(user.value.name)}</text>
+												</g>
+											))}
+											<g transform={`translate(${w - 12 - users.length * 26 - 14}, ${-12})`} cursor="pointer" onClick={toggleExpanded}>
+												<circle r={12} fill="#4b5563" stroke="#fff" strokeWidth={2} />
+												<text x={0} y={4} textAnchor="middle" fontSize={12} fontWeight={700} fill="#fff">×</text>
+											</g>
+										</g>
+									)}
+							</g>
+						)}
+					</g>
 					);
 				})}
 			</g>

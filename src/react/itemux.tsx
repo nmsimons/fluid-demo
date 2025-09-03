@@ -109,9 +109,6 @@ export function ItemView(props: {
 	const layout = useContext(LayoutContext);
 
 	const [selected, setSelected] = useState(presence.itemSelection.testSelection({ id: item.id }));
-	const [remoteSelected, setRemoteSelected] = useState<string[]>(
-		presence.itemSelection.testRemoteSelection({ id: item.id })
-	);
 
 	// Shape-specific props for temporary overrides during resize
 	const [shapeProps, setShapeProps] = useState<{
@@ -193,7 +190,7 @@ export function ItemView(props: {
 	usePresenceManager(
 		presence.drag as PresenceManager<DragAndRotatePackage>,
 		(update) => {
-			if (update && update.branch === presence.branch) {
+			if (update) {
 				setPropsOnDrag(update);
 			}
 		},
@@ -210,14 +207,9 @@ export function ItemView(props: {
 
 	usePresenceManager(
 		presence.itemSelection,
-		() => {
-			setRemoteSelected(presence.itemSelection.testRemoteSelection({ id: item.id }));
-		},
+		() => {},
 		(update) => {
 			setSelected(update.some((selection) => selection.id === item.id));
-		},
-		() => {
-			setRemoteSelected(presence.itemSelection.testRemoteSelection({ id: item.id }));
 		}
 	);
 
@@ -317,7 +309,6 @@ export function ItemView(props: {
 					visualHidden={!!hideSelectionControls}
 				/>
 			)}
-			<RemoteSelectionIndicators remoteSelectedUsers={remoteSelected} />
 			<ContentElement item={item} shapeProps={shapeProps} />
 		</div>
 	);
