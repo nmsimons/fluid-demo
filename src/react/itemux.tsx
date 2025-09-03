@@ -97,8 +97,10 @@ export function ItemView(props: {
 	item: Item;
 	index: number;
 	canvasPosition: { left: number; top: number };
+	hideSelectionControls?: boolean;
+	pan?: { x: number; y: number };
 }): JSX.Element {
-	const { item, index } = props;
+	const { item, index, hideSelectionControls } = props;
 	const itemInval = useTree(item);
 	const [offset, setOffset] = useState({ x: 0, y: 0 });
 
@@ -124,7 +126,7 @@ export function ItemView(props: {
 		left: item.x,
 		top: item.y,
 		zIndex: index,
-		transform: `rotate(${item.rotation}deg)`,
+			transform: `rotate(${item.rotation}deg)`,
 	});
 
 	useEffect(() => {
@@ -132,8 +134,8 @@ export function ItemView(props: {
 			left: item.x,
 			top: item.y,
 			zIndex: index,
-			transform:
-				getContentType(item) === "table" ? `rotate(0)` : `rotate(${item.rotation}deg)`,
+				transform:
+					getContentType(item) === "table" ? `rotate(0)` : `rotate(${item.rotation}deg)`,
 		});
 	}, [itemInval, item]);
 
@@ -143,10 +145,10 @@ export function ItemView(props: {
 				left: dragData.x,
 				top: dragData.y,
 				zIndex: index,
-				transform:
-					getContentType(item) === "table"
-						? `rotate(0)`
-						: `rotate(${dragData.rotation}deg)`,
+					transform:
+						getContentType(item) === "table"
+							? `rotate(0)`
+							: `rotate(${dragData.rotation}deg)`,
 			});
 		}
 	};
@@ -261,16 +263,26 @@ export function ItemView(props: {
 	const ref = useRef<HTMLDivElement>(null);
 	useEffect(() => {
 		if (ref.current !== null) {
-			const bb = ref.current.getBoundingClientRect();
+			const el = ref.current;
+			const bb = el.getBoundingClientRect();
+			// Center in screen coords (rotation doesn't change center)
+			const centerX = (bb.left + bb.right) / 2;
+			const centerY = (bb.top + bb.bottom) / 2;
+			// Use unrotated intrinsic size so overlay stays consistent across rotation
+			const w0 = el.offsetWidth || bb.width;
+			const h0 = el.offsetHeight || bb.height;
+			const panX = props.pan?.x ?? 0;
+			const panY = props.pan?.y ?? 0;
 			const relativeBb = {
-				left: bb.left - props.canvasPosition.left,
-				top: bb.top - props.canvasPosition.top,
-				right: bb.right - props.canvasPosition.left,
-				bottom: bb.bottom - props.canvasPosition.top,
+				left: centerX - w0 / 2 - props.canvasPosition.left - panX,
+				top: centerY - h0 / 2 - props.canvasPosition.top - panY,
+				right: centerX + w0 / 2 - props.canvasPosition.left - panX,
+				bottom: centerY + h0 / 2 - props.canvasPosition.top - panY,
 			};
 			layout.set(item.id, relativeBb);
 		}
-	}, [item.id, layout]);
+	// Update when item moves/sizes so SVG overlay tracks it
+	}, [item.id, layout, itemProps, shapeProps, props.pan?.x, props.pan?.y]);
 
 	return (
 		<div
@@ -285,7 +297,14 @@ export function ItemView(props: {
 			style={{ ...itemProps }}
 		>
 			<CommentIndicator comments={item.comments} selected={selected} />
-			<SelectionBox selected={selected} item={item} onResizeEnd={clearShapeProps} />
+			{(
+				<SelectionBox
+					selected={selected}
+					item={item}
+					onResizeEnd={clearShapeProps}
+					visualHidden={!!hideSelectionControls}
+				/>
+			)}
 			<RemoteSelectionIndicators remoteSelectedUsers={remoteSelected} />
 			<ContentElement item={item} shapeProps={shapeProps} />
 		</div>
@@ -546,15 +565,22 @@ export function SelectionBox(props: {
 	selected: boolean;
 	item: Item;
 	onResizeEnd?: () => void;
+	visualHidden?: boolean;
 }): JSX.Element {
-	const { selected, item, onResizeEnd } = props;
+	const { selected, item, onResizeEnd, visualHidden } = props;
 	useTree(item);
 	const padding = 8;
 	return (
-		<div className={`bg-transparent ${selected ? "" : " hidden"}`}>
-			<SelectionControls item={item} padding={padding} onResizeEnd={onResizeEnd} />
+		<>
+			{/* Keep controls mounted for event forwarding; hide visuals when requested */}
+			<div style={{ display: selected ? (visualHidden ? "none" : "block") : "none" }}>
+				<SelectionControls item={item} padding={padding} onResizeEnd={onResizeEnd} />
+			</div>
+			{/* Legacy dashed rectangle visuals, hidden when visualHidden is true or not selected */}
 			<div
-				className={`absolute border-3 border-dashed border-black bg-transparent`}
+				className={`absolute border-3 border-dashed border-black bg-transparent ${
+					selected && !visualHidden ? "" : " hidden"
+				}`}
 				style={{
 					left: -padding,
 					top: -padding,
@@ -564,7 +590,7 @@ export function SelectionBox(props: {
 					pointerEvents: "none",
 				}}
 			></div>
-		</div>
+		</>
 	);
 }
 
@@ -661,16 +687,11 @@ export function RotateHandle(props: { item: Item }): JSX.Element {
 
 				// Clear the drag state
 				presence.drag.clearDragging();
-
-				// Add a temporary click handler to the canvas to prevent selection clearing
-				const preventCanvasClick = (e: Event) => {
-					e.stopPropagation();
-					e.preventDefault();
-					// Remove this handler immediately after preventing the click
-					document.removeEventListener("click", preventCanvasClick, true);
-				};
-				// Use capture phase to intercept the click before it reaches the canvas
-				document.addEventListener("click", preventCanvasClick, true);
+				// Suppress only the immediate background canvas click, not clicks on other items
+				const canvasEl = document.getElementById("canvas") as (SVGSVGElement & { dataset: DOMStringMap }) | null;
+				if (canvasEl) {
+					canvasEl.dataset.suppressClearUntil = String(Date.now() + 150);
+				}
 			}
 		};
 
@@ -814,6 +835,12 @@ export function CornerResizeHandles(props: {
 
 			// Clear the shape props override
 			onResizeEnd?.();
+
+			// Suppress only the immediate background canvas click, not clicks on other items
+			const canvasEl = document.getElementById("canvas") as (SVGSVGElement & { dataset: DOMStringMap }) | null;
+			if (canvasEl) {
+				canvasEl.dataset.suppressClearUntil = String(Date.now() + 150);
+			}
 		};
 
 		document.addEventListener("mousemove", handleMouseMove);

@@ -248,11 +248,8 @@ export function TableBodyView(props: {
 		count: rows.length,
 		estimateSize: () => 36, //estimate row height for accurate scrollbar dragging
 		getScrollElement: () => tableContainerRef.current,
-		//measure dynamic row height, except in firefox because it measures table border height incorrectly
-		measureElement:
-			typeof window !== "undefined" && navigator.userAgent.indexOf("Firefox") === -1
-				? (element) => element?.getBoundingClientRect().height
-				: undefined,
+		// Disable dynamic measurement to avoid nested updates when the canvas pans
+		measureElement: undefined,
 		overscan: 5,
 	});
 
@@ -302,9 +299,6 @@ export function TableRowView(props: {
 		<tr
 			key={objectIdNumber(fluidRow)}
 			data-index={virtualRow.index} //needed for dynamic row height measurement
-			ref={(node) => {
-				rowVirtualizer.measureElement(node);
-			}} //measure dynamic row height
 			style={{
 				...style,
 				display: "flex",
