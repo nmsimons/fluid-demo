@@ -1,0 +1,95 @@
+import React from "react";
+import { FluidTable, Item, Shape } from "../../schema/app_schema.js";
+import { Tree } from "fluid-framework";
+import { getActiveDragForItem } from "../utils/dragUtils.js";
+
+export function SelectionOverlay(props: {
+	item: Item;
+	layout: Map<string, { left: number; top: number; right: number; bottom: number }>;
+	presence: React.ContextType<typeof import("../contexts/PresenceContext.js").PresenceContext>;
+	zoom: number;
+}): JSX.Element | null {
+	const { item, layout, presence, zoom } = props;
+	const b = layout.get(item.id);
+	const left = b?.left ?? item.x;
+	const top = b?.top ?? item.y;
+	let w = b ? Math.max(0, b.right - b.left) : 0;
+	let h = b ? Math.max(0, b.bottom - b.top) : 0;
+	if (w === 0 || h === 0) {
+		const container = document.querySelector(`[data-item-id='${item.id}']`) as HTMLElement | null;
+		if (container) {
+			const rect = container.getBoundingClientRect();
+			w = rect.width / (zoom || 1);
+			h = rect.height / (zoom || 1);
+		}
+		if (w === 0 || h === 0) return null;
+	}
+	const padding = 8;
+	const active = getActiveDragForItem(presence, item.id);
+	let angle = active ? active.rotation : item.rotation;
+	const isTable = Tree.is(item.content, FluidTable);
+	const isShape = Tree.is(item.content, Shape);
+	if (isTable) angle = 0;
+	return (
+		<g data-svg-item-id={item.id} transform={`translate(${left}, ${top}) rotate(${angle}, ${w/2}, ${h/2})`}>
+			<g pointerEvents="none">
+				<rect x={-padding} y={-padding} width={w + padding * 2} height={h + padding * 2} fill="none" stroke="#000" strokeDasharray="6 4" strokeWidth={2} opacity={0.9} />
+			</g>
+			{!isTable && (
+				<g transform={`translate(${w/2}, ${-35})`}>
+					<circle r={6} fill="#000" cursor="grab"
+						onClick={(e)=>{ e.stopPropagation(); }}
+						onMouseDown={(e)=>{
+							e.stopPropagation();
+							const container = document.querySelector(`[data-item-id='${item.id}']`) as HTMLElement | null;
+							const rotateHandle = container?.querySelector('.cursor-grab') as HTMLElement | null;
+							const target = rotateHandle ?? container;
+							if (target) {
+								const evt = new MouseEvent('mousedown', { bubbles: true, cancelable: true, clientX: e.clientX, clientY: e.clientY });
+								target.dispatchEvent(evt);
+							}
+						}}
+					/>
+				</g>
+			)}
+			{isShape && (
+				<g>
+					{(() => {
+						const handleSize = 8;
+						const half = handleSize / 2;
+						const outward = padding + 2;
+						const positions = [
+							{ x: -outward, y: -outward, cursor: 'nwse-resize' as const },
+							{ x: w + outward, y: -outward, cursor: 'nesw-resize' as const },
+							{ x: -outward, y: h + outward, cursor: 'nesw-resize' as const },
+							{ x: w + outward, y: h + outward, cursor: 'nwse-resize' as const },
+						];
+						return positions.map((pos, i) => (
+							<rect
+								key={i}
+								x={pos.x - half}
+								y={pos.y - half}
+								width={handleSize}
+								height={handleSize}
+								fill="#000"
+								stroke="none"
+								cursor={pos.cursor}
+								onClick={(e) => { e.stopPropagation(); }}
+								onMouseDown={(e) => {
+									e.stopPropagation();
+									const container = document.querySelector(`[data-item-id='${item.id}']`) as HTMLElement | null;
+									const handles = Array.from(container?.querySelectorAll('.cursor-nw-resize') ?? []) as HTMLElement[];
+									const handle = handles[i] ?? container;
+									if (handle) {
+										const evt = new MouseEvent('mousedown', { bubbles: true, cancelable: true, clientX: e.clientX, clientY: e.clientY });
+										handle.dispatchEvent(evt);
+									}
+								}}
+							/>
+						));
+					})()}
+				</g>
+			)}
+		</g>
+	);
+}
