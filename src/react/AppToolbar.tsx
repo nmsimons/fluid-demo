@@ -43,6 +43,10 @@ import {
 	CommentFilled,
 	CommentRegular,
 	DeleteRegular,
+	InkingToolFilled,
+	InkingToolRegular,
+	EraserToolFilled,
+	EraserToolRegular,
 } from "@fluentui/react-icons";
 import type { SelectionManager } from "../utils/presence/Interfaces/SelectionManager.js";
 import { TypedSelection } from "../utils/presence/selection.js";
@@ -65,6 +69,8 @@ export interface AppToolbarProps {
 	onZoomChange?: (z: number) => void;
 	inkActive: boolean;
 	onToggleInk: () => void;
+	eraserActive: boolean;
+	onToggleEraser: () => void;
 }
 
 export function AppToolbar(props: AppToolbarProps): JSX.Element {
@@ -86,6 +92,8 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 		onZoomChange,
 		inkActive,
 		onToggleInk,
+		eraserActive,
+		onToggleEraser,
 	} = props;
 
 	const formatZoom = (z: number | undefined) => `${Math.round((z ?? 1) * 100)}%`;
@@ -115,15 +123,35 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 				/>
 			</ToolbarGroup>
 			<ToolbarDivider />
-			{/* Inking group */}
+			{/* Inking / Eraser group */}
 			<ToolbarGroup>
 				<TooltipButton
 					tooltip={inkActive ? "Exit ink mode" : "Enter ink mode"}
-					onClick={onToggleInk}
-					icon={<span style={{ fontSize: 14 }}>{inkActive ? "✏" : "🖊"}</span>}
+					onClick={() => {
+						if (eraserActive) onToggleEraser();
+						onToggleInk();
+					}}
+					icon={
+						<span style={{ fontSize: 14 }}>
+							{inkActive ? <InkingToolFilled /> : <InkingToolRegular />}
+						</span>
+					}
 					active={inkActive}
 				/>
-			</ToolbarGroup>{" "}
+				<TooltipButton
+					tooltip={eraserActive ? "Exit eraser" : "Eraser"}
+					onClick={() => {
+						if (inkActive) onToggleInk();
+						onToggleEraser();
+					}}
+					icon={
+						<span style={{ fontSize: 14 }}>
+							{eraserActive ? <EraserToolFilled /> : <EraserToolRegular />}
+						</span>
+					}
+					active={eraserActive}
+				/>
+			</ToolbarGroup>
 			<ToolbarDivider />
 			<ToolbarGroup>
 				<NewCircleButton items={view.root.items} canvasSize={canvasSize} />

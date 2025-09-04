@@ -65,6 +65,7 @@ export function ReactApp(props: {
 	const [zoom, setZoom] = useState(1);
 	const [pan, setPan] = useState({ x: 0, y: 0 });
 	const [inkActive, setInkActive] = useState(false);
+	const [eraserActive, setEraserActive] = useState(false);
 
 	// Keep linter satisfied until pan is surfaced elsewhere
 	useEffect(() => {
@@ -222,6 +223,8 @@ export function ReactApp(props: {
 						onZoomChange={setZoom}
 						inkActive={inkActive}
 						onToggleInk={() => setInkActive((a) => !a)}
+						eraserActive={eraserActive}
+						onToggleEraser={() => setEraserActive((a) => !a)}
 					/>
 					<div className="flex h-[calc(100vh-96px)] w-full flex-row ">
 						<PaneContext.Provider
@@ -237,6 +240,7 @@ export function ReactApp(props: {
 								onZoomChange={setZoom}
 								onPanChange={setPan}
 								inkActive={inkActive}
+								eraserActive={eraserActive}
 							/>
 						</PaneContext.Provider>
 						<CommentPane

@@ -27,8 +27,9 @@ export function Canvas(props: {
 	onZoomChange?: (z: number) => void;
 	onPanChange?: (p: { x: number; y: number }) => void;
 	inkActive?: boolean;
+	eraserActive?: boolean;
 }): JSX.Element {
-	const { items, setSize, zoom: externalZoom, onZoomChange, onPanChange, inkActive } = props;
+	const { items, setSize, zoom: externalZoom, onZoomChange, onPanChange, inkActive, eraserActive } = props;
 	const presence = useContext(PresenceContext);
 	useTree(items);
 	const layout = useContext(LayoutContext);
@@ -57,6 +58,14 @@ export function Canvas(props: {
 	const { selKey, motionKey } = useOverlayRerenders(presence);
 	// Track expanded state for presence indicators per item
 	const [expandedPresence, setExpandedPresence] = useState<Set<string>>(new Set());
+	// Screen-space cursor for ink / eraser
+	const [cursor, setCursor] = useState<{ x: number; y: number; visible: boolean }>({
+		x: 0,
+		y: 0,
+		visible: false,
+	});
+	// Hovered stroke (eraser preview)
+	const [eraserHoverId, setEraserHoverId] = useState<string | null>(null);
 
 	// Helpers for presence indicator visuals
 	const getInitials = (name: string): string => {
@@ -137,6 +146,62 @@ export function Canvas(props: {
 
 	// Begin inking on left button background press (not on items)
 	const handlePointerDown = (e: React.PointerEvent) => {
+		if (inkActive || eraserActive) {
+			const targetEl = e.target as Element | null;
+			if (targetEl?.closest('[data-item-id], [data-svg-item-id]')) {
+				// Suppress cursor over items
+				setCursor((c) => ({ ...c, visible: false }));
+			} else {
+				const rect = svgRef.current?.getBoundingClientRect();
+				if (rect) setCursor({ x: e.clientX - rect.left, y: e.clientY - rect.top, visible: true });
+			}
+		}
+		// Eraser mode: on pointer down start erase interaction instead of drawing
+		if (eraserActive) {
+			if (e.button !== 0) return;
+			const p = toLogical(e.clientX, e.clientY);
+			// Simple hit test: find first stroke whose bbox contains point then refine by nearest segment distance
+			if (root?.inks) {
+				let target: InkStroke | undefined;
+				for (const s of root.inks) {
+					const bb = s.bbox;
+					if (!bb) continue;
+					if (p.x < bb.x - 4 || p.x > bb.x + bb.w + 4 || p.y < bb.y - 4 || p.y > bb.y + bb.h + 4) continue;
+					// distance to polyline (brute force)
+					const pts = Array.from(s.simplified ?? s.points) as InkPoint[];
+					for (let i = 0; i < pts.length - 1; i++) {
+						const a = pts[i];
+						const b = pts[i + 1];
+						const dx = b.x - a.x;
+						const dy = b.y - a.y;
+						const len2 = dx * dx + dy * dy;
+						let t = 0;
+						if (len2 > 0) {
+							const proj = (p.x - a.x) * dx + (p.y - a.y) * dy;
+							t = Math.max(0, Math.min(1, proj / len2));
+						}
+						const cx = a.x + dx * t;
+						const cy = a.y + dy * t;
+						const ddx = p.x - cx;
+						const ddy = p.y - cy;
+						const dist2 = ddx * ddx + ddy * ddy;
+						const hitRadius = (s.style?.strokeWidth ?? 4) * 1.2; // tolerate a bit more than width
+						if (dist2 <= hitRadius * hitRadius) {
+							target = s;
+							break;
+						}
+					}
+					if (target) break;
+				}
+				if (target) {
+					Tree.runTransaction(root.inks, () => {
+						const idx = root.inks.indexOf(target!);
+						if (idx >= 0) root.inks.removeAt(idx);
+					});
+				}
+			}
+			return;
+		}
 		if (!inkActive) return; // only when ink tool active
 		if (e.button !== 0) return; // left only
 		// Ignore if clicked on an item or existing selectable element
@@ -161,6 +226,60 @@ export function Canvas(props: {
 		});
 		e.preventDefault();
 	};
+
+	const handlePointerMove = (e: React.PointerEvent) => {
+		if (!(inkActive || eraserActive)) {
+			if (cursor.visible) setCursor((c) => ({ ...c, visible: false }));
+			if (eraserHoverId) setEraserHoverId(null);
+			return;
+		}
+		const targetEl = e.target as Element | null;
+		if (targetEl?.closest('[data-item-id], [data-svg-item-id]')) {
+			if (cursor.visible) setCursor((c) => ({ ...c, visible: false }));
+			if (eraserHoverId) setEraserHoverId(null);
+			return;
+		}
+		const rect = svgRef.current?.getBoundingClientRect();
+		if (!rect) return;
+		setCursor({ x: e.clientX - rect.left, y: e.clientY - rect.top, visible: true });
+		// If erasing, update hover stroke id
+		if (eraserActive && root?.inks) {
+			const pLogical = toLogical(e.clientX, e.clientY);
+			let target: InkStroke | undefined;
+			for (const s of root.inks) {
+				const bb = s.bbox;
+				if (!bb) continue;
+				if (pLogical.x < bb.x - 6 || pLogical.x > bb.x + bb.w + 6 || pLogical.y < bb.y - 6 || pLogical.y > bb.y + bb.h + 6) continue;
+				const pts = Array.from(s.simplified ?? s.points) as InkPoint[];
+				for (let i = 0; i < pts.length - 1; i++) {
+					const a = pts[i];
+					const b = pts[i + 1];
+					const dx = b.x - a.x;
+					const dy = b.y - a.y;
+					const len2 = dx * dx + dy * dy;
+					let t = 0;
+					if (len2 > 0) {
+						const proj = (pLogical.x - a.x) * dx + (pLogical.y - a.y) * dy;
+						t = Math.max(0, Math.min(1, proj / len2));
+					}
+					const cx = a.x + dx * t;
+					const cy = a.y + dy * t;
+					const ddx = pLogical.x - cx;
+					const ddy = pLogical.y - cy;
+					const dist2 = ddx * ddx + ddy * ddy;
+					const hitRadius = (s.style?.strokeWidth ?? 4) * 1.2;
+					if (dist2 <= hitRadius * hitRadius) {
+						target = s;
+						break;
+					}
+				}
+				if (target) break;
+			}
+			setEraserHoverId(target ? target.id : null);
+		}
+	};
+
+	const handlePointerLeave = () => setCursor((c) => ({ ...c, visible: false }));
 
 	// Add move listener while inking
 	useEffect(() => {
@@ -241,6 +360,8 @@ export function Canvas(props: {
 			onClick={handleBackgroundClick}
 			onMouseDown={beginPanIfBackground}
 			onPointerDown={handlePointerDown}
+			onPointerMove={handlePointerMove}
+			onPointerLeave={handlePointerLeave}
 			onContextMenu={(e) => {
 				// Always suppress default context menu on canvas
 				e.preventDefault();
@@ -293,6 +414,27 @@ export function Canvas(props: {
 						</g>
 					);
 				})}
+				{/* Eraser hover highlight (draw after base strokes) */}
+				{eraserActive && eraserHoverId && (() => {
+					const stroke = Array.from(inksIterable).find((s: InkStroke) => s.id === eraserHoverId);
+					if (!stroke) return null;
+					const pts = Array.from(stroke.simplified ?? stroke.points) as InkPoint[];
+					if (!pts.length) return null;
+					return (
+						<polyline
+							key={`hover-${stroke.id}`}
+							fill="none"
+							stroke="#dc2626"
+							strokeWidth={Math.max(0.5, (stroke.style?.strokeWidth ?? 4) * zoom + 2)}
+							strokeOpacity={0.9}
+							strokeLinecap="round"
+							strokeLinejoin="round"
+							vectorEffect="non-scaling-stroke"
+							strokeDasharray="4 3"
+							points={pts.map((p: InkPoint) => `${p.x},${p.y}`).join(" ")}
+						/>
+					);
+				})()}
 				{/* Remote ephemeral strokes */}
 				{presence.ink?.getRemoteStrokes().map((r) => {
 					const pts = r.stroke.points;
@@ -428,6 +570,27 @@ export function Canvas(props: {
 					);
 				})}
 			</g>
+			{/* Screen-space cursor overlay */}
+			{cursor.visible && (inkActive || eraserActive) && (
+				<g pointerEvents="none">
+					{(() => {
+						const r = eraserActive ? 12 : 6;
+						const stroke = eraserActive ? "#dc2626" : "#2563eb";
+						const fill = eraserActive ? "rgba(220,38,38,0.08)" : "rgba(37,99,235,0.08)";
+						return (
+							<circle
+								cx={cursor.x}
+								cy={cursor.y}
+								r={r}
+								fill={fill}
+								stroke={stroke}
+								strokeDasharray={eraserActive ? "4 3" : undefined}
+								strokeWidth={1}
+							/>
+						);
+					})()}
+				</g>
+			)}
 		</svg>
 	);
 }
