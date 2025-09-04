@@ -1,5 +1,5 @@
 import React, { JSX, useState, useEffect, useContext, useRef } from "react";
-import { Comments, FluidTable, Item, Note, Shape } from "../schema/app_schema.js";
+import { FluidTable, Item, Note, Shape } from "../schema/app_schema.js";
 import { PresenceContext } from "./contexts/PresenceContext.js";
 import { ShapeView } from "./shapeux.js";
 import { Tree } from "fluid-framework";
@@ -10,8 +10,7 @@ import { objectIdNumber, useTree } from "./hooks/useTree.js";
 import { usePresenceManager } from "./hooks/usePresenceManger.js";
 import { PresenceManager } from "../utils/presence/Interfaces/PresenceManager.js";
 import { TableView } from "./tableux.js";
-import { Comment20Filled, ChevronLeft16Filled } from "@fluentui/react-icons";
-import { PaneContext } from "./contexts/PaneContext.js";
+import { ChevronLeft16Filled } from "@fluentui/react-icons";
 import { LayoutContext } from "./hooks/useLayoutManger.js";
 
 /**
@@ -314,7 +313,6 @@ export function ItemView(props: {
 			className={`absolute`}
 			style={{ ...itemProps }}
 		>
-			<CommentIndicator comments={item.comments} selected={selected} />
 			{
 				<SelectionBox
 					selected={selected}
@@ -328,32 +326,7 @@ export function ItemView(props: {
 	);
 }
 
-export function CommentIndicator(props: { comments: Comments; selected: boolean }): JSX.Element {
-	const { comments, selected } = props;
-	useTree(comments, true);
-
-	const panes = useContext(PaneContext).panes;
-	const visible =
-		(panes.find((pane) => pane.name === "comments")?.visible ?? false) &&
-		comments.length > 0 &&
-		!selected; // Hide when item is selected
-
-	return (
-		<div
-			className={`absolute pointer-events-none flex flex-row justify-center items-center ${visible ? "" : " hidden"}`}
-			style={{
-				top: -35, // Position above the item, same as rotation handle
-				left: "50%", // Center horizontally
-				transform: "translateX(-50%)", // Center the icon
-				zIndex: 10000,
-				width: "24px",
-				height: "24px",
-			}}
-		>
-			<Comment20Filled />
-		</div>
-	);
-}
+// CommentIndicator removed; replaced by SVG CommentOverlay
 
 /**
  * RemoteSelectionIndicators Component

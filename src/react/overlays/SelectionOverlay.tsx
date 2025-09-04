@@ -32,6 +32,14 @@ export function SelectionOverlay(props: {
 	const isTable = Tree.is(item.content, FluidTable);
 	const isShape = Tree.is(item.content, Shape);
 	if (isTable) angle = 0;
+
+	// Screen-constant geometry helpers
+	const rotationGapPx = 22; // (was 35) desired screen distance from top edge of selection rect to rotation handle center
+	const outwardGapPx = 2; // desired screen outward offset for resize handles beyond selection rect edge (beyond padding)
+	// Convert: (Y - padding)*zoom = gap  => Y = padding + gap/zoom
+	const rotationOffsetLocal = padding + rotationGapPx / zoom;
+	// For resize: (outwardLocal - padding)*zoom = outwardGapPx => outwardLocal = padding + outwardGapPx/zoom
+	const outwardLocal = padding + outwardGapPx / zoom;
 	return (
 		<g
 			data-svg-item-id={item.id}
@@ -45,15 +53,16 @@ export function SelectionOverlay(props: {
 					height={h + padding * 2}
 					fill="none"
 					stroke="#000"
-					strokeDasharray="6 4"
-					strokeWidth={2}
+					strokeLinecap="round"
+					strokeDasharray={`${(2 / zoom).toFixed(3)} ${(4 / zoom).toFixed(3)}`}
+					strokeWidth={2 / zoom}
 					opacity={0.9}
 				/>
 			</g>
 			{!isTable && (
-				<g transform={`translate(${w / 2}, ${-35})`}>
+				<g transform={`translate(${w / 2}, ${-rotationOffsetLocal})`}>
 					<circle
-						r={6}
+						r={6 / zoom}
 						fill="#000"
 						cursor="grab"
 						onClick={(e) => {
@@ -84,14 +93,25 @@ export function SelectionOverlay(props: {
 			{isShape && (
 				<g>
 					{(() => {
-						const handleSize = 8;
+						const handleSize = 8 / zoom;
 						const half = handleSize / 2;
-						const outward = padding + 2;
 						const positions = [
-							{ x: -outward, y: -outward, cursor: "nwse-resize" as const },
-							{ x: w + outward, y: -outward, cursor: "nesw-resize" as const },
-							{ x: -outward, y: h + outward, cursor: "nesw-resize" as const },
-							{ x: w + outward, y: h + outward, cursor: "nwse-resize" as const },
+							{ x: -outwardLocal, y: -outwardLocal, cursor: "nwse-resize" as const },
+							{
+								x: w + outwardLocal,
+								y: -outwardLocal,
+								cursor: "nesw-resize" as const,
+							},
+							{
+								x: -outwardLocal,
+								y: h + outwardLocal,
+								cursor: "nesw-resize" as const,
+							},
+							{
+								x: w + outwardLocal,
+								y: h + outwardLocal,
+								cursor: "nwse-resize" as const,
+							},
 						];
 						return positions.map((pos, i) => (
 							<rect

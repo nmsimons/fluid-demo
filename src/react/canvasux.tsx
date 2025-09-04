@@ -12,9 +12,11 @@ import { useTree } from "./hooks/useTree.js";
 import { LayoutContext } from "./hooks/useLayoutManger.js";
 import { SelectionOverlay } from "./overlays/SelectionOverlay.js";
 import { PresenceOverlay } from "./overlays/PresenceOverlay.js";
+import { CommentOverlay } from "./overlays/CommentOverlay.js";
 import { useCanvasNavigation } from "./hooks/useCanvasNavigation.js";
 import { useOverlayRerenders } from "./hooks/useOverlayRerenders.js";
 import { ItemsHtmlLayer } from "./ItemsHtmlLayer.js";
+import { PaneContext } from "./contexts/PaneContext.js";
 
 export function Canvas(props: {
 	items: Items;
@@ -71,6 +73,10 @@ export function Canvas(props: {
 		return colors[Math.abs(hash) % colors.length];
 	};
 
+	const paneContext = useContext(PaneContext);
+	const commentPaneVisible =
+		paneContext.panes.find((p) => p.name === "comments")?.visible ?? false;
+
 	return (
 		<svg
 			id="canvas"
@@ -88,7 +94,8 @@ export function Canvas(props: {
 					height={48}
 					patternTransform={`translate(${pan.x} ${pan.y}) scale(${zoom})`}
 				>
-					<circle cx={24} cy={24} r={2} fill="#d1d5db" />
+					{/* Keep dot screen size constant: radius scales inverse to zoom with a minimum for visibility */}
+					<circle cx={24} cy={24} r={1 / zoom} fill="#9ca3af" />
 				</pattern>
 			</defs>
 			<rect
@@ -171,6 +178,27 @@ export function Canvas(props: {
 							getUserColor={getUserColor}
 							expanded={isExpanded}
 							onToggleExpanded={toggleExpanded}
+						/>
+					);
+				})}
+			</g>
+			{/* Comment indicators (zoom-invariant) */}
+			<g
+				key={`comments-${selKey}-${motionKey}`}
+				transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}
+			>
+				{items.map((item) => {
+					if (!(item instanceof Item)) return null;
+					const isSelected =
+						presence.itemSelection?.testSelection({ id: item.id }) ?? false;
+					return (
+						<CommentOverlay
+							key={`comment-${item.id}`}
+							item={item}
+							layout={layout}
+							zoom={zoom}
+							commentPaneVisible={commentPaneVisible}
+							selected={isSelected}
 						/>
 					);
 				})}

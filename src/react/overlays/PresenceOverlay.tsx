@@ -23,6 +23,7 @@ export function PresenceOverlay(props: {
 		getUserColor,
 		expanded,
 		onToggleExpanded,
+		zoom,
 	} = props;
 	const b = layout.get(item.id);
 	if (!b) return null;
@@ -37,6 +38,38 @@ export function PresenceOverlay(props: {
 	}>;
 	const users = connected.filter((u) => remoteIds.includes(u.client.attendeeId));
 	if (!users.length) return null;
+
+	// Screen-space sizing constants
+	const badgeRadius = 12; // px
+	const badgeStroke = 2; // px
+	const badgeFont = 10; // px
+	const closeFont = 12; // px
+	const stackSpacing = 26; // px between badges when expanded
+	const closeExtraGap = 8; // px gap before close button
+
+	// Selection overlay geometry (must mirror SelectionOverlay constants)
+	const selectionPadding = 8; // matches SelectionOverlay padding
+	const outwardGapPx = 2; // matches outward gap used for resize handles
+	// Top-left resize handle center (in local coords) is at (-outwardLocal, -outwardLocal)
+	const outwardLocal = selectionPadding + outwardGapPx / zoom;
+
+	// Desired screen-space shift from the handle center: move right a bit & just below
+	// Adjusted per feedback: move left (remove prior +8) and further down a bit
+	const shiftRightPx = -12; // px (moved 4px further left)
+	const shiftDownPx = 18; // px (increase from 12)
+
+	// Convert to local units (pre-scale)
+	const r = badgeRadius / zoom;
+	const strokeW = badgeStroke / zoom;
+	const fontSize = badgeFont / zoom;
+	const fontSizeClose = closeFont / zoom;
+	const spacing = stackSpacing / zoom;
+	const closeOffset = closeExtraGap / zoom;
+
+	// Anchor position for first badge (single or collapsed group)
+	const anchorX = -outwardLocal + shiftRightPx / zoom;
+	const anchorY = -outwardLocal + shiftDownPx / zoom;
+
 	return (
 		<g
 			transform={`translate(${b.left}, ${b.top}) rotate(${angle}, ${w / 2}, ${h / 2})`}
@@ -44,20 +77,20 @@ export function PresenceOverlay(props: {
 		>
 			{users.length === 1 ? (
 				<g
-					transform={`translate(${w - 12}, ${-12})`}
+					transform={`translate(${anchorX}, ${anchorY})`}
 					onMouseDown={(e) => e.stopPropagation()}
 				>
 					<circle
-						r={12}
+						r={r}
 						fill={getUserColor(users[0].client.attendeeId)}
 						stroke="#fff"
-						strokeWidth={2}
+						strokeWidth={strokeW}
 					/>
 					<text
 						x={0}
-						y={4}
+						y={4 / zoom}
 						textAnchor="middle"
-						fontSize={10}
+						fontSize={fontSize}
 						fontWeight={600}
 						fill="#fff"
 					>
@@ -68,16 +101,16 @@ export function PresenceOverlay(props: {
 				<g onMouseDown={(e) => e.stopPropagation()}>
 					{!expanded ? (
 						<g
-							transform={`translate(${w - 12}, ${-12})`}
+							transform={`translate(${anchorX}, ${anchorY})`}
 							cursor="pointer"
 							onClick={onToggleExpanded}
 						>
-							<circle r={12} fill="#000" stroke="#fff" strokeWidth={2} />
+							<circle r={r} fill="#000" stroke="#fff" strokeWidth={strokeW} />
 							<text
 								x={0}
-								y={4}
+								y={4 / zoom}
 								textAnchor="middle"
-								fontSize={10}
+								fontSize={fontSize}
 								fontWeight={600}
 								fill="#fff"
 							>
@@ -86,48 +119,40 @@ export function PresenceOverlay(props: {
 						</g>
 					) : (
 						<g>
-							{users.map(
-								(
-									user: {
-										value: { name: string };
-										client: { attendeeId: string };
-									},
-									idx: number
-								) => (
-									<g
-										key={user.client.attendeeId}
-										transform={`translate(${w - 12 - idx * 26}, ${-12})`}
+							{users.map((user, idx) => (
+								<g
+									key={user.client.attendeeId}
+									transform={`translate(${anchorX}, ${anchorY + idx * spacing})`}
+								>
+									<circle
+										r={r}
+										fill={getUserColor(user.client.attendeeId)}
+										stroke="#fff"
+										strokeWidth={strokeW}
+									/>
+									<text
+										x={0}
+										y={4 / zoom}
+										textAnchor="middle"
+										fontSize={fontSize}
+										fontWeight={600}
+										fill="#fff"
 									>
-										<circle
-											r={12}
-											fill={getUserColor(user.client.attendeeId)}
-											stroke="#fff"
-											strokeWidth={2}
-										/>
-										<text
-											x={0}
-											y={4}
-											textAnchor="middle"
-											fontSize={10}
-											fontWeight={600}
-											fill="#fff"
-										>
-											{getInitials(user.value.name)}
-										</text>
-									</g>
-								)
-							)}
+										{getInitials(user.value.name)}
+									</text>
+								</g>
+							))}
 							<g
-								transform={`translate(${w - 12 - users.length * 26 - 14}, ${-12})`}
+								transform={`translate(${anchorX}, ${anchorY + users.length * spacing + closeOffset})`}
 								cursor="pointer"
 								onClick={onToggleExpanded}
 							>
-								<circle r={12} fill="#4b5563" stroke="#fff" strokeWidth={2} />
+								<circle r={r} fill="#4b5563" stroke="#fff" strokeWidth={strokeW} />
 								<text
 									x={0}
-									y={4}
+									y={4 / zoom}
 									textAnchor="middle"
-									fontSize={12}
+									fontSize={fontSizeClose}
 									fontWeight={700}
 									fill="#fff"
 								>
