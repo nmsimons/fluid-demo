@@ -31,13 +31,22 @@ export function useOverlayRerenders(presence: React.ContextType<typeof PresenceC
 		const offResizeRemote = presence.resize.events.on("remoteUpdated", () =>
 			setMotionKey((t) => (t + 1) % 1000)
 		);
+		// Ephemeral ink updates (local + remote) should also trigger motion-related rerenders
+		const offInkLocal = presence.ink?.events.on("localUpdated", () =>
+			setMotionKey((t) => (t + 1) % 1000)
+		);
+		const offInkRemote = presence.ink?.events.on("remoteUpdated", () =>
+			setMotionKey((t) => (t + 1) % 1000)
+		);
 		return () => {
 			offDragLocal();
 			offDragRemote();
 			offResizeLocal();
 			offResizeRemote();
+			offInkLocal?.();
+			offInkRemote?.();
 		};
-	}, [presence.drag, presence.resize]);
+	}, [presence.drag, presence.resize, presence.ink]);
 
 	return { selKey, motionKey };
 }

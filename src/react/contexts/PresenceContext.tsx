@@ -50,6 +50,9 @@ interface PresenceContextType {
 
 	/** Boolean flag indicating if branch operations are enabled/active */
 	branch: boolean;
+
+	/** Ephemeral ink presence (live in-progress stroke) */
+	ink?: import("../../utils/presence/ink.js").InkPresenceManager;
 }
 
 /**
@@ -67,4 +70,5 @@ export const PresenceContext = createContext<PresenceContextType>({
 	drag: {} as DragManager<DragAndRotatePackage | null>,
 	resize: {} as ResizeManager<ResizePackage | null>,
 	branch: false,
+	ink: undefined,
 });

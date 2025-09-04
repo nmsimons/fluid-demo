@@ -38,6 +38,7 @@ import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts.js";
 import { useAppKeyboardShortcuts } from "./hooks/useAppKeyboardShortcuts.js";
 import { PaneContext } from "./contexts/PaneContext.js";
 import { AppToolbar } from "./AppToolbar.js";
+// Removed circle ink creation; ink tool toggles freehand drawing.
 
 // Context for comment pane actions
 export const CommentPaneContext = React.createContext<{
@@ -53,13 +54,22 @@ export function ReactApp(props: {
 	undoRedo: undoRedo;
 	drag: DragManager<DragAndRotatePackage | null>;
 	resize: ResizeManager<ResizePackage | null>;
+	ink?: import("../utils/presence/ink.js").InkPresenceManager;
 }): JSX.Element {
-	const { tree, itemSelection, tableSelection, users, container, undoRedo, drag, resize } = props;
+	const { tree, itemSelection, tableSelection, users, container, undoRedo, drag, resize, ink } =
+		props;
 	const [connectionState, setConnectionState] = useState("");
 	const [saved, setSaved] = useState(false);
 	const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
 	const [commentPaneHidden, setCommentPaneHidden] = useState(true);
 	const [zoom, setZoom] = useState(1);
+	const [pan, setPan] = useState({ x: 0, y: 0 });
+	const [inkActive, setInkActive] = useState(false);
+
+	// Keep linter satisfied until pan is surfaced elsewhere
+	useEffect(() => {
+		void pan;
+	}, [pan]);
 	const [selectedItemId, setSelectedItemId] = useState<string>("");
 	const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
 	const [selectedColumnId, setSelectedColumnId] = useState<string>("");
@@ -82,6 +92,8 @@ export function ReactApp(props: {
 	useTree(tree.root);
 	useTree(view.root.items);
 	useTree(view.root.comments);
+	// Subscribe to ink strokes so toolbar actions inserting ink trigger re-render
+	useTree(view.root.inks);
 
 	useEffect(() => {
 		const updateConnectionState = () => {
@@ -183,6 +195,7 @@ export function ReactApp(props: {
 				drag: drag,
 				resize: resize,
 				branch: view !== tree,
+				ink: ink,
 			}}
 		>
 			<CommentPaneContext.Provider value={{ openCommentPaneAndFocus }}>
@@ -207,6 +220,8 @@ export function ReactApp(props: {
 						tableSelection={tableSelection}
 						zoom={zoom}
 						onZoomChange={setZoom}
+						inkActive={inkActive}
+						onToggleInk={() => setInkActive((a) => !a)}
 					/>
 					<div className="flex h-[calc(100vh-96px)] w-full flex-row ">
 						<PaneContext.Provider
@@ -220,6 +235,8 @@ export function ReactApp(props: {
 								setSize={(width, height) => setCanvasSize({ width, height })}
 								zoom={zoom}
 								onZoomChange={setZoom}
+								onPanChange={setPan}
+								inkActive={inkActive}
 							/>
 						</PaneContext.Provider>
 						<CommentPane

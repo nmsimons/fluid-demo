@@ -671,9 +671,41 @@ export class Items extends sf.array("Items", [Item]) {
 	}
 }
 
+// ---- Ink (extended vector) schema definitions ----
+export class InkPoint extends sf.object("InkPoint", {
+	x: sf.number,
+	y: sf.number,
+	t: sf.optional(sf.number), // timestamp (ms since epoch or stroke start)
+	p: sf.optional(sf.number), // pressure 0..1
+}) {}
+
+export class InkStyle extends sf.object("InkStyle", {
+	strokeColor: sf.string,
+	strokeWidth: sf.number,
+	opacity: sf.number,
+	lineCap: sf.string, // e.g. round | butt | square
+	lineJoin: sf.string, // e.g. round | miter | bevel
+}) {}
+
+export class InkBBox extends sf.object("InkBBox", {
+	x: sf.number,
+	y: sf.number,
+	w: sf.number,
+	h: sf.number,
+}) {}
+
+export class InkStroke extends sf.object("InkStroke", {
+	id: sf.string,
+	points: sf.array([InkPoint]),
+	style: InkStyle,
+	bbox: InkBBox,
+	simplified: sf.optional(sf.array([InkPoint])),
+}) {}
+
 export class App extends sf.object("App", {
 	items: Items,
 	comments: Comments,
+	inks: sf.array([InkStroke]),
 }) {}
 
 export type FluidRow = InstanceType<typeof FluidRowSchema>;

@@ -9,17 +9,24 @@ export function TooltipButton(props: {
 	tooltip?: string;
 	keyboardShortcut?: string;
 	disabled?: boolean;
+	active?: boolean;
+	className?: string;
 }): JSX.Element {
-	const { children, tooltip, keyboardShortcut } = props;
+	const { children, tooltip, keyboardShortcut, active, icon, className, ...btnRest } = props;
 
-	// Format tooltip with keyboard shortcut if provided
 	const tooltipContent = keyboardShortcut
 		? `${tooltip ?? "No Tooltip Provided"} (${keyboardShortcut})`
 		: (tooltip ?? "No Tooltip Provided");
 
+	const finalClass = [className, active ? "bg-blue-600 text-white" : undefined]
+		.filter(Boolean)
+		.join(" ");
+
 	return (
 		<Tooltip content={tooltipContent} relationship="description">
-			<ToolbarButton {...props}>{children}</ToolbarButton>
+			<ToolbarButton icon={icon} className={finalClass || undefined} {...btnRest}>
+				{children}
+			</ToolbarButton>
 		</Tooltip>
 	);
 }

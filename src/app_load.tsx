@@ -18,6 +18,7 @@ import { UserInfo } from "./utils/presence/Interfaces/UsersManager.js";
 import { AccountInfo, PublicClientApplication } from "@azure/msal-browser";
 import { createDragManager } from "./utils/presence/drag.js";
 import { createResizeManager } from "./utils/presence/resize.js";
+import { createInkPresenceManager } from "./utils/presence/ink.js";
 
 export async function loadApp(props: {
 	client: AzureClient;
@@ -34,7 +35,7 @@ export async function loadApp(props: {
 	// Initialize the SharedTree DDSes
 	const appTree = container.initialObjects.appData.viewWith(appTreeConfiguration);
 	if (appTree.compatibility.canInitialize) {
-		appTree.initialize(new App({ items: [], comments: [] }));
+		appTree.initialize(new App({ items: [], comments: [], inks: [] }));
 	}
 
 	// Get the Presence data object from the container
@@ -79,6 +80,11 @@ export async function loadApp(props: {
 		workspace,
 	});
 
+	const ink = createInkPresenceManager({
+		name: "ink:stroke",
+		workspace,
+	});
+
 	// create the root element for React
 	const app = document.createElement("div");
 	app.id = "app";
@@ -100,6 +106,7 @@ export async function loadApp(props: {
 					tableSelection={tableSelection}
 					drag={drag}
 					resize={resize}
+					ink={ink}
 					users={users}
 					container={container}
 					undoRedo={undoRedo}

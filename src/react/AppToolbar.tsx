@@ -63,6 +63,8 @@ export interface AppToolbarProps {
 	tableSelection: SelectionManager<TypedSelection>;
 	zoom?: number;
 	onZoomChange?: (z: number) => void;
+	inkActive: boolean;
+	onToggleInk: () => void;
 }
 
 export function AppToolbar(props: AppToolbarProps): JSX.Element {
@@ -82,6 +84,8 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 		tableSelection,
 		zoom,
 		onZoomChange,
+		inkActive,
+		onToggleInk,
 	} = props;
 
 	const formatZoom = (z: number | undefined) => `${Math.round((z ?? 1) * 100)}%`;
@@ -93,6 +97,7 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 
 	return (
 		<Toolbar className="h-[48px] shadow-lg flex-nowrap overflow-x-auto overflow-y-hidden whitespace-nowrap min-h-[48px] max-h-[48px]">
+			{/* Undo / Redo group (leftmost) */}
 			<ToolbarGroup>
 				<TooltipButton
 					tooltip="Undo"
@@ -109,6 +114,16 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 					disabled={!canRedo}
 				/>
 			</ToolbarGroup>
+			<ToolbarDivider />
+			{/* Inking group */}
+			<ToolbarGroup>
+				<TooltipButton
+					tooltip={inkActive ? "Exit ink mode" : "Enter ink mode"}
+					onClick={onToggleInk}
+					icon={<span style={{ fontSize: 14 }}>{inkActive ? "✏" : "🖊"}</span>}
+					active={inkActive}
+				/>
+			</ToolbarGroup>{" "}
 			<ToolbarDivider />
 			<ToolbarGroup>
 				<NewCircleButton items={view.root.items} canvasSize={canvasSize} />

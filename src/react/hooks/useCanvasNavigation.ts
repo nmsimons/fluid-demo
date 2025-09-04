@@ -92,10 +92,14 @@ export function useCanvasNavigation(params: {
 
 	// Begin panning on empty background
 	const beginPanIfBackground = (e: React.MouseEvent) => {
+		// Only start pan on right mouse button (button === 2)
+		if (e.button !== 2) return;
 		if (presence.drag.state.local || presence.resize.state?.local) return;
 		const target = e.target as Element | null;
 		if (target?.closest("[data-svg-item-id]")) return;
 		if (target?.closest("[data-item-id]")) return;
+		// Prevent default context menu pathway
+		e.preventDefault();
 		setIsPanning(true);
 		lastPos.current = { x: e.clientX, y: e.clientY };
 		movedRef.current = false;
@@ -103,9 +107,12 @@ export function useCanvasNavigation(params: {
 
 	// Allow panning via empty HTML background inside foreignObject
 	const handleHtmlBackgroundMouseDown = (e: React.MouseEvent) => {
+		// Right button only
+		if (e.button !== 2) return;
 		if (presence.drag.state.local || presence.resize.state?.local) return;
 		const target = e.target as HTMLElement;
 		if (target.closest("[data-item-id]")) return;
+		e.preventDefault();
 		setIsPanning(true);
 		lastPos.current = { x: e.clientX, y: e.clientY };
 		movedRef.current = false;
