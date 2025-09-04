@@ -1,6 +1,25 @@
 import { useEffect, useRef, useState } from "react";
 import type { PresenceContext } from "../contexts/PresenceContext.js";
 
+// Discrete zoom levels (always includes 1 for 100%)
+const ZOOM_STEPS = [
+	0.25, 0.33, 0.5, 0.67, 0.75, 0.85, 0.9, 0.95, 1, 1.05, 1.1, 1.15, 1.25, 1.35, 1.5, 1.75, 2,
+	2.25, 2.5, 3, 3.5, 4,
+];
+
+function nearestZoomIndex(z: number) {
+	let idx = 0;
+	let best = Infinity;
+	for (let i = 0; i < ZOOM_STEPS.length; i++) {
+		const d = Math.abs(ZOOM_STEPS[i] - z);
+		if (d < best) {
+			best = d;
+			idx = i;
+		}
+	}
+	return idx;
+}
+
 export function useCanvasNavigation(params: {
 	svgRef: React.RefObject<SVGSVGElement>;
 	presence: React.ContextType<typeof PresenceContext>;
@@ -17,19 +36,38 @@ export function useCanvasNavigation(params: {
 	const lastPos = useRef<{ x: number; y: number } | null>(null);
 	const movedRef = useRef(false);
 
-	// Wheel zoom (non-passive) with cursor anchoring
+	// Wheel zoom (non-passive) with cursor anchoring and discrete steps
 	useEffect(() => {
 		const el = svgRef.current;
 		if (!el) return;
 		const zoomRef = { current: zoom } as { current: number };
 		const panRef = { current: pan } as { current: { x: number; y: number } };
+		const accumRef = { current: 0 } as { current: number };
+		const STEP_TRIGGER = 40; // wheel delta accumulation threshold
 		const onWheel = (e: WheelEvent) => {
 			e.preventDefault();
+			accumRef.current += e.deltaY;
+			if (Math.abs(accumRef.current) < STEP_TRIGGER) return; // wait until threshold reached
+			const direction = accumRef.current > 0 ? 1 : -1; // 1 = zoom out, -1 = zoom in
+			// retain remainder so fast scroll can step multiple times
+			accumRef.current -= STEP_TRIGGER * direction;
 			const rect = el.getBoundingClientRect();
 			const mouse = { x: e.clientX - rect.left, y: e.clientY - rect.top };
-			const zoomFactor = Math.exp(-e.deltaY * 0.0015);
 			const currentZoom = zoomRef.current ?? 1;
-			const newZoom = Math.min(4, Math.max(0.25, currentZoom * zoomFactor));
+			let idx = nearestZoomIndex(currentZoom);
+			// If current zoom is above the nearest step and scrolling in, move upward appropriately
+			if (direction < 0 && currentZoom > ZOOM_STEPS[idx] && idx < ZOOM_STEPS.length - 1) {
+				idx++;
+			}
+			// If current zoom is below the nearest step and scrolling out, move downward
+			if (direction > 0 && currentZoom < ZOOM_STEPS[idx] && idx > 0) {
+				idx--;
+			}
+			const newIdx = Math.min(
+				ZOOM_STEPS.length - 1,
+				Math.max(0, idx - direction) // subtract direction because direction>0 means zoom out
+			);
+			const newZoom = ZOOM_STEPS[newIdx];
 			if (newZoom === currentZoom) return;
 			const panNow = panRef.current ?? { x: 0, y: 0 };
 			const p = {
