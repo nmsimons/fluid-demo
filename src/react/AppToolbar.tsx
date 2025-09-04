@@ -274,11 +274,20 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 			<ToolbarDivider />
 			<ToolbarGroup>
 				<TooltipButton
-					tooltip="Remove all items from the canvas"
+					tooltip="Remove all items and ink"
 					keyboardShortcut="Ctrl+Shift+Delete"
 					icon={<DeleteRegular />}
-					onClick={() => view.root.items.removeRange()}
-					disabled={view.root.items.length === 0}
+					onClick={() => {
+						Tree.runTransaction(view.root, () => {
+							if (view.root.items.length > 0) {
+								view.root.items.removeRange();
+							}
+							if (view.root.inks.length > 0) {
+								view.root.inks.removeRange();
+							}
+						});
+					}}
+					disabled={view.root.items.length === 0 && view.root.inks.length === 0}
 				/>
 			</ToolbarGroup>
 			<ToolbarDivider />
