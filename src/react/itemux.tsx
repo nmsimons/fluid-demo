@@ -330,8 +330,16 @@ export function ItemView(props: {
 		return () => {
 			ro?.disconnect();
 		};
-	// Include zoom so if zoom changes we recompute intrinsic model-space size
-	}, [layout, item.id, itemProps.left, itemProps.top, shapeProps.sizeOverride, item.content, props.zoom]);
+		// Include zoom so if zoom changes we recompute intrinsic model-space size
+	}, [
+		layout,
+		item.id,
+		itemProps.left,
+		itemProps.top,
+		shapeProps.sizeOverride,
+		item.content,
+		props.zoom,
+	]);
 
 	return (
 		<div
