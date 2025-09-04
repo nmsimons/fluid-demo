@@ -35,6 +35,7 @@ import { DeleteSelectedRowsButton } from "./tablebuttonux.js";
 import { TooltipButton } from "./buttonux.js";
 import { MessageBar, MessageBarBody, MessageBarTitle } from "@fluentui/react-message-bar";
 import { Toolbar, ToolbarDivider, ToolbarGroup } from "@fluentui/react-toolbar";
+import { Menu, MenuTrigger, MenuPopover, MenuList } from "@fluentui/react-menu";
 import { Badge } from "@fluentui/react-badge";
 import {
 	ArrowRedoFilled,
@@ -60,6 +61,8 @@ export interface AppToolbarProps {
 	canUndo: boolean;
 	canRedo: boolean;
 	tableSelection: SelectionManager<TypedSelection>;
+	zoom?: number;
+	onZoomChange?: (z: number) => void;
 }
 
 export function AppToolbar(props: AppToolbarProps): JSX.Element {
@@ -77,7 +80,16 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 		canUndo,
 		canRedo,
 		tableSelection,
+		zoom,
+		onZoomChange,
 	} = props;
+
+	const formatZoom = (z: number | undefined) => `${Math.round((z ?? 1) * 100)}%`;
+	const handleSlider = (e: React.ChangeEvent<HTMLInputElement>) => {
+		const val = parseInt(e.target.value, 10);
+		onZoomChange?.(val / 100);
+	};
+	// Removed quick preset buttons per request; only slider + reset remain.
 
 	return (
 		<Toolbar className="h-[48px] shadow-lg flex-nowrap overflow-x-auto overflow-y-hidden whitespace-nowrap min-h-[48px] max-h-[48px]">
@@ -265,13 +277,54 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 					keyboardShortcut="Ctrl+M"
 				/>
 			</ToolbarGroup>
-			{view !== tree ? (
-				<ToolbarGroup style={{ marginLeft: "auto" }}>
-					<MessageBarComponent message="While viewing an AI Task, others will not see your changes (and you will not see theirs) until you complete the task." />
-				</ToolbarGroup>
-			) : (
-				<></>
-			)}
+			{/* Right side grouping (auto) */}
+			<ToolbarGroup style={{ marginLeft: "auto" }}>
+				{view !== tree && (
+					<div className="mr-4">
+						<MessageBarComponent message="While viewing an AI Task, others will not see your changes (and you will not see theirs) until you complete the task." />
+					</div>
+				)}
+				{/* Zoom dropdown */}
+				<Menu>
+					<MenuTrigger>
+						<button
+							className="px-2 py-1 rounded bg-black/70 text-white hover:bg-black transition-colors text-sm border border-white/20 inline-flex items-center justify-center"
+							style={{ width: 72 }}
+							aria-label="Zoom"
+						>
+							<span className="tabular-nums font-medium">{formatZoom(zoom)}</span>
+							<span className="ml-1 text-[10px]">▼</span>
+						</button>
+					</MenuTrigger>
+					<MenuPopover>
+						<MenuList>
+							<div
+								className="px-3 py-2 w-56 select-none"
+								onClick={(e) => e.stopPropagation()}
+							>
+								<div className="flex justify-between text-xs mb-2">
+									<span className="font-semibold">Zoom</span>
+									<button
+										onClick={() => onZoomChange?.(1)}
+										className="text-blue-500 hover:underline"
+									>
+										Reset
+									</button>
+								</div>
+								<input
+									type="range"
+									min={25}
+									max={400}
+									step={5}
+									value={Math.round((zoom ?? 1) * 100)}
+									onChange={handleSlider}
+									className="w-full"
+								/>
+							</div>
+						</MenuList>
+					</MenuPopover>
+				</Menu>
+			</ToolbarGroup>
 		</Toolbar>
 	);
 }

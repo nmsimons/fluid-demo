@@ -59,6 +59,7 @@ export function ReactApp(props: {
 	const [saved, setSaved] = useState(false);
 	const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
 	const [commentPaneHidden, setCommentPaneHidden] = useState(true);
+	const [zoom, setZoom] = useState(1);
 	const [selectedItemId, setSelectedItemId] = useState<string>("");
 	const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
 	const [selectedColumnId, setSelectedColumnId] = useState<string>("");
@@ -204,6 +205,8 @@ export function ReactApp(props: {
 						canUndo={canUndo}
 						canRedo={canRedo}
 						tableSelection={tableSelection}
+						zoom={zoom}
+						onZoomChange={setZoom}
 					/>
 					<div className="flex h-[calc(100vh-96px)] w-full flex-row ">
 						<PaneContext.Provider
@@ -215,6 +218,8 @@ export function ReactApp(props: {
 								items={view.root.items}
 								container={container}
 								setSize={(width, height) => setCanvasSize({ width, height })}
+								zoom={zoom}
+								onZoomChange={setZoom}
 							/>
 						</PaneContext.Provider>
 						<CommentPane

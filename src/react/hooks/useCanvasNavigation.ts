@@ -5,11 +5,14 @@ export function useCanvasNavigation(params: {
 	svgRef: React.RefObject<SVGSVGElement>;
 	presence: React.ContextType<typeof PresenceContext>;
 	setSize: (w: number, h: number) => void;
+	externalZoom?: number;
+	onZoomChange?: (z: number) => void;
 }) {
-	const { svgRef, presence, setSize } = params;
+	const { svgRef, presence, setSize, externalZoom, onZoomChange } = params;
 	const [canvasPosition, setCanvasPosition] = useState({ left: 0, top: 0 });
 	const [pan, setPan] = useState({ x: 0, y: 0 });
-	const [zoom, setZoom] = useState(1);
+	const [internalZoom, setInternalZoom] = useState(externalZoom ?? 1);
+	const zoom = externalZoom ?? internalZoom;
 	const [isPanning, setIsPanning] = useState(false);
 	const lastPos = useRef<{ x: number; y: number } | null>(null);
 	const movedRef = useRef(false);
@@ -35,7 +38,8 @@ export function useCanvasNavigation(params: {
 			};
 			const newPan = { x: mouse.x - newZoom * p.x, y: mouse.y - newZoom * p.y };
 			setPan(newPan);
-			setZoom(newZoom);
+			if (onZoomChange) onZoomChange(newZoom);
+			else setInternalZoom(newZoom);
 		};
 		const updateRefs = () => {
 			zoomRef.current = zoom;
@@ -48,7 +52,12 @@ export function useCanvasNavigation(params: {
 			cancelAnimationFrame(raf);
 			el.removeEventListener("wheel", onWheel as EventListener);
 		};
-	}, [svgRef.current, pan, zoom]);
+	}, [svgRef.current, pan, zoom, onZoomChange]);
+
+	// Sync internal zoom with external changes
+	useEffect(() => {
+		if (externalZoom !== undefined) setInternalZoom(externalZoom);
+	}, [externalZoom]);
 
 	// Track canvas size
 	const handleResize = () => {

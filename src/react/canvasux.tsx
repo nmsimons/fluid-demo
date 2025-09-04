@@ -22,8 +22,10 @@ export function Canvas(props: {
 	items: Items;
 	container: IFluidContainer;
 	setSize: (width: number, height: number) => void;
+	zoom?: number;
+	onZoomChange?: (z: number) => void;
 }): JSX.Element {
-	const { items, setSize } = props;
+	const { items, setSize, zoom: externalZoom, onZoomChange } = props;
 	const presence = useContext(PresenceContext);
 	useTree(items);
 	const layout = useContext(LayoutContext);
@@ -36,7 +38,13 @@ export function Canvas(props: {
 		beginPanIfBackground,
 		handleHtmlBackgroundMouseDown,
 		handleBackgroundClick,
-	} = useCanvasNavigation({ svgRef, presence, setSize });
+	} = useCanvasNavigation({
+		svgRef,
+		presence,
+		setSize,
+		externalZoom,
+		onZoomChange,
+	});
 	const { selKey, motionKey } = useOverlayRerenders(presence);
 	// Track expanded state for presence indicators per item
 	const [expandedPresence, setExpandedPresence] = useState<Set<string>>(new Set());
