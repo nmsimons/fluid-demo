@@ -79,6 +79,26 @@ export function Canvas(props: {
 			onClick={handleBackgroundClick}
 			onMouseDown={beginPanIfBackground}
 		>
+			{/* Light dot grid background that pans and zooms with content */}
+			<defs>
+				<pattern
+					id="dot-grid-pattern"
+					patternUnits="userSpaceOnUse"
+					width={48}
+					height={48}
+					patternTransform={`translate(${pan.x} ${pan.y}) scale(${zoom})`}
+				>
+					<circle cx={24} cy={24} r={2} fill="#d1d5db" />
+				</pattern>
+			</defs>
+			<rect
+				x={0}
+				y={0}
+				width="100%"
+				height="100%"
+				fill="url(#dot-grid-pattern)"
+				pointerEvents="none"
+			/>
 			{/* Full-size HTML layer hosting existing item views */}
 			<foreignObject x={0} y={0} width="100%" height="100%">
 				{/* Full-size wrapper to capture background drags anywhere inside the foreignObject */}
