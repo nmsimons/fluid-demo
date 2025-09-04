@@ -16,7 +16,9 @@ export function SelectionOverlay(props: {
 	let w = b ? Math.max(0, b.right - b.left) : 0;
 	let h = b ? Math.max(0, b.bottom - b.top) : 0;
 	if (w === 0 || h === 0) {
-		const container = document.querySelector(`[data-item-id='${item.id}']`) as HTMLElement | null;
+		const container = document.querySelector(
+			`[data-item-id='${item.id}']`
+		) as HTMLElement | null;
 		if (container) {
 			const rect = container.getBoundingClientRect();
 			w = rect.width / (zoom || 1);
@@ -31,21 +33,48 @@ export function SelectionOverlay(props: {
 	const isShape = Tree.is(item.content, Shape);
 	if (isTable) angle = 0;
 	return (
-		<g data-svg-item-id={item.id} transform={`translate(${left}, ${top}) rotate(${angle}, ${w/2}, ${h/2})`}>
+		<g
+			data-svg-item-id={item.id}
+			transform={`translate(${left}, ${top}) rotate(${angle}, ${w / 2}, ${h / 2})`}
+		>
 			<g pointerEvents="none">
-				<rect x={-padding} y={-padding} width={w + padding * 2} height={h + padding * 2} fill="none" stroke="#000" strokeDasharray="6 4" strokeWidth={2} opacity={0.9} />
+				<rect
+					x={-padding}
+					y={-padding}
+					width={w + padding * 2}
+					height={h + padding * 2}
+					fill="none"
+					stroke="#000"
+					strokeDasharray="6 4"
+					strokeWidth={2}
+					opacity={0.9}
+				/>
 			</g>
 			{!isTable && (
-				<g transform={`translate(${w/2}, ${-35})`}>
-					<circle r={6} fill="#000" cursor="grab"
-						onClick={(e)=>{ e.stopPropagation(); }}
-						onMouseDown={(e)=>{
+				<g transform={`translate(${w / 2}, ${-35})`}>
+					<circle
+						r={6}
+						fill="#000"
+						cursor="grab"
+						onClick={(e) => {
 							e.stopPropagation();
-							const container = document.querySelector(`[data-item-id='${item.id}']`) as HTMLElement | null;
-							const rotateHandle = container?.querySelector('.cursor-grab') as HTMLElement | null;
+						}}
+						onMouseDown={(e) => {
+							e.stopPropagation();
+							const container = document.querySelector(
+								`[data-item-id='${item.id}']`
+							) as HTMLElement | null;
+							const rotateHandle = container?.querySelector(
+								".cursor-grab"
+							) as HTMLElement | null;
 							const target = rotateHandle ?? container;
 							if (target) {
-								const evt = new MouseEvent('mousedown', { bubbles: true, cancelable: true, clientX: e.clientX, clientY: e.clientY });
+								const evt = new MouseEvent("mousedown", {
+									bubbles: true,
+									cancelable: true,
+									clientX: e.clientX,
+									clientY: e.clientY,
+								});
 								target.dispatchEvent(evt);
 							}
 						}}
@@ -59,10 +88,10 @@ export function SelectionOverlay(props: {
 						const half = handleSize / 2;
 						const outward = padding + 2;
 						const positions = [
-							{ x: -outward, y: -outward, cursor: 'nwse-resize' as const },
-							{ x: w + outward, y: -outward, cursor: 'nesw-resize' as const },
-							{ x: -outward, y: h + outward, cursor: 'nesw-resize' as const },
-							{ x: w + outward, y: h + outward, cursor: 'nwse-resize' as const },
+							{ x: -outward, y: -outward, cursor: "nwse-resize" as const },
+							{ x: w + outward, y: -outward, cursor: "nesw-resize" as const },
+							{ x: -outward, y: h + outward, cursor: "nesw-resize" as const },
+							{ x: w + outward, y: h + outward, cursor: "nwse-resize" as const },
 						];
 						return positions.map((pos, i) => (
 							<rect
@@ -74,14 +103,25 @@ export function SelectionOverlay(props: {
 								fill="#000"
 								stroke="none"
 								cursor={pos.cursor}
-								onClick={(e) => { e.stopPropagation(); }}
+								onClick={(e) => {
+									e.stopPropagation();
+								}}
 								onMouseDown={(e) => {
 									e.stopPropagation();
-									const container = document.querySelector(`[data-item-id='${item.id}']`) as HTMLElement | null;
-									const handles = Array.from(container?.querySelectorAll('.cursor-nw-resize') ?? []) as HTMLElement[];
+									const container = document.querySelector(
+										`[data-item-id='${item.id}']`
+									) as HTMLElement | null;
+									const handles = Array.from(
+										container?.querySelectorAll(".cursor-nw-resize") ?? []
+									) as HTMLElement[];
 									const handle = handles[i] ?? container;
 									if (handle) {
-										const evt = new MouseEvent('mousedown', { bubbles: true, cancelable: true, clientX: e.clientX, clientY: e.clientY });
+										const evt = new MouseEvent("mousedown", {
+											bubbles: true,
+											cancelable: true,
+											clientX: e.clientX,
+											clientY: e.clientY,
+										});
 										handle.dispatchEvent(evt);
 									}
 								}}

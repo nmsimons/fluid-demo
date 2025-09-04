@@ -10,7 +10,15 @@ export function ItemsHtmlLayer(props: {
 }): JSX.Element {
 	const { items, canvasPosition, pan, zoom } = props;
 	return (
-		<div className="relative h-full w-full" style={{ left: `${pan.x}px`, top: `${pan.y}px`, transform: `scale(${zoom})`, transformOrigin: "0 0" }}>
+		<div
+			className="relative h-full w-full"
+			style={{
+				left: `${pan.x}px`,
+				top: `${pan.y}px`,
+				transform: `scale(${zoom})`,
+				transformOrigin: "0 0",
+			}}
+		>
 			{items.map((item, index) =>
 				item instanceof Item ? (
 					<ItemView

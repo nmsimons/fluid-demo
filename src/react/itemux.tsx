@@ -127,7 +127,7 @@ export function ItemView(props: {
 		left: item.x,
 		top: item.y,
 		zIndex: index,
-			transform: `rotate(${item.rotation}deg)`,
+		transform: `rotate(${item.rotation}deg)`,
 	});
 
 	useEffect(() => {
@@ -135,8 +135,8 @@ export function ItemView(props: {
 			left: item.x,
 			top: item.y,
 			zIndex: index,
-				transform:
-					getContentType(item) === "table" ? `rotate(0)` : `rotate(${item.rotation}deg)`,
+			transform:
+				getContentType(item) === "table" ? `rotate(0)` : `rotate(${item.rotation}deg)`,
 		});
 	}, [itemInval, item]);
 
@@ -146,16 +146,25 @@ export function ItemView(props: {
 				left: dragData.x,
 				top: dragData.y,
 				zIndex: index,
-					transform:
-						getContentType(item) === "table"
-							? `rotate(0)`
-							: `rotate(${dragData.rotation}deg)`,
+				transform:
+					getContentType(item) === "table"
+						? `rotate(0)`
+						: `rotate(${dragData.rotation}deg)`,
 			});
 			// Update layout immediately to keep overlays in sync (local and remote drags)
-			const w = intrinsicSizeRef.current.w || (Tree.is(item.content, Shape) ? (shapeProps.sizeOverride ?? item.content.size) : 0);
-			const h = intrinsicSizeRef.current.h || (Tree.is(item.content, Shape) ? (shapeProps.sizeOverride ?? item.content.size) : 0);
+			const w =
+				intrinsicSizeRef.current.w ||
+				(Tree.is(item.content, Shape) ? (shapeProps.sizeOverride ?? item.content.size) : 0);
+			const h =
+				intrinsicSizeRef.current.h ||
+				(Tree.is(item.content, Shape) ? (shapeProps.sizeOverride ?? item.content.size) : 0);
 			if (w && h) {
-				layout.set(item.id, { left: dragData.x, top: dragData.y, right: dragData.x + w, bottom: dragData.y + h });
+				layout.set(item.id, {
+					left: dragData.x,
+					top: dragData.y,
+					right: dragData.x + w,
+					bottom: dragData.y + h,
+				});
 			}
 		}
 	};
@@ -176,7 +185,12 @@ export function ItemView(props: {
 
 			// Update intrinsic size cache and layout immediately
 			intrinsicSizeRef.current = { w: resizeData.size, h: resizeData.size };
-			layout.set(item.id, { left: resizeData.x, top: resizeData.y, right: resizeData.x + resizeData.size, bottom: resizeData.y + resizeData.size });
+			layout.set(item.id, {
+				left: resizeData.x,
+				top: resizeData.y,
+				right: resizeData.x + resizeData.size,
+				bottom: resizeData.y + resizeData.size,
+			});
 		} else if (!resizeData || resizeData.id !== item.id) {
 			// Clear overrides when no resize data for this item
 			setShapeProps({});
@@ -285,7 +299,7 @@ export function ItemView(props: {
 		const left = itemProps.left;
 		const top = itemProps.top;
 		layout.set(item.id, { left, top, right: left + w0, bottom: top + h0 });
-	// Recompute when position or intrinsic size changes
+		// Recompute when position or intrinsic size changes
 	}, [layout, item.id, itemProps.left, itemProps.top, shapeProps.sizeOverride, item.content]);
 
 	return (
@@ -301,14 +315,14 @@ export function ItemView(props: {
 			style={{ ...itemProps }}
 		>
 			<CommentIndicator comments={item.comments} selected={selected} />
-			{(
+			{
 				<SelectionBox
 					selected={selected}
 					item={item}
 					onResizeEnd={clearShapeProps}
 					visualHidden={!!hideSelectionControls}
 				/>
-			)}
+			}
 			<ContentElement item={item} shapeProps={shapeProps} />
 		</div>
 	);
@@ -698,7 +712,9 @@ export function RotateHandle(props: { item: Item }): JSX.Element {
 				// Clear the drag state
 				presence.drag.clearDragging();
 				// Suppress only the immediate background canvas click, not clicks on other items
-				const canvasEl = document.getElementById("canvas") as (SVGSVGElement & { dataset: DOMStringMap }) | null;
+				const canvasEl = document.getElementById("canvas") as
+					| (SVGSVGElement & { dataset: DOMStringMap })
+					| null;
 				if (canvasEl) {
 					canvasEl.dataset.suppressClearUntil = String(Date.now() + 150);
 				}
@@ -847,7 +863,9 @@ export function CornerResizeHandles(props: {
 			onResizeEnd?.();
 
 			// Suppress only the immediate background canvas click, not clicks on other items
-			const canvasEl = document.getElementById("canvas") as (SVGSVGElement & { dataset: DOMStringMap }) | null;
+			const canvasEl = document.getElementById("canvas") as
+				| (SVGSVGElement & { dataset: DOMStringMap })
+				| null;
 			if (canvasEl) {
 				canvasEl.dataset.suppressClearUntil = String(Date.now() + 150);
 			}

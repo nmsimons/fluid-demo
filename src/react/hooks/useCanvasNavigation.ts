@@ -1,13 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import type { PresenceContext } from "../contexts/PresenceContext.js";
 
-export function useCanvasNavigation(
-	params: {
-		svgRef: React.RefObject<SVGSVGElement>;
-		presence: React.ContextType<typeof PresenceContext>;
-		setSize: (w: number, h: number) => void;
-	}
-) {
+export function useCanvasNavigation(params: {
+	svgRef: React.RefObject<SVGSVGElement>;
+	presence: React.ContextType<typeof PresenceContext>;
+	setSize: (w: number, h: number) => void;
+}) {
 	const { svgRef, presence, setSize } = params;
 	const [canvasPosition, setCanvasPosition] = useState({ left: 0, top: 0 });
 	const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -31,7 +29,10 @@ export function useCanvasNavigation(
 			const newZoom = Math.min(4, Math.max(0.25, currentZoom * zoomFactor));
 			if (newZoom === currentZoom) return;
 			const panNow = panRef.current ?? { x: 0, y: 0 };
-			const p = { x: (mouse.x - panNow.x) / currentZoom, y: (mouse.y - panNow.y) / currentZoom };
+			const p = {
+				x: (mouse.x - panNow.x) / currentZoom,
+				y: (mouse.y - panNow.y) / currentZoom,
+			};
 			const newPan = { x: mouse.x - newZoom * p.x, y: mouse.y - newZoom * p.y };
 			setPan(newPan);
 			setZoom(newZoom);
@@ -70,7 +71,9 @@ export function useCanvasNavigation(
 	// Background click clears selection (unless suppressed)
 	const handleBackgroundClick = () => {
 		const svg = svgRef.current as (SVGSVGElement & { dataset: DOMStringMap }) | null;
-		const until = svg?.dataset?.suppressClearUntil ? parseInt(svg.dataset.suppressClearUntil) : 0;
+		const until = svg?.dataset?.suppressClearUntil
+			? parseInt(svg.dataset.suppressClearUntil)
+			: 0;
 		if (until && Date.now() < until) {
 			if (svg) delete svg.dataset.suppressClearUntil;
 			return;
@@ -82,8 +85,8 @@ export function useCanvasNavigation(
 	const beginPanIfBackground = (e: React.MouseEvent) => {
 		if (presence.drag.state.local || presence.resize.state?.local) return;
 		const target = e.target as Element | null;
-		if (target?.closest('[data-svg-item-id]')) return;
-		if (target?.closest('[data-item-id]')) return;
+		if (target?.closest("[data-svg-item-id]")) return;
+		if (target?.closest("[data-item-id]")) return;
 		setIsPanning(true);
 		lastPos.current = { x: e.clientX, y: e.clientY };
 		movedRef.current = false;
@@ -93,7 +96,7 @@ export function useCanvasNavigation(
 	const handleHtmlBackgroundMouseDown = (e: React.MouseEvent) => {
 		if (presence.drag.state.local || presence.resize.state?.local) return;
 		const target = e.target as HTMLElement;
-		if (target.closest('[data-item-id]')) return;
+		if (target.closest("[data-item-id]")) return;
 		setIsPanning(true);
 		lastPos.current = { x: e.clientX, y: e.clientY };
 		movedRef.current = false;
