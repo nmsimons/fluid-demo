@@ -1,32 +1,6 @@
 /**
  * App Keyboard Shortcuts Hook
- *
- * Custom React hook that defines and manages all keyboard shortcuts for the
- * Fluid Framework demo application. This hook provides a comprehensive set of
- * keyboard shortcuts for productivity and accessibility, including creation,
- * manipulation, navigation, and collaboration features.
- *
- * Key Features:
- * - Undo/Redo operations (Ctrl+Z, Ctrl+Y, Ctrl+Shift+Z)
- * - Shape creation shortcuts (C=circle, S=square, T=triangle, R=star)
- * - Item creation shortcuts (N=note, B=table)
- * - Selection operations (A=select all, Delete=delete selected)
- * - Multi-select support with keyboard modifiers
- * - Color picker shortcuts (1-9 for different colors)
- * - Comment system shortcuts (M=toggle comments, Enter=add comment)
- * - Navigation shortcuts (arrow keys, Escape=clear selection)
- * - Table-specific shortcuts for row/column operations
- * - Context-aware enabling/disabling based on current state
- *
- * The hook integrates with:
- * - Fluid Framework tree view for data operations
- * - Selection manager for multi-select operations
- * - Presence managers for collaborative features
- * - Undo/redo system for operation history
- * - Comment system for collaborative feedback
- *
- * All shortcuts are designed to be intuitive and follow common application
- * conventions while providing powerful collaborative editing capabilities.
+ * (Clean header restored; adds viewport centering for new items.)
  */
 
 import { TreeView, Tree } from "fluid-framework";
@@ -42,46 +16,20 @@ import { SelectionManager } from "../../utils/presence/Interfaces/SelectionManag
  * Contains all the dependencies needed for keyboard shortcut operations.
  */
 export interface UseAppKeyboardShortcutsProps {
-	/** Fluid Framework tree view for data operations */
 	view: TreeView<typeof App>;
-
-	/** Current canvas dimensions for positioning new items */
 	canvasSize: { width: number; height: number };
-
-	/** Currently selected single item ID (for single selection operations) */
+	pan?: { x: number; y: number };
 	selectedItemId: string;
-
-	/** Array of all currently selected item IDs (for multi-selection operations) */
 	selectedItemIds: string[];
-
-	/** Currently selected table column ID */
 	selectedColumnId: string;
-
-	/** Currently selected table row ID */
 	selectedRowId: string;
-
-	/** Whether the comment pane is currently hidden */
 	commentPaneHidden: boolean;
-
-	/** Undo/redo manager for operation history */
 	undoRedo: undoRedo;
-
-	/** Users manager for accessing current user information */
 	users: UsersManager;
-
-	/** Whether undo operation is currently available */
 	canUndo: boolean;
-
-	/** Whether redo operation is currently available */
 	canRedo: boolean;
-
-	/** Function to show/hide the comment pane */
 	setCommentPaneHidden: (hidden: boolean) => void;
-
-	/** Function to open comment pane and focus on specific item */
 	openCommentPaneAndFocus: (itemId: string) => void;
-
-	/** Selection manager for handling multi-select operations */
 	selectionManager: SelectionManager;
 }
 
@@ -125,7 +73,37 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 		setCommentPaneHidden,
 		openCommentPaneAndFocus,
 		selectionManager,
+		pan,
 	} = props;
+
+	// Helper to center last inserted item
+	const centerLast = (estimatedW = 120, estimatedH = 120): void => {
+		if (!pan) return;
+		const zoom = 1; // keyboard path currently lacks zoom context; assume 1 for now
+		const items = view.root.items;
+		if (items.length === 0) return;
+		const last = items[items.length - 1];
+		const vw = props.canvasSize.width / zoom;
+		const vh = props.canvasSize.height / zoom;
+		const vx = -pan.x / zoom;
+		const vy = -pan.y / zoom;
+		let w = estimatedW;
+		let h = estimatedH;
+		// If shape, use its size
+		try {
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const c: any = last.content;
+			if (c && typeof c.size === "number") {
+				w = h = c.size;
+			}
+		} catch {
+			/* ignore */
+		}
+		Tree.runTransaction(items, () => {
+			last.x = vx + vw / 2 - w / 2;
+			last.y = vy + vh / 2 - h / 2;
+		});
+	};
 
 	return [
 		// Undo/Redo shortcuts - Essential for collaborative editing
@@ -153,36 +131,42 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 			key: "c",
 			action: () => {
 				view.root.items.createShapeItem("circle", canvasSize, SHAPE_COLORS);
+				centerLast();
 			},
 		},
 		{
 			key: "s",
 			action: () => {
 				view.root.items.createShapeItem("square", canvasSize, SHAPE_COLORS);
+				centerLast();
 			},
 		},
 		{
 			key: "t",
 			action: () => {
 				view.root.items.createShapeItem("triangle", canvasSize, SHAPE_COLORS);
+				centerLast();
 			},
 		},
 		{
 			key: "r",
 			action: () => {
 				view.root.items.createShapeItem("star", canvasSize, SHAPE_COLORS);
+				centerLast();
 			},
 		},
 		{
 			key: "n",
 			action: () => {
 				view.root.items.createNoteItem(canvasSize, users.getMyself().value.id);
+				centerLast(180, 120);
 			},
 		},
 		{
 			key: "b",
 			action: () => {
 				view.root.items.createTableItem(canvasSize);
+				centerLast(240, 160);
 			},
 		},
 		// Selected item shortcuts

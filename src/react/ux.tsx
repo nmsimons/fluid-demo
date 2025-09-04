@@ -169,6 +169,7 @@ export function ReactApp(props: {
 	const shortcuts = useAppKeyboardShortcuts({
 		view,
 		canvasSize,
+		pan,
 		selectedItemId,
 		selectedItemIds,
 		selectedColumnId,
@@ -221,6 +222,7 @@ export function ReactApp(props: {
 						tableSelection={tableSelection}
 						zoom={zoom}
 						onZoomChange={setZoom}
+						pan={pan}
 						inkActive={inkActive}
 						onToggleInk={() => setInkActive((a) => !a)}
 						eraserActive={eraserActive}

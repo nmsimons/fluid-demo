@@ -55,6 +55,7 @@ export interface AppToolbarProps {
 	view: TreeView<typeof App>;
 	tree: TreeView<typeof App>;
 	canvasSize: { width: number; height: number };
+	pan?: { x: number; y: number };
 	selectedItemId: string;
 	selectedItemIds: string[];
 	selectedColumnId: string;
@@ -78,6 +79,7 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 		view,
 		tree,
 		canvasSize,
+		pan,
 		selectedItemId,
 		selectedItemIds,
 		selectedColumnId,
@@ -154,12 +156,42 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 			</ToolbarGroup>
 			<ToolbarDivider />
 			<ToolbarGroup>
-				<NewCircleButton items={view.root.items} canvasSize={canvasSize} />
-				<NewSquareButton items={view.root.items} canvasSize={canvasSize} />
-				<NewTriangleButton items={view.root.items} canvasSize={canvasSize} />
-				<NewStarButton items={view.root.items} canvasSize={canvasSize} />
-				<NewNoteButton items={view.root.items} canvasSize={canvasSize} />
-				<NewTableButton items={view.root.items} canvasSize={canvasSize} />
+				<NewCircleButton
+					items={view.root.items}
+					canvasSize={canvasSize}
+					pan={pan}
+					zoom={zoom}
+				/>
+				<NewSquareButton
+					items={view.root.items}
+					canvasSize={canvasSize}
+					pan={pan}
+					zoom={zoom}
+				/>
+				<NewTriangleButton
+					items={view.root.items}
+					canvasSize={canvasSize}
+					pan={pan}
+					zoom={zoom}
+				/>
+				<NewStarButton
+					items={view.root.items}
+					canvasSize={canvasSize}
+					pan={pan}
+					zoom={zoom}
+				/>
+				<NewNoteButton
+					items={view.root.items}
+					canvasSize={canvasSize}
+					pan={pan}
+					zoom={zoom}
+				/>
+				<NewTableButton
+					items={view.root.items}
+					canvasSize={canvasSize}
+					pan={pan}
+					zoom={zoom}
+				/>
 			</ToolbarGroup>
 			{(() => {
 				const selectedItems = selectedItemIds

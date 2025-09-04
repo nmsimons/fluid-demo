@@ -55,13 +55,16 @@ export const SHAPE_COLORS = [
 export function NewCircleButton(props: {
 	items: Items;
 	canvasSize: { width: number; height: number };
+	pan?: { x: number; y: number };
+	zoom?: number;
 }): JSX.Element {
-	const { items, canvasSize } = props;
+	const { items, canvasSize, pan, zoom } = props;
 	useTree(items);
 
 	const handleClick = (e: React.MouseEvent) => {
 		e.stopPropagation();
 		items.createShapeItem("circle", canvasSize, SHAPE_COLORS);
+		centerLastItem(items, pan, zoom, canvasSize);
 	};
 
 	return (
@@ -77,13 +80,16 @@ export function NewCircleButton(props: {
 export function NewSquareButton(props: {
 	items: Items;
 	canvasSize: { width: number; height: number };
+	pan?: { x: number; y: number };
+	zoom?: number;
 }): JSX.Element {
-	const { items, canvasSize } = props;
+	const { items, canvasSize, pan, zoom } = props;
 	useTree(items);
 
 	const handleClick = (e: React.MouseEvent) => {
 		e.stopPropagation();
 		items.createShapeItem("square", canvasSize, SHAPE_COLORS);
+		centerLastItem(items, pan, zoom, canvasSize);
 	};
 
 	return (
@@ -99,13 +105,16 @@ export function NewSquareButton(props: {
 export function NewTriangleButton(props: {
 	items: Items;
 	canvasSize: { width: number; height: number };
+	pan?: { x: number; y: number };
+	zoom?: number;
 }): JSX.Element {
-	const { items, canvasSize } = props;
+	const { items, canvasSize, pan, zoom } = props;
 	useTree(items);
 
 	const handleClick = (e: React.MouseEvent) => {
 		e.stopPropagation();
 		items.createShapeItem("triangle", canvasSize, SHAPE_COLORS);
+		centerLastItem(items, pan, zoom, canvasSize);
 	};
 
 	return (
@@ -121,13 +130,16 @@ export function NewTriangleButton(props: {
 export function NewStarButton(props: {
 	items: Items;
 	canvasSize: { width: number; height: number };
+	pan?: { x: number; y: number };
+	zoom?: number;
 }): JSX.Element {
-	const { items, canvasSize } = props;
+	const { items, canvasSize, pan, zoom } = props;
 	useTree(items);
 
 	const handleClick = (e: React.MouseEvent) => {
 		e.stopPropagation();
 		items.createShapeItem("star", canvasSize, SHAPE_COLORS);
+		centerLastItem(items, pan, zoom, canvasSize);
 	};
 
 	return (
@@ -143,14 +155,17 @@ export function NewStarButton(props: {
 export function NewNoteButton(props: {
 	items: Items;
 	canvasSize: { width: number; height: number };
+	pan?: { x: number; y: number };
+	zoom?: number;
 }): JSX.Element {
-	const { items, canvasSize } = props;
+	const { items, canvasSize, pan, zoom } = props;
 	useTree(items);
 	const presence = useContext(PresenceContext);
 
 	const handleClick = (e: React.MouseEvent) => {
 		e.stopPropagation();
 		items.createNoteItem(canvasSize, presence.users.getMyself().value.id);
+		centerLastItem(items, pan, zoom, canvasSize, 180, 120);
 	};
 	return (
 		<TooltipButton
@@ -165,13 +180,16 @@ export function NewNoteButton(props: {
 export function NewTableButton(props: {
 	items: Items;
 	canvasSize: { width: number; height: number };
+	pan?: { x: number; y: number };
+	zoom?: number;
 }): JSX.Element {
-	const { items, canvasSize } = props;
+	const { items, canvasSize, pan, zoom } = props;
 	useTree(items);
 
 	const handleClick = (e: React.MouseEvent) => {
 		e.stopPropagation();
 		items.createTableItem(canvasSize);
+		centerLastItem(items, pan, zoom, canvasSize, 240, 160);
 	};
 	return (
 		<TooltipButton
@@ -229,6 +247,39 @@ export function DuplicateButton(props: {
 			keyboardShortcut="Ctrl+D"
 		/>
 	);
+}
+
+// Helper: reposition the last inserted item to viewport center
+function centerLastItem(
+	items: Items,
+	pan: { x: number; y: number } | undefined,
+	zoom: number | undefined,
+	canvasSize: { width: number; height: number },
+	estimatedW = 120,
+	estimatedH = 120
+): void {
+	if (!pan || !zoom) return; // fallback: leave random placement
+	if (items.length === 0) return;
+	const last = items[items.length - 1];
+	if (!last) return;
+	// Visible logical viewport
+	const vw = canvasSize.width / zoom;
+	const vh = canvasSize.height / zoom;
+	const vx = -pan.x / zoom;
+	const vy = -pan.y / zoom;
+	let w = estimatedW;
+	let h = estimatedH;
+	// If shape, size is square
+	if (last.content instanceof Shape) {
+		w = h = last.content.size;
+	}
+	// Center position
+	const cx = vx + vw / 2 - w / 2;
+	const cy = vy + vh / 2 - h / 2;
+	Tree.runTransaction(items, () => {
+		last.x = cx;
+		last.y = cy;
+	});
 }
 
 export function VoteButton(props: { vote: Vote }): JSX.Element {
