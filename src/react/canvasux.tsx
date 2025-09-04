@@ -47,6 +47,7 @@ export function Canvas(props: {
 	const [inking, setInking] = useState(false);
 	const tempPointsRef = useRef<InkPoint[]>([]);
 	const pointerIdRef = useRef<number | null>(null);
+	const pointerTypeRef = useRef<string | null>(null);
 	const lastPointRef = useRef<{ x: number; y: number } | null>(null);
 	const strokeIdRef = useRef<string | null>(null);
 	const {
@@ -165,6 +166,7 @@ export function Canvas(props: {
 					setCursor({ x: e.clientX - rect.left, y: e.clientY - rect.top, visible: true });
 			}
 		}
+		pointerTypeRef.current = e.pointerType;
 		// Eraser mode: on pointer down start erase interaction instead of drawing
 		if (eraserActive) {
 			if (e.button !== 0) return;
@@ -307,16 +309,24 @@ export function Canvas(props: {
 		if (!inking) return;
 		const handleMove = (ev: PointerEvent) => {
 			if (pointerIdRef.current !== null && ev.pointerId !== pointerIdRef.current) return;
-			const p = toLogical(ev.clientX, ev.clientY);
-			const last = lastPointRef.current;
-			// Simple distance filter to reduce point count
-			if (last) {
-				const dx = p.x - last.x;
-				const dy = p.y - last.y;
-				if (dx * dx + dy * dy < 4) return; // min ~2px movement
+			// Use coalesced events for smoother touch / pen input when available
+			const hasCoalesced = (e: PointerEvent): e is PointerEvent & { getCoalescedEvents(): PointerEvent[] } =>
+				typeof (e as PointerEvent & { getCoalescedEvents?: unknown }).getCoalescedEvents === "function";
+			const events = hasCoalesced(ev) ? ev.getCoalescedEvents() : [ev];
+			for (const cev of events) {
+				const p = toLogical(cev.clientX, cev.clientY);
+				const last = lastPointRef.current;
+				// Adaptive distance filter: allow denser points for touch
+				const isTouch = pointerTypeRef.current === "touch";
+				const minDist2 = isTouch ? 0.5 : 4; // ~0.7px for touch vs 2px for mouse/pen
+				if (last) {
+					const dx = p.x - last.x;
+					const dy = p.y - last.y;
+					if (dx * dx + dy * dy < minDist2) continue;
+				}
+				lastPointRef.current = p;
+				tempPointsRef.current.push(new InkPoint({ x: p.x, y: p.y, t: Date.now() }));
 			}
-			lastPointRef.current = p;
-			tempPointsRef.current.push(new InkPoint({ x: p.x, y: p.y, t: Date.now() }));
 			// Throttle via requestAnimationFrame
 			if (!pendingRaf.current) {
 				pendingRaf.current = requestAnimationFrame(() => {
@@ -334,6 +344,7 @@ export function Canvas(props: {
 			if (!inking) return;
 			setInking(false);
 			pointerIdRef.current = null;
+			pointerTypeRef.current = null;
 			lastPointRef.current = null;
 			const pts = tempPointsRef.current;
 			if (pts.length < 2 || !root?.inks) {
@@ -378,6 +389,7 @@ export function Canvas(props: {
 			id="canvas"
 			ref={svgRef}
 			className="relative flex h-full w-full bg-transparent"
+			style={{ touchAction: "none" }}
 			onClick={handleBackgroundClick}
 			onMouseDown={beginPanIfBackground}
 			onPointerDown={handlePointerDown}
