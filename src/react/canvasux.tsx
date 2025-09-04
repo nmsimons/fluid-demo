@@ -29,7 +29,15 @@ export function Canvas(props: {
 	inkActive?: boolean;
 	eraserActive?: boolean;
 }): JSX.Element {
-	const { items, setSize, zoom: externalZoom, onZoomChange, onPanChange, inkActive, eraserActive } = props;
+	const {
+		items,
+		setSize,
+		zoom: externalZoom,
+		onZoomChange,
+		onPanChange,
+		inkActive,
+		eraserActive,
+	} = props;
 	const presence = useContext(PresenceContext);
 	useTree(items);
 	const layout = useContext(LayoutContext);
@@ -148,12 +156,13 @@ export function Canvas(props: {
 	const handlePointerDown = (e: React.PointerEvent) => {
 		if (inkActive || eraserActive) {
 			const targetEl = e.target as Element | null;
-			if (targetEl?.closest('[data-item-id], [data-svg-item-id]')) {
+			if (targetEl?.closest("[data-item-id], [data-svg-item-id]")) {
 				// Suppress cursor over items
 				setCursor((c) => ({ ...c, visible: false }));
 			} else {
 				const rect = svgRef.current?.getBoundingClientRect();
-				if (rect) setCursor({ x: e.clientX - rect.left, y: e.clientY - rect.top, visible: true });
+				if (rect)
+					setCursor({ x: e.clientX - rect.left, y: e.clientY - rect.top, visible: true });
 			}
 		}
 		// Eraser mode: on pointer down start erase interaction instead of drawing
@@ -166,7 +175,13 @@ export function Canvas(props: {
 				for (const s of root.inks) {
 					const bb = s.bbox;
 					if (!bb) continue;
-					if (p.x < bb.x - 4 || p.x > bb.x + bb.w + 4 || p.y < bb.y - 4 || p.y > bb.y + bb.h + 4) continue;
+					if (
+						p.x < bb.x - 4 ||
+						p.x > bb.x + bb.w + 4 ||
+						p.y < bb.y - 4 ||
+						p.y > bb.y + bb.h + 4
+					)
+						continue;
 					// distance to polyline (brute force)
 					const pts = Array.from(s.simplified ?? s.points) as InkPoint[];
 					for (let i = 0; i < pts.length - 1; i++) {
@@ -234,7 +249,7 @@ export function Canvas(props: {
 			return;
 		}
 		const targetEl = e.target as Element | null;
-		if (targetEl?.closest('[data-item-id], [data-svg-item-id]')) {
+		if (targetEl?.closest("[data-item-id], [data-svg-item-id]")) {
 			if (cursor.visible) setCursor((c) => ({ ...c, visible: false }));
 			if (eraserHoverId) setEraserHoverId(null);
 			return;
@@ -249,7 +264,13 @@ export function Canvas(props: {
 			for (const s of root.inks) {
 				const bb = s.bbox;
 				if (!bb) continue;
-				if (pLogical.x < bb.x - 6 || pLogical.x > bb.x + bb.w + 6 || pLogical.y < bb.y - 6 || pLogical.y > bb.y + bb.h + 6) continue;
+				if (
+					pLogical.x < bb.x - 6 ||
+					pLogical.x > bb.x + bb.w + 6 ||
+					pLogical.y < bb.y - 6 ||
+					pLogical.y > bb.y + bb.h + 6
+				)
+					continue;
 				const pts = Array.from(s.simplified ?? s.points) as InkPoint[];
 				for (let i = 0; i < pts.length - 1; i++) {
 					const a = pts[i];
@@ -415,26 +436,33 @@ export function Canvas(props: {
 					);
 				})}
 				{/* Eraser hover highlight (draw after base strokes) */}
-				{eraserActive && eraserHoverId && (() => {
-					const stroke = Array.from(inksIterable).find((s: InkStroke) => s.id === eraserHoverId);
-					if (!stroke) return null;
-					const pts = Array.from(stroke.simplified ?? stroke.points) as InkPoint[];
-					if (!pts.length) return null;
-					return (
-						<polyline
-							key={`hover-${stroke.id}`}
-							fill="none"
-							stroke="#dc2626"
-							strokeWidth={Math.max(0.5, (stroke.style?.strokeWidth ?? 4) * zoom + 2)}
-							strokeOpacity={0.9}
-							strokeLinecap="round"
-							strokeLinejoin="round"
-							vectorEffect="non-scaling-stroke"
-							strokeDasharray="4 3"
-							points={pts.map((p: InkPoint) => `${p.x},${p.y}`).join(" ")}
-						/>
-					);
-				})()}
+				{eraserActive &&
+					eraserHoverId &&
+					(() => {
+						const stroke = Array.from(inksIterable).find(
+							(s: InkStroke) => s.id === eraserHoverId
+						);
+						if (!stroke) return null;
+						const pts = Array.from(stroke.simplified ?? stroke.points) as InkPoint[];
+						if (!pts.length) return null;
+						return (
+							<polyline
+								key={`hover-${stroke.id}`}
+								fill="none"
+								stroke="#dc2626"
+								strokeWidth={Math.max(
+									0.5,
+									(stroke.style?.strokeWidth ?? 4) * zoom + 2
+								)}
+								strokeOpacity={0.9}
+								strokeLinecap="round"
+								strokeLinejoin="round"
+								vectorEffect="non-scaling-stroke"
+								strokeDasharray="4 3"
+								points={pts.map((p: InkPoint) => `${p.x},${p.y}`).join(" ")}
+							/>
+						);
+					})()}
 				{/* Remote ephemeral strokes */}
 				{presence.ink?.getRemoteStrokes().map((r) => {
 					const pts = r.stroke.points;
