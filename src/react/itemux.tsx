@@ -1,5 +1,5 @@
 import React, { JSX, useState, useEffect, useContext, useRef } from "react";
-import { Comments, FluidTable, Item, Note, Shape } from "../schema/app_schema.js";
+import { FluidTable, Item, Note, Shape } from "../schema/app_schema.js";
 import { PresenceContext } from "./contexts/PresenceContext.js";
 import { ShapeView } from "./shapeux.js";
 import { Tree } from "fluid-framework";
@@ -10,8 +10,7 @@ import { objectIdNumber, useTree } from "./hooks/useTree.js";
 import { usePresenceManager } from "./hooks/usePresenceManger.js";
 import { PresenceManager } from "../utils/presence/Interfaces/PresenceManager.js";
 import { TableView } from "./tableux.js";
-import { Comment20Filled, ChevronLeft16Filled } from "@fluentui/react-icons";
-import { PaneContext } from "./contexts/PaneContext.js";
+import { ChevronLeft16Filled } from "@fluentui/react-icons";
 import { LayoutContext } from "./hooks/useLayoutManger.js";
 
 /**
@@ -97,8 +96,11 @@ export function ItemView(props: {
 	item: Item;
 	index: number;
 	canvasPosition: { left: number; top: number };
+	hideSelectionControls?: boolean;
+	pan?: { x: number; y: number };
+	zoom?: number;
 }): JSX.Element {
-	const { item, index } = props;
+	const { item, index, hideSelectionControls } = props;
 	const itemInval = useTree(item);
 	const [offset, setOffset] = useState({ x: 0, y: 0 });
 
@@ -106,14 +108,14 @@ export function ItemView(props: {
 	const layout = useContext(LayoutContext);
 
 	const [selected, setSelected] = useState(presence.itemSelection.testSelection({ id: item.id }));
-	const [remoteSelected, setRemoteSelected] = useState<string[]>(
-		presence.itemSelection.testRemoteSelection({ id: item.id })
-	);
 
 	// Shape-specific props for temporary overrides during resize
 	const [shapeProps, setShapeProps] = useState<{
 		sizeOverride?: number;
 	}>({});
+
+	// Cache intrinsic (unscaled) size to update layout synchronously during drag/resize
+	const intrinsicSizeRef = useRef<{ w: number; h: number }>({ w: 0, h: 0 });
 
 	const [itemProps, setItemProps] = useState<{
 		left: number;
@@ -148,6 +150,21 @@ export function ItemView(props: {
 						? `rotate(0)`
 						: `rotate(${dragData.rotation}deg)`,
 			});
+			// Update layout immediately to keep overlays in sync (local and remote drags)
+			const w =
+				intrinsicSizeRef.current.w ||
+				(Tree.is(item.content, Shape) ? (shapeProps.sizeOverride ?? item.content.size) : 0);
+			const h =
+				intrinsicSizeRef.current.h ||
+				(Tree.is(item.content, Shape) ? (shapeProps.sizeOverride ?? item.content.size) : 0);
+			if (w && h) {
+				layout.set(item.id, {
+					left: dragData.x,
+					top: dragData.y,
+					right: dragData.x + w,
+					bottom: dragData.y + h,
+				});
+			}
 		}
 	};
 
@@ -164,6 +181,15 @@ export function ItemView(props: {
 			setShapeProps({
 				sizeOverride: resizeData.size,
 			});
+
+			// Update intrinsic size cache and layout immediately
+			intrinsicSizeRef.current = { w: resizeData.size, h: resizeData.size };
+			layout.set(item.id, {
+				left: resizeData.x,
+				top: resizeData.y,
+				right: resizeData.x + resizeData.size,
+				bottom: resizeData.y + resizeData.size,
+			});
 		} else if (!resizeData || resizeData.id !== item.id) {
 			// Clear overrides when no resize data for this item
 			setShapeProps({});
@@ -177,7 +203,7 @@ export function ItemView(props: {
 	usePresenceManager(
 		presence.drag as PresenceManager<DragAndRotatePackage>,
 		(update) => {
-			if (update && update.branch === presence.branch) {
+			if (update) {
 				setPropsOnDrag(update);
 			}
 		},
@@ -194,14 +220,9 @@ export function ItemView(props: {
 
 	usePresenceManager(
 		presence.itemSelection,
-		() => {
-			setRemoteSelected(presence.itemSelection.testRemoteSelection({ id: item.id }));
-		},
+		() => {},
 		(update) => {
 			setSelected(update.some((selection) => selection.id === item.id));
-		},
-		() => {
-			setRemoteSelected(presence.itemSelection.testRemoteSelection({ id: item.id }));
 		}
 	);
 
@@ -220,7 +241,7 @@ export function ItemView(props: {
 	const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
 		e.stopPropagation();
 		presence.itemSelection.setSelection({ id: item.id });
-		setOffset(calculateOffsetFromCanvasOrigin(e, item));
+		setOffset(calculateOffsetFromCanvasOrigin(e, item, props.pan, props.zoom));
 		e.dataTransfer.setDragImage(new Image(), 0, 0);
 	};
 
@@ -235,10 +256,8 @@ export function ItemView(props: {
 	};
 
 	const getOffsetCoordinates = (e: React.DragEvent<HTMLDivElement>): { x: number; y: number } => {
-		const mouseCoordinates = calculateCanvasMouseCoordinates(e);
+		const mouseCoordinates = calculateCanvasMouseCoordinates(e, props.pan, props.zoom);
 		const coordinates = { x: mouseCoordinates.x - offset.x, y: mouseCoordinates.y - offset.y };
-		coordinates.x = coordinates.x < 0 ? itemProps.left : coordinates.x;
-		coordinates.y = coordinates.y < 0 ? itemProps.top : coordinates.y;
 		return coordinates;
 	};
 
@@ -260,17 +279,67 @@ export function ItemView(props: {
 
 	const ref = useRef<HTMLDivElement>(null);
 	useEffect(() => {
-		if (ref.current !== null) {
-			const bb = ref.current.getBoundingClientRect();
-			const relativeBb = {
-				left: bb.left - props.canvasPosition.left,
-				top: bb.top - props.canvasPosition.top,
-				right: bb.right - props.canvasPosition.left,
-				bottom: bb.bottom - props.canvasPosition.top,
-			};
-			layout.set(item.id, relativeBb);
+		const el = ref.current;
+		if (!el) return;
+
+		// Helper to measure and update layout cache
+		const measureAndUpdate = () => {
+			let w0 = 0;
+			let h0 = 0;
+			if (Tree.is(item.content, Shape)) {
+				const size = shapeProps.sizeOverride ?? item.content.size;
+				w0 = size;
+				h0 = size;
+			} else {
+				// offsetWidth/Height not affected by CSS transform scale on ancestor; use them first
+				w0 = el.offsetWidth;
+				h0 = el.offsetHeight;
+				if ((!w0 || !h0) && typeof el.getBoundingClientRect === "function") {
+					const bb = el.getBoundingClientRect();
+					// Divide by zoom only if we used the transformed client rect
+					const zoom = props.zoom || 1;
+					w0 = (w0 || bb.width) / zoom;
+					h0 = (h0 || bb.height) / zoom;
+				}
+			}
+			if (!w0 || !h0) return;
+			const prev = intrinsicSizeRef.current;
+			const changed = prev.w !== w0 || prev.h !== h0;
+			intrinsicSizeRef.current = { w: w0, h: h0 };
+			const left = itemProps.left;
+			const top = itemProps.top;
+			layout.set(item.id, { left, top, right: left + w0, bottom: top + h0 });
+			if (changed) {
+				// Notify overlays that a layout size changed so they can re-render
+				window.dispatchEvent(new CustomEvent("layout-changed"));
+			}
+		};
+
+		// Initial measure
+		measureAndUpdate();
+
+		// Observe size changes (e.g., table content growth)
+		let ro: ResizeObserver | null = null;
+		if (typeof ResizeObserver !== "undefined") {
+			ro = new ResizeObserver(() => {
+				measureAndUpdate();
+			});
+			ro.observe(el);
 		}
-	}, [item.id, layout]);
+
+		return () => {
+			ro?.disconnect();
+		};
+		// Include zoom so if zoom changes we recompute intrinsic model-space size
+	}, [
+		layout,
+		item.id,
+		itemProps.left,
+		itemProps.top,
+		shapeProps.sizeOverride,
+		item.content,
+		props.zoom,
+	]);
 
 	return (
 		<div
@@ -284,40 +353,20 @@ export function ItemView(props: {
 			className={`absolute`}
 			style={{ ...itemProps }}
 		>
-			<CommentIndicator comments={item.comments} selected={selected} />
-			<SelectionBox selected={selected} item={item} onResizeEnd={clearShapeProps} />
-			<RemoteSelectionIndicators remoteSelectedUsers={remoteSelected} />
+			{
+				<SelectionBox
+					selected={selected}
+					item={item}
+					onResizeEnd={clearShapeProps}
+					visualHidden={!!hideSelectionControls}
+				/>
+			}
 			<ContentElement item={item} shapeProps={shapeProps} />
 		</div>
 	);
 }
 
-export function CommentIndicator(props: { comments: Comments; selected: boolean }): JSX.Element {
-	const { comments, selected } = props;
-	useTree(comments, true);
-
-	const panes = useContext(PaneContext).panes;
-	const visible =
-		(panes.find((pane) => pane.name === "comments")?.visible ?? false) &&
-		comments.length > 0 &&
-		!selected; // Hide when item is selected
-
-	return (
-		<div
-			className={`absolute pointer-events-none flex flex-row justify-center items-center ${visible ? "" : " hidden"}`}
-			style={{
-				top: -35, // Position above the item, same as rotation handle
-				left: "50%", // Center horizontally
-				transform: "translateX(-50%)", // Center the icon
-				zIndex: 10000,
-				width: "24px",
-				height: "24px",
-			}}
-		>
-			<Comment20Filled />
-		</div>
-	);
-}
+// CommentIndicator removed; replaced by SVG CommentOverlay
 
 /**
  * RemoteSelectionIndicators Component
@@ -517,13 +566,18 @@ function RemoteUserIndicator(props: {
 
 // calculate the mouse coordinates relative to the canvas div
 const calculateCanvasMouseCoordinates = (
-	e: React.MouseEvent<HTMLDivElement>
+	e: React.MouseEvent<HTMLDivElement>,
+	pan?: { x: number; y: number },
+	zoom: number = 1
 ): { x: number; y: number } => {
 	const canvasElement = document.getElementById("canvas");
 	const canvasRect = canvasElement?.getBoundingClientRect() || { left: 0, top: 0 };
-	const newX = e.pageX - canvasRect.left;
-	const newY = e.pageY - canvasRect.top;
-	return { x: newX, y: newY };
+	// Screen to model: subtract canvas origin and pan, then divide by zoom
+	const sx = e.clientX - canvasRect.left;
+	const sy = e.clientY - canvasRect.top;
+	const x = (sx - (pan?.x ?? 0)) / zoom;
+	const y = (sy - (pan?.y ?? 0)) / zoom;
+	return { x, y };
 };
 
 // calculate the offset of the pointer from the item's origin
@@ -531,9 +585,11 @@ const calculateCanvasMouseCoordinates = (
 // when dragging
 const calculateOffsetFromCanvasOrigin = (
 	e: React.MouseEvent<HTMLDivElement>,
-	item: Item
+	item: Item,
+	pan?: { x: number; y: number },
+	zoom: number = 1
 ): { x: number; y: number } => {
-	const coordinates = calculateCanvasMouseCoordinates(e);
+	const coordinates = calculateCanvasMouseCoordinates(e, pan, zoom);
 	const newX = coordinates.x - item.x;
 	const newY = coordinates.y - item.y;
 	return {
@@ -546,15 +602,22 @@ export function SelectionBox(props: {
 	selected: boolean;
 	item: Item;
 	onResizeEnd?: () => void;
+	visualHidden?: boolean;
 }): JSX.Element {
-	const { selected, item, onResizeEnd } = props;
+	const { selected, item, onResizeEnd, visualHidden } = props;
 	useTree(item);
 	const padding = 8;
 	return (
-		<div className={`bg-transparent ${selected ? "" : " hidden"}`}>
-			<SelectionControls item={item} padding={padding} onResizeEnd={onResizeEnd} />
+		<>
+			{/* Keep controls mounted for event forwarding; hide visuals when requested */}
+			<div style={{ display: selected ? (visualHidden ? "none" : "block") : "none" }}>
+				<SelectionControls item={item} padding={padding} onResizeEnd={onResizeEnd} />
+			</div>
+			{/* Legacy dashed rectangle visuals, hidden when visualHidden is true or not selected */}
 			<div
-				className={`absolute border-3 border-dashed border-black bg-transparent`}
+				className={`absolute border-3 border-dashed border-black bg-transparent ${
+					selected && !visualHidden ? "" : " hidden"
+				}`}
 				style={{
 					left: -padding,
 					top: -padding,
@@ -564,7 +627,7 @@ export function SelectionBox(props: {
 					pointerEvents: "none",
 				}}
 			></div>
-		</div>
+		</>
 	);
 }
 
@@ -661,16 +724,13 @@ export function RotateHandle(props: { item: Item }): JSX.Element {
 
 				// Clear the drag state
 				presence.drag.clearDragging();
-
-				// Add a temporary click handler to the canvas to prevent selection clearing
-				const preventCanvasClick = (e: Event) => {
-					e.stopPropagation();
-					e.preventDefault();
-					// Remove this handler immediately after preventing the click
-					document.removeEventListener("click", preventCanvasClick, true);
-				};
-				// Use capture phase to intercept the click before it reaches the canvas
-				document.addEventListener("click", preventCanvasClick, true);
+				// Suppress only the immediate background canvas click, not clicks on other items
+				const canvasEl = document.getElementById("canvas") as
+					| (SVGSVGElement & { dataset: DOMStringMap })
+					| null;
+				if (canvasEl) {
+					canvasEl.dataset.suppressClearUntil = String(Date.now() + 150);
+				}
 			}
 		};
 
@@ -814,6 +874,14 @@ export function CornerResizeHandles(props: {
 
 			// Clear the shape props override
 			onResizeEnd?.();
+
+			// Suppress only the immediate background canvas click, not clicks on other items
+			const canvasEl = document.getElementById("canvas") as
+				| (SVGSVGElement & { dataset: DOMStringMap })
+				| null;
+			if (canvasEl) {
+				canvasEl.dataset.suppressClearUntil = String(Date.now() + 150);
+			}
 		};
 
 		document.addEventListener("mousemove", handleMouseMove);
