@@ -267,6 +267,66 @@ export function Canvas(props: {
 				fill="url(#dot-grid-pattern)"
 				pointerEvents="none"
 			/>
+			{/* Ink rendering layer (moved before items to sit underneath all items) */}
+			<g
+				transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}
+				pointerEvents="none"
+				data-layer="ink"
+			>
+				{Array.from(inksIterable).map((s: InkStroke) => {
+					const pts = Array.from(s.simplified ?? s.points) as InkPoint[];
+					if (!pts.length) return null;
+					const base = s.style?.strokeWidth ?? 4;
+					const w = Math.max(0.5, base * zoom);
+					return (
+						<g key={s.id}>
+							<polyline
+								fill="none"
+								stroke={s.style?.strokeColor ?? "#000"}
+								strokeWidth={w}
+								strokeOpacity={s.style?.opacity ?? 1}
+								strokeLinecap={"round"}
+								strokeLinejoin={"round"}
+								vectorEffect="non-scaling-stroke"
+								points={pts.map((p: InkPoint) => `${p.x},${p.y}`).join(" ")}
+							/>
+						</g>
+					);
+				})}
+				{/* Remote ephemeral strokes */}
+				{presence.ink?.getRemoteStrokes().map((r) => {
+					const pts = r.stroke.points;
+					if (!pts.length) return null;
+					const w = Math.max(0.5, r.stroke.width * zoom);
+					return (
+						<polyline
+							key={`ephemeral-${r.attendeeId}`}
+							fill="none"
+							stroke={r.stroke.color}
+							strokeWidth={w}
+							strokeOpacity={0.4}
+							strokeLinecap="round"
+							strokeLinejoin="round"
+							vectorEffect="non-scaling-stroke"
+							points={pts.map((p) => `${p.x},${p.y}`).join(" ")}
+						/>
+					);
+				})}
+				{/* Local ephemeral (if drawing) */}
+				{inking && tempPointsRef.current.length > 0 && (
+					<polyline
+						key="local-ephemeral"
+						fill="none"
+						stroke="#2563eb"
+						strokeWidth={Math.max(0.5, 4 * zoom)}
+						strokeOpacity={0.7}
+						strokeLinecap="round"
+						strokeLinejoin="round"
+						vectorEffect="non-scaling-stroke"
+						points={tempPointsRef.current.map((p) => `${p.x},${p.y}`).join(" ")}
+					/>
+				)}
+			</g>
 			{/* Full-size HTML layer hosting existing item views */}
 			<foreignObject x={0} y={0} width="100%" height="100%">
 				{/* Full-size wrapper to capture background drags anywhere inside the foreignObject */}
@@ -367,68 +427,6 @@ export function Canvas(props: {
 						/>
 					);
 				})}
-			</g>
-			{/* Ink rendering layer (placed last for top z-order) */}
-			<g
-				transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}
-				pointerEvents="none"
-				data-layer="ink"
-			>
-				{Array.from(inksIterable).map((s: InkStroke) => {
-					const pts = Array.from(s.simplified ?? s.points) as InkPoint[];
-					if (!pts.length) return null;
-					// Dynamic width: style width represents thickness at 100% (zoom=1). Scale with zoom; clamp to min 0.5px.
-					const base = s.style?.strokeWidth ?? 4;
-					const w = Math.max(0.5, base * zoom);
-					return (
-						<g key={s.id}>
-							<polyline
-								fill="none"
-								stroke={s.style?.strokeColor ?? "#000"}
-								strokeWidth={w}
-								strokeOpacity={s.style?.opacity ?? 1}
-								strokeLinecap={"round"}
-								strokeLinejoin={"round"}
-								vectorEffect="non-scaling-stroke"
-								points={pts.map((p: InkPoint) => `${p.x},${p.y}`).join(" ")}
-							/>
-							{/* (debug visuals removed) */}
-						</g>
-					);
-				})}
-				{/* Remote ephemeral strokes */}
-				{presence.ink?.getRemoteStrokes().map((r) => {
-					const pts = r.stroke.points;
-					if (!pts.length) return null;
-					const w = Math.max(0.5, r.stroke.width * zoom);
-					return (
-						<polyline
-							key={`ephemeral-${r.attendeeId}`}
-							fill="none"
-							stroke={r.stroke.color}
-							strokeWidth={w}
-							strokeOpacity={0.4}
-							strokeLinecap="round"
-							strokeLinejoin="round"
-							vectorEffect="non-scaling-stroke"
-							points={pts.map((p) => `${p.x},${p.y}`).join(" ")}
-						/>
-					);
-				})}
-				{/* Local ephemeral (if drawing) so we see it before commit */}
-				{inking && tempPointsRef.current.length > 0 && (
-					<polyline
-						key="local-ephemeral"
-						fill="none"
-						stroke="#2563eb"
-						strokeWidth={Math.max(0.5, 4 * zoom)}
-						strokeOpacity={0.7}
-						strokeLinecap="round"
-						strokeLinejoin="round"
-						vectorEffect="non-scaling-stroke"
-						points={tempPointsRef.current.map((p) => `${p.x},${p.y}`).join(" ")}
-					/>
-				)}
 			</g>
 		</svg>
 	);
