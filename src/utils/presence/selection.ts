@@ -30,7 +30,7 @@ import {
 	LatestRawEvents,
 	StatesWorkspace,
 	LatestRaw,
-} from "@fluidframework/presence/alpha";
+} from "@fluidframework/presence/beta";
 import { Listenable } from "fluid-framework";
 import { SelectionManager, Selection } from "./Interfaces/SelectionManager.js";
 

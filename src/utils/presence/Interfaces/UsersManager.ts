@@ -14,7 +14,7 @@
  * - User list synchronization across clients
  */
 
-import { Attendee } from "@fluidframework/presence/alpha";
+import { Attendee } from "@fluidframework/presence/beta";
 import { PresenceManager } from "./PresenceManager.js";
 
 /**

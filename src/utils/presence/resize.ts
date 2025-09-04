@@ -24,7 +24,7 @@ import {
 	StatesWorkspace,
 	LatestRaw,
 	LatestRawEvents,
-} from "@fluidframework/presence/alpha";
+} from "@fluidframework/presence/beta";
 import { Listenable } from "fluid-framework";
 import { ResizeManager, ResizePackage } from "./Interfaces/ResizeManager.js";
 

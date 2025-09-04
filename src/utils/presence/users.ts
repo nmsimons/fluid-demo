@@ -25,7 +25,7 @@ import {
 	StatesWorkspace,
 	LatestRaw,
 	AttendeeStatus,
-} from "@fluidframework/presence/alpha";
+} from "@fluidframework/presence/beta";
 import { UsersManager, User, UserInfo } from "./Interfaces/UsersManager.js";
 import { Listenable } from "fluid-framework";
 
