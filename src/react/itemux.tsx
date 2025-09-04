@@ -281,25 +281,57 @@ export function ItemView(props: {
 	useEffect(() => {
 		const el = ref.current;
 		if (!el) return;
-		// Determine intrinsic (unscaled) size once per change
-		let w0 = 0;
-		let h0 = 0;
-		if (Tree.is(item.content, Shape)) {
-			const size = shapeProps.sizeOverride ?? item.content.size;
-			w0 = size;
-			h0 = size;
-		} else {
-			const bb = el.getBoundingClientRect();
-			w0 = el.offsetWidth || bb.width;
-			h0 = el.offsetHeight || bb.height;
+
+		// Helper to measure and update layout cache
+		const measureAndUpdate = () => {
+			let w0 = 0;
+			let h0 = 0;
+			if (Tree.is(item.content, Shape)) {
+				const size = shapeProps.sizeOverride ?? item.content.size;
+				w0 = size;
+				h0 = size;
+			} else {
+				// offsetWidth/Height not affected by CSS transform scale on ancestor; use them first
+				w0 = el.offsetWidth;
+				h0 = el.offsetHeight;
+				if ((!w0 || !h0) && typeof el.getBoundingClientRect === "function") {
+					const bb = el.getBoundingClientRect();
+					// Divide by zoom only if we used the transformed client rect
+					const zoom = props.zoom || 1;
+					w0 = (w0 || bb.width) / zoom;
+					h0 = (h0 || bb.height) / zoom;
+				}
+			}
+			if (!w0 || !h0) return;
+			const prev = intrinsicSizeRef.current;
+			const changed = prev.w !== w0 || prev.h !== h0;
+			intrinsicSizeRef.current = { w: w0, h: h0 };
+			const left = itemProps.left;
+			const top = itemProps.top;
+			layout.set(item.id, { left, top, right: left + w0, bottom: top + h0 });
+			if (changed) {
+				// Notify overlays that a layout size changed so they can re-render
+				window.dispatchEvent(new CustomEvent("layout-changed"));
+			}
+		};
+
+		// Initial measure
+		measureAndUpdate();
+
+		// Observe size changes (e.g., table content growth)
+		let ro: ResizeObserver | null = null;
+		if (typeof ResizeObserver !== "undefined") {
+			ro = new ResizeObserver(() => {
+				measureAndUpdate();
+			});
+			ro.observe(el);
 		}
-		intrinsicSizeRef.current = { w: w0, h: h0 };
-		// Use model-space position from itemProps to avoid DOM-measure lag
-		const left = itemProps.left;
-		const top = itemProps.top;
-		layout.set(item.id, { left, top, right: left + w0, bottom: top + h0 });
-		// Recompute when position or intrinsic size changes
-	}, [layout, item.id, itemProps.left, itemProps.top, shapeProps.sizeOverride, item.content]);
+
+		return () => {
+			ro?.disconnect();
+		};
+	// Include zoom so if zoom changes we recompute intrinsic model-space size
+	}, [layout, item.id, itemProps.left, itemProps.top, shapeProps.sizeOverride, item.content, props.zoom]);
 
 	return (
 		<div

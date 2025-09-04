@@ -3,7 +3,7 @@
  * Licensed under the MIT License.
  */
 
-import React, { JSX, useContext, useRef, useState } from "react";
+import React, { JSX, useContext, useRef, useState, useEffect } from "react";
 import { Items, Item } from "../schema/app_schema.js";
 import { IFluidContainer } from "fluid-framework";
 import { PresenceContext } from "./contexts/PresenceContext.js";
@@ -74,6 +74,14 @@ export function Canvas(props: {
 	};
 
 	const paneContext = useContext(PaneContext);
+
+	// Layout version to trigger overlay re-renders when intrinsic sizes change (e.g., table growth)
+	const [layoutVersion, setLayoutVersion] = useState(0);
+	useEffect(() => {
+		const handler = () => setLayoutVersion((v) => v + 1);
+		window.addEventListener("layout-changed", handler);
+		return () => window.removeEventListener("layout-changed", handler);
+	}, []);
 	const commentPaneVisible =
 		paneContext.panes.find((p) => p.name === "comments")?.visible ?? false;
 
@@ -128,7 +136,7 @@ export function Canvas(props: {
 			</foreignObject>
 			{/* Per-item SVG wrappers (overlay), built from measured layout */}
 			<g
-				key={`sel-${selKey}-${motionKey}`}
+				key={`sel-${selKey}-${motionKey}-${layoutVersion}`}
 				transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}
 			>
 				{items.map((item) => {
@@ -148,7 +156,7 @@ export function Canvas(props: {
 			</g>
 			{/* Presence indicators overlay for all items with remote selections */}
 			<g
-				key={`presence-${selKey}-${motionKey}`}
+				key={`presence-${selKey}-${motionKey}-${layoutVersion}`}
 				transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}
 			>
 				{items.map((item) => {
@@ -184,7 +192,7 @@ export function Canvas(props: {
 			</g>
 			{/* Comment indicators (zoom-invariant) */}
 			<g
-				key={`comments-${selKey}-${motionKey}`}
+				key={`comments-${selKey}-${motionKey}-${layoutVersion}`}
 				transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}
 			>
 				{items.map((item) => {
