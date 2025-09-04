@@ -11,8 +11,9 @@ export function SelectionOverlay(props: {
 }): JSX.Element | null {
 	const { item, layout, presence, zoom } = props;
 	const b = layout.get(item.id);
-	const left = b?.left ?? item.x;
-	const top = b?.top ?? item.y;
+	// Base position from layout (falls back to model position if missing)
+	let left = b?.left ?? item.x;
+	let top = b?.top ?? item.y;
 	let w = b ? Math.max(0, b.right - b.left) : 0;
 	let h = b ? Math.max(0, b.bottom - b.top) : 0;
 	if (w === 0 || h === 0) {
@@ -28,6 +29,11 @@ export function SelectionOverlay(props: {
 	}
 	const padding = 8;
 	const active = getActiveDragForItem(presence, item.id);
+	// If this client (or a remote) is actively dragging, prefer live drag coordinates to avoid a frame of lag
+	if (active) {
+		left = active.x;
+		top = active.y;
+	}
 	let angle = active ? active.rotation : item.rotation;
 	const isTable = Tree.is(item.content, FluidTable);
 	const isShape = Tree.is(item.content, Shape);

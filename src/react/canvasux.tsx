@@ -215,6 +215,7 @@ export function Canvas(props: {
 							zoom={zoom}
 							commentPaneVisible={commentPaneVisible}
 							selected={isSelected}
+							presence={presence}
 						/>
 					);
 				})}

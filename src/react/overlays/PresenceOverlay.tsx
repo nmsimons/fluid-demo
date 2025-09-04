@@ -27,9 +27,16 @@ export function PresenceOverlay(props: {
 	} = props;
 	const b = layout.get(item.id);
 	if (!b) return null;
+	let left = b.left;
+	let top = b.top;
 	const w = Math.max(0, b.right - b.left);
 	const h = Math.max(0, b.bottom - b.top);
 	const active = getActiveDragForItem(presence, item.id);
+	// Use active drag coordinates if present for perfectly in-sync visuals
+	if (active) {
+		left = active.x;
+		top = active.y;
+	}
 	let angle = active ? active.rotation : item.rotation;
 	if (Tree.is(item.content, FluidTable)) angle = 0;
 	const connected = (presence.users.getConnectedUsers?.() ?? []) as unknown as ReadonlyArray<{
@@ -72,7 +79,7 @@ export function PresenceOverlay(props: {
 
 	return (
 		<g
-			transform={`translate(${b.left}, ${b.top}) rotate(${angle}, ${w / 2}, ${h / 2})`}
+			transform={`translate(${left}, ${top}) rotate(${angle}, ${w / 2}, ${h / 2})`}
 			data-svg-item-id={item.id}
 		>
 			{users.length === 1 ? (
