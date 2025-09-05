@@ -67,6 +67,7 @@ export function ReactApp(props: {
 	const [inkActive, setInkActive] = useState(false);
 	const [eraserActive, setEraserActive] = useState(false);
 	const [inkColor, setInkColor] = useState<string>("#2563eb");
+	const [inkWidth, setInkWidth] = useState<number>(4);
 
 	// Keep linter satisfied until pan is surfaced elsewhere
 	useEffect(() => {
@@ -230,6 +231,8 @@ export function ReactApp(props: {
 						onToggleEraser={() => setEraserActive((a) => !a)}
 						inkColor={inkColor}
 						onInkColorChange={setInkColor}
+						inkWidth={inkWidth}
+						onInkWidthChange={setInkWidth}
 					/>
 					<div className="flex h-[calc(100vh-96px)] w-full flex-row ">
 						<PaneContext.Provider
@@ -247,6 +250,7 @@ export function ReactApp(props: {
 								inkActive={inkActive}
 								eraserActive={eraserActive}
 								inkColor={inkColor}
+							inkWidth={inkWidth}
 							/>
 						</PaneContext.Provider>
 						<CommentPane

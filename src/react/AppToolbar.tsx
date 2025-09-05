@@ -30,7 +30,7 @@ import {
 	MoveItemBackwardButton,
 	BringItemToFrontButton,
 	SendItemToBackButton,
-	ColorPicker,
+	InkColorPicker,
 } from "./appbuttonux.js";
 import { DeleteSelectedRowsButton } from "./tablebuttonux.js";
 import { TooltipButton } from "./buttonux.js";
@@ -75,6 +75,8 @@ export interface AppToolbarProps {
 	onToggleEraser: () => void;
 	inkColor: string;
 	onInkColorChange: (c: string) => void;
+	inkWidth: number;
+	onInkWidthChange: (w: number) => void;
 }
 
 export function AppToolbar(props: AppToolbarProps): JSX.Element {
@@ -101,6 +103,8 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 		onToggleEraser,
 		inkColor,
 		onInkColorChange,
+		inkWidth,
+		onInkWidthChange,
 	} = props;
 
 	const formatZoom = (z: number | undefined) => `${Math.round((z ?? 1) * 100)}%`;
@@ -159,10 +163,12 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 					active={eraserActive}
 				/>
 				{/* Ink color picker */}
-				<ColorPicker
+				<InkColorPicker
 					setColor={(c: string) => onInkColorChange(c)}
 					selected={inkColor}
 					ariaLabel="Ink color picker"
+					inkWidth={inkWidth}
+					onInkWidthChange={onInkWidthChange}
 				/>
 			</ToolbarGroup>
 			<ToolbarDivider />

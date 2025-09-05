@@ -307,16 +307,32 @@ export function ShapeColorPicker(props: { shapes: Shape[] }): JSX.Element {
 		});
 	};
 
-	return <ColorPicker setColor={setColor} selected={selected} ariaLabel={ariaLabel} />;
+	return (
+		<Menu>
+			<MenuTrigger>
+				<ToolbarButton style={{ minWidth: 0 }}>
+					<Circle24Filled color={selected ?? "linear-gradient(45deg,#888,#444)"} />
+					<ChevronDownRegular />
+				</ToolbarButton>
+			</MenuTrigger>
+			<MenuPopover>
+				<MenuList>
+					<ColorPicker setColor={setColor} selected={selected} ariaLabel={ariaLabel} />
+				</MenuList>
+			</MenuPopover>
+		</Menu>
+	);
 }
 
-// Color Picker
-export function ColorPicker(props: {
+// Ink Color Picker
+export function InkColorPicker(props: {
 	setColor: (color: string) => void;
 	selected: string | undefined;
 	ariaLabel: string;
+	inkWidth: number;
+	onInkWidthChange: (arg: number) => void;
 }): JSX.Element {
-	const { setColor, selected, ariaLabel } = props;
+	const { setColor, selected, ariaLabel, inkWidth, onInkWidthChange } = props;
 
 	return (
 		<Menu>
@@ -328,28 +344,63 @@ export function ColorPicker(props: {
 			</MenuTrigger>
 			<MenuPopover>
 				<MenuList>
-					<SwatchPicker
-						layout="grid"
-						shape="circular"
-						size="small"
-						aria-label={ariaLabel}
-						selectedValue={selected}
-						onSelectionChange={(_, d) => {
-							if (d.selectedValue) setColor(d.selectedValue);
-						}}
+					<ColorPicker setColor={setColor} selected={selected} ariaLabel={ariaLabel} />
+					<div
+						className="px-3 py-2 w-48 select-none"
+						onClick={(e) => e.stopPropagation()}
 					>
-						{renderSwatchPickerGrid({
-							items: SHAPE_COLORS.map((color) => ({
-								value: color,
-								color,
-								borderColor: "black",
-							})),
-							columnCount: 4,
-						})}
-					</SwatchPicker>
+						<div className="flex justify-between text-xs mb-2">
+							<span className="font-semibold">Ink thickness</span>
+							<span className="tabular-nums">{inkWidth}px</span>
+						</div>
+						<input
+							type="range"
+							min={4}
+							max={32}
+							step={1}
+							value={Math.max(4, Math.min(32, inkWidth))}
+							aria-label="Ink thickness slider"
+							onChange={(e) => {
+								const v = parseInt(e.target.value, 10);
+								onInkWidthChange(Math.max(4, Math.min(32, v)));
+							}}
+							className="w-full cursor-pointer"
+						/>
+					</div>
 				</MenuList>
 			</MenuPopover>
 		</Menu>
+	);
+}
+
+// Color Picker
+export function ColorPicker(props: {
+	setColor: (color: string) => void;
+	selected: string | undefined;
+	ariaLabel: string;
+}): JSX.Element {
+	const { setColor, selected, ariaLabel } = props;
+
+	return (
+		<SwatchPicker
+			layout="grid"
+			shape="circular"
+			size="small"
+			aria-label={ariaLabel}
+			selectedValue={selected}
+			onSelectionChange={(_, d) => {
+				if (d.selectedValue) setColor(d.selectedValue);
+			}}
+		>
+			{renderSwatchPickerGrid({
+				items: SHAPE_COLORS.map((color) => ({
+					value: color,
+					color,
+					borderColor: "black",
+				})),
+				columnCount: 4,
+			})}
+		</SwatchPicker>
 	);
 }
 

@@ -29,6 +29,7 @@ export function Canvas(props: {
 	inkActive?: boolean;
 	eraserActive?: boolean;
 	inkColor?: string;
+	inkWidth?: number;
 }): JSX.Element {
 	const {
 		items,
@@ -39,6 +40,7 @@ export function Canvas(props: {
 		inkActive,
 		eraserActive,
 		inkColor = "#2563eb",
+		inkWidth = 4,
 	} = props;
 	const presence = useContext(PresenceContext);
 	useTree(items);
@@ -239,7 +241,7 @@ export function Canvas(props: {
 			id: strokeIdRef.current,
 			points: tempPointsRef.current.map((pt) => ({ x: pt.x, y: pt.y, t: pt.t })),
 			color: inkColor,
-			width: 4,
+			width: inkWidth,
 			opacity: 1,
 			startTime: Date.now(),
 		});
@@ -366,7 +368,7 @@ export function Canvas(props: {
 				points: pts.slice(),
 				style: new InkStyle({
 					strokeColor: inkColor,
-					strokeWidth: 4,
+					strokeWidth: inkWidth,
 					opacity: 1,
 					lineCap: "round",
 					lineJoin: "round",
@@ -505,7 +507,7 @@ export function Canvas(props: {
 						key="local-ephemeral"
 						fill="none"
 						stroke={inkColor}
-						strokeWidth={Math.max(0.5, 4 * zoom)}
+						strokeWidth={Math.max(0.5, inkWidth * zoom)}
 						strokeOpacity={0.7}
 						strokeLinecap="round"
 						strokeLinejoin="round"
