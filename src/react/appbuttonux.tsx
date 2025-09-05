@@ -35,9 +35,18 @@ import {
 	CopyRegular,
 	Circle24Filled,
 } from "@fluentui/react-icons";
-import { Menu, MenuTrigger, MenuPopover, MenuList } from "@fluentui/react-menu";
-import { SwatchPicker, renderSwatchPickerGrid } from "@fluentui/react-swatch-picker";
-import { ToolbarButton } from "@fluentui/react-toolbar";
+import {
+	Menu,
+	MenuTrigger,
+	MenuPopover,
+	MenuList,
+	Slider,
+	ToolbarButton,
+	SwatchPicker,
+	renderSwatchPickerGrid,
+	Label,
+	MenuDivider,
+} from "@fluentui/react-components";
 
 export const SHAPE_COLORS = [
 	"#000000",
@@ -317,7 +326,12 @@ export function ShapeColorPicker(props: { shapes: Shape[] }): JSX.Element {
 			</MenuTrigger>
 			<MenuPopover>
 				<MenuList>
-					<ColorPicker setColor={setColor} selected={selected} ariaLabel={ariaLabel} />
+					<ColorPicker
+						setColor={setColor}
+						selected={selected}
+						ariaLabel={ariaLabel}
+						label="Shape Color"
+					/>
 				</MenuList>
 			</MenuPopover>
 		</Menu>
@@ -344,29 +358,14 @@ export function InkColorPicker(props: {
 			</MenuTrigger>
 			<MenuPopover>
 				<MenuList>
-					<ColorPicker setColor={setColor} selected={selected} ariaLabel={ariaLabel} />
-					<div
-						className="px-3 py-2 w-48 select-none"
-						onClick={(e) => e.stopPropagation()}
-					>
-						<div className="flex justify-between text-xs mb-2">
-							<span className="font-semibold">Ink thickness</span>
-							<span className="tabular-nums">{inkWidth}px</span>
-						</div>
-						<input
-							type="range"
-							min={4}
-							max={32}
-							step={1}
-							value={Math.max(4, Math.min(32, inkWidth))}
-							aria-label="Ink thickness slider"
-							onChange={(e) => {
-								const v = parseInt(e.target.value, 10);
-								onInkWidthChange(Math.max(4, Math.min(32, v)));
-							}}
-							className="w-full cursor-pointer"
-						/>
-					</div>
+					<ColorPicker
+						setColor={setColor}
+						selected={selected}
+						ariaLabel={ariaLabel}
+						label="Ink Color"
+					/>
+					<MenuDivider></MenuDivider>
+					<InkThicknessSlider inkWidth={inkWidth} onInkWidthChange={onInkWidthChange} />
 				</MenuList>
 			</MenuPopover>
 		</Menu>
@@ -378,29 +377,56 @@ export function ColorPicker(props: {
 	setColor: (color: string) => void;
 	selected: string | undefined;
 	ariaLabel: string;
+	columnCount?: number;
+	label: string;
 }): JSX.Element {
-	const { setColor, selected, ariaLabel } = props;
+	const { setColor, selected, ariaLabel, columnCount = 5, label } = props;
+	return (
+		<>
+			<Label>{label}</Label>
+			<SwatchPicker
+				layout="grid"
+				shape="circular"
+				size="small"
+				aria-label={ariaLabel}
+				selectedValue={selected}
+				onSelectionChange={(_, d) => {
+					if (d.selectedValue) setColor(d.selectedValue);
+				}}
+			>
+				{renderSwatchPickerGrid({
+					items: SHAPE_COLORS.map((color) => ({
+						value: color,
+						color,
+						borderColor: "black",
+					})),
+					columnCount: columnCount,
+				})}
+			</SwatchPicker>
+		</>
+	);
+}
+
+export function InkThicknessSlider(props: {
+	inkWidth: number;
+	onInkWidthChange: (arg: number) => void;
+}): JSX.Element {
+	const { inkWidth, onInkWidthChange } = props;
 
 	return (
-		<SwatchPicker
-			layout="grid"
-			shape="circular"
-			size="small"
-			aria-label={ariaLabel}
-			selectedValue={selected}
-			onSelectionChange={(_, d) => {
-				if (d.selectedValue) setColor(d.selectedValue);
-			}}
-		>
-			{renderSwatchPickerGrid({
-				items: SHAPE_COLORS.map((color) => ({
-					value: color,
-					color,
-					borderColor: "black",
-				})),
-				columnCount: 4,
-			})}
-		</SwatchPicker>
+		<>
+			<Label>Thickness: {inkWidth}px</Label>
+			<Slider
+				min={4}
+				max={32}
+				value={Math.max(4, Math.min(32, inkWidth))}
+				aria-label="Ink thickness slider"
+				onChange={(e) => {
+					const v = parseInt(e.target.value, 10);
+					onInkWidthChange(Math.max(4, Math.min(32, v)));
+				}}
+			/>
+		</>
 	);
 }
 
