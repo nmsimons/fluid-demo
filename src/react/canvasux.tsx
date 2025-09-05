@@ -310,8 +310,11 @@ export function Canvas(props: {
 		const handleMove = (ev: PointerEvent) => {
 			if (pointerIdRef.current !== null && ev.pointerId !== pointerIdRef.current) return;
 			// Use coalesced events for smoother touch / pen input when available
-			const hasCoalesced = (e: PointerEvent): e is PointerEvent & { getCoalescedEvents(): PointerEvent[] } =>
-				typeof (e as PointerEvent & { getCoalescedEvents?: unknown }).getCoalescedEvents === "function";
+			const hasCoalesced = (
+				e: PointerEvent
+			): e is PointerEvent & { getCoalescedEvents(): PointerEvent[] } =>
+				typeof (e as PointerEvent & { getCoalescedEvents?: unknown }).getCoalescedEvents ===
+				"function";
 			const events = hasCoalesced(ev) ? ev.getCoalescedEvents() : [ev];
 			for (const cev of events) {
 				const p = toLogical(cev.clientX, cev.clientY);
