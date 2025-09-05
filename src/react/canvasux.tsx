@@ -59,6 +59,7 @@ export function Canvas(props: {
 		canvasPosition,
 		pan,
 		zoom,
+		isPanning,
 		beginPanIfBackground,
 		handleHtmlBackgroundMouseDown,
 		handleBackgroundClick,
@@ -416,7 +417,10 @@ export function Canvas(props: {
 			id="canvas"
 			ref={svgRef}
 			className="relative flex h-full w-full bg-transparent"
-			style={{ touchAction: "none" }}
+			style={{
+				touchAction: "none",
+				cursor: isPanning ? "grabbing" : undefined,
+			}}
 			onClick={handleBackgroundClick}
 			onMouseDown={beginPanIfBackground}
 			onPointerDown={handlePointerDown}
