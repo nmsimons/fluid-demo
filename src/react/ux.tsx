@@ -38,6 +38,7 @@ import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts.js";
 import { useAppKeyboardShortcuts } from "./hooks/useAppKeyboardShortcuts.js";
 import { PaneContext } from "./contexts/PaneContext.js";
 import { AppToolbar } from "./AppToolbar.js";
+import { InkPresenceManager } from "../utils/presence/Interfaces/InkManager.js";
 // Removed circle ink creation; ink tool toggles freehand drawing.
 
 // Context for comment pane actions
@@ -54,7 +55,7 @@ export function ReactApp(props: {
 	undoRedo: undoRedo;
 	drag: DragManager<DragAndRotatePackage | null>;
 	resize: ResizeManager<ResizePackage | null>;
-	ink?: import("../utils/presence/ink.js").InkPresenceManager;
+	ink?: InkPresenceManager;
 }): JSX.Element {
 	const { tree, itemSelection, tableSelection, users, container, undoRedo, drag, resize, ink } =
 		props;

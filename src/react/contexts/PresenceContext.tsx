@@ -27,6 +27,7 @@ import { ResizeManager } from "../../utils/presence/Interfaces/ResizeManager.js"
 import { DragAndRotatePackage } from "../../utils/presence/drag.js";
 import { ResizePackage } from "../../utils/presence/Interfaces/ResizeManager.js";
 import { TypedSelection } from "../../utils/presence/selection.js";
+import { InkPresenceManager } from "../../utils/presence/Interfaces/InkManager.js";
 
 /**
  * Type definition for the Presence Context.
@@ -52,7 +53,7 @@ interface PresenceContextType {
 	branch: boolean;
 
 	/** Ephemeral ink presence (live in-progress stroke) */
-	ink?: import("../../utils/presence/ink.js").InkPresenceManager;
+	ink?: InkPresenceManager;
 }
 
 /**
