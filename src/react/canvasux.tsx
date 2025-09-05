@@ -33,6 +33,7 @@ export function Canvas(props: {
 }): JSX.Element {
 	const {
 		items,
+		container, // eslint-disable-line @typescript-eslint/no-unused-vars
 		setSize,
 		zoom: externalZoom,
 		onZoomChange,
@@ -157,6 +158,55 @@ export function Canvas(props: {
 		return { x: (sx - pan.x) / zoom, y: (sy - pan.y) / zoom };
 	};
 
+	// Erase helper: removes first stroke intersecting eraser circle at logical point
+	const performErase = (p: { x: number; y: number }) => {
+		if (!root?.inks) return;
+		const eraserScreenRadius = 12; // cursor visual radius
+		const eraserLogicalRadius = eraserScreenRadius / zoom;
+		let target: InkStroke | undefined;
+		outer: for (const s of root.inks) {
+			const bb = s.bbox;
+			if (!bb) continue;
+			if (
+				p.x < bb.x - eraserLogicalRadius ||
+				p.x > bb.x + bb.w + eraserLogicalRadius ||
+				p.y < bb.y - eraserLogicalRadius ||
+				p.y > bb.y + bb.h + eraserLogicalRadius
+			)
+				continue;
+			const pts = Array.from(s.simplified ?? s.points) as InkPoint[];
+			const strokeHalf = (s.style?.strokeWidth ?? 4) / 2;
+			const maxDist = strokeHalf + eraserLogicalRadius;
+			const maxDist2 = maxDist * maxDist;
+			for (let i = 0; i < pts.length - 1; i++) {
+				const a = pts[i];
+				const b = pts[i + 1];
+				const dx = b.x - a.x;
+				const dy = b.y - a.y;
+				const len2 = dx * dx + dy * dy;
+				let t = 0;
+				if (len2 > 0) {
+					const proj = (p.x - a.x) * dx + (p.y - a.y) * dy;
+					t = Math.max(0, Math.min(1, proj / len2));
+				}
+				const cx = a.x + dx * t;
+				const cy = a.y + dy * t;
+				const ddx = p.x - cx;
+				const ddy = p.y - cy;
+				if (ddx * ddx + ddy * ddy <= maxDist2) {
+					target = s;
+					break outer;
+				}
+			}
+		}
+		if (target) {
+			Tree.runTransaction(root.inks, () => {
+				const idx = root.inks.indexOf(target!);
+				if (idx >= 0) root.inks.removeAt(idx);
+			});
+		}
+	};
+
 	// Begin inking on left button background press (not on items)
 	const handlePointerDown = (e: React.PointerEvent) => {
 		if (inkActive || eraserActive) {
@@ -174,54 +224,9 @@ export function Canvas(props: {
 		// Eraser mode: on pointer down start erase interaction instead of drawing
 		if (eraserActive) {
 			if (e.button !== 0) return;
-			const p = toLogical(e.clientX, e.clientY);
-			// Simple hit test: find first stroke whose bbox contains point then refine by nearest segment distance
-			if (root?.inks) {
-				let target: InkStroke | undefined;
-				for (const s of root.inks) {
-					const bb = s.bbox;
-					if (!bb) continue;
-					if (
-						p.x < bb.x - 4 ||
-						p.x > bb.x + bb.w + 4 ||
-						p.y < bb.y - 4 ||
-						p.y > bb.y + bb.h + 4
-					)
-						continue;
-					// distance to polyline (brute force)
-					const pts = Array.from(s.simplified ?? s.points) as InkPoint[];
-					for (let i = 0; i < pts.length - 1; i++) {
-						const a = pts[i];
-						const b = pts[i + 1];
-						const dx = b.x - a.x;
-						const dy = b.y - a.y;
-						const len2 = dx * dx + dy * dy;
-						let t = 0;
-						if (len2 > 0) {
-							const proj = (p.x - a.x) * dx + (p.y - a.y) * dy;
-							t = Math.max(0, Math.min(1, proj / len2));
-						}
-						const cx = a.x + dx * t;
-						const cy = a.y + dy * t;
-						const ddx = p.x - cx;
-						const ddy = p.y - cy;
-						const dist2 = ddx * ddx + ddy * ddy;
-						const hitRadius = (s.style?.strokeWidth ?? 4) * 1.2; // tolerate a bit more than width
-						if (dist2 <= hitRadius * hitRadius) {
-							target = s;
-							break;
-						}
-					}
-					if (target) break;
-				}
-				if (target) {
-					Tree.runTransaction(root.inks, () => {
-						const idx = root.inks.indexOf(target!);
-						if (idx >= 0) root.inks.removeAt(idx);
-					});
-				}
-			}
-			return;
+			pointerIdRef.current = e.pointerId; // track drag for scrubbing
+			performErase(toLogical(e.clientX, e.clientY));
+			return; // don't start ink
 		}
 		if (!inkActive) return; // only when ink tool active
 		if (e.button !== 0) return; // left only
@@ -263,46 +268,61 @@ export function Canvas(props: {
 		const rect = svgRef.current?.getBoundingClientRect();
 		if (!rect) return;
 		setCursor({ x: e.clientX - rect.left, y: e.clientY - rect.top, visible: true });
-		// If erasing, update hover stroke id
+		// If erasing, update hover or scrub
 		if (eraserActive && root?.inks) {
 			const pLogical = toLogical(e.clientX, e.clientY);
-			let target: InkStroke | undefined;
-			for (const s of root.inks) {
-				const bb = s.bbox;
-				if (!bb) continue;
-				if (
-					pLogical.x < bb.x - 6 ||
-					pLogical.x > bb.x + bb.w + 6 ||
-					pLogical.y < bb.y - 6 ||
-					pLogical.y > bb.y + bb.h + 6
-				)
-					continue;
-				const pts = Array.from(s.simplified ?? s.points) as InkPoint[];
-				for (let i = 0; i < pts.length - 1; i++) {
-					const a = pts[i];
-					const b = pts[i + 1];
-					const dx = b.x - a.x;
-					const dy = b.y - a.y;
-					const len2 = dx * dx + dy * dy;
-					let t = 0;
-					if (len2 > 0) {
-						const proj = (pLogical.x - a.x) * dx + (pLogical.y - a.y) * dy;
-						t = Math.max(0, Math.min(1, proj / len2));
-					}
-					const cx = a.x + dx * t;
-					const cy = a.y + dy * t;
-					const ddx = pLogical.x - cx;
-					const ddy = pLogical.y - cy;
-					const dist2 = ddx * ddx + ddy * ddy;
-					const hitRadius = (s.style?.strokeWidth ?? 4) * 1.2;
-					if (dist2 <= hitRadius * hitRadius) {
-						target = s;
-						break;
+			if (pointerIdRef.current !== null) {
+				// Active drag: continuously erase
+				performErase(pLogical);
+				setEraserHoverId(null);
+			} else {
+				// Hover preview using circle radius
+				let target: InkStroke | undefined;
+				const eraserScreenRadius = 12;
+				const eraserLogicalRadius = eraserScreenRadius / zoom;
+				outer: for (const s of root.inks) {
+					const bb = s.bbox;
+					if (!bb) continue;
+					if (
+						pLogical.x < bb.x - eraserLogicalRadius ||
+						pLogical.x > bb.x + bb.w + eraserLogicalRadius ||
+						pLogical.y < bb.y - eraserLogicalRadius ||
+						pLogical.y > bb.y + bb.h + eraserLogicalRadius
+					)
+						continue;
+					const pts = Array.from(s.simplified ?? s.points) as InkPoint[];
+					const strokeHalf = (s.style?.strokeWidth ?? 4) / 2;
+					const maxDist = strokeHalf + eraserLogicalRadius;
+					const maxDist2 = maxDist * maxDist;
+					for (let i = 0; i < pts.length - 1; i++) {
+						const a = pts[i];
+						const b = pts[i + 1];
+						const dx = b.x - a.x;
+						const dy = b.y - a.y;
+						const len2 = dx * dx + dy * dy;
+						let t = 0;
+						if (len2 > 0) {
+							const proj = (pLogical.x - a.x) * dx + (pLogical.y - a.y) * dy;
+							t = Math.max(0, Math.min(1, proj / len2));
+						}
+						const cx = a.x + dx * t;
+						const cy = a.y + dy * t;
+						const ddx = pLogical.x - cx;
+						const ddy = pLogical.y - cy;
+						if (ddx * ddx + ddy * ddy <= maxDist2) {
+							target = s;
+							break outer;
+						}
 					}
 				}
-				if (target) break;
+				setEraserHoverId(target ? target.id : null);
 			}
-			setEraserHoverId(target ? target.id : null);
+		}
+	};
+
+	const handlePointerUp = (e: React.PointerEvent) => {
+		if (pointerIdRef.current !== null && e.pointerId === pointerIdRef.current) {
+			pointerIdRef.current = null;
 		}
 	};
 
@@ -402,6 +422,7 @@ export function Canvas(props: {
 			onPointerDown={handlePointerDown}
 			onPointerMove={handlePointerMove}
 			onPointerLeave={handlePointerLeave}
+			onPointerUp={handlePointerUp}
 			onContextMenu={(e) => {
 				// Always suppress default context menu on canvas
 				e.preventDefault();
