@@ -250,7 +250,7 @@ export function ReactApp(props: {
 								inkActive={inkActive}
 								eraserActive={eraserActive}
 								inkColor={inkColor}
-							inkWidth={inkWidth}
+								inkWidth={inkWidth}
 							/>
 						</PaneContext.Provider>
 						<CommentPane
