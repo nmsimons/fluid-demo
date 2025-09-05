@@ -28,6 +28,7 @@ export function Canvas(props: {
 	onPanChange?: (p: { x: number; y: number }) => void;
 	inkActive?: boolean;
 	eraserActive?: boolean;
+	inkColor?: string;
 }): JSX.Element {
 	const {
 		items,
@@ -37,6 +38,7 @@ export function Canvas(props: {
 		onPanChange,
 		inkActive,
 		eraserActive,
+		inkColor = "#2563eb",
 	} = props;
 	const presence = useContext(PresenceContext);
 	useTree(items);
@@ -236,7 +238,7 @@ export function Canvas(props: {
 		presence.ink?.setStroke({
 			id: strokeIdRef.current,
 			points: tempPointsRef.current.map((pt) => ({ x: pt.x, y: pt.y, t: pt.t })),
-			color: "#2563eb",
+			color: inkColor,
 			width: 4,
 			opacity: 1,
 			startTime: Date.now(),
@@ -363,7 +365,7 @@ export function Canvas(props: {
 				id: crypto.randomUUID(),
 				points: pts.slice(),
 				style: new InkStyle({
-					strokeColor: "#2563eb",
+					strokeColor: inkColor,
 					strokeWidth: 4,
 					opacity: 1,
 					lineCap: "round",
@@ -502,7 +504,7 @@ export function Canvas(props: {
 					<polyline
 						key="local-ephemeral"
 						fill="none"
-						stroke="#2563eb"
+						stroke={inkColor}
 						strokeWidth={Math.max(0.5, 4 * zoom)}
 						strokeOpacity={0.7}
 						strokeLinecap="round"

@@ -19,7 +19,7 @@ import {
 	DeleteButton,
 	DuplicateButton,
 	CommentButton,
-	ColorPicker,
+	ShapeColorPicker,
 	AddColumnButton,
 	AddRowButton,
 	MoveColumnLeftButton,
@@ -30,6 +30,7 @@ import {
 	MoveItemBackwardButton,
 	BringItemToFrontButton,
 	SendItemToBackButton,
+	ColorPicker,
 } from "./appbuttonux.js";
 import { DeleteSelectedRowsButton } from "./tablebuttonux.js";
 import { TooltipButton } from "./buttonux.js";
@@ -72,6 +73,8 @@ export interface AppToolbarProps {
 	onToggleInk: () => void;
 	eraserActive: boolean;
 	onToggleEraser: () => void;
+	inkColor: string;
+	onInkColorChange: (c: string) => void;
 }
 
 export function AppToolbar(props: AppToolbarProps): JSX.Element {
@@ -96,6 +99,8 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 		onToggleInk,
 		eraserActive,
 		onToggleEraser,
+		inkColor,
+		onInkColorChange,
 	} = props;
 
 	const formatZoom = (z: number | undefined) => `${Math.round((z ?? 1) * 100)}%`;
@@ -152,6 +157,12 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 						</span>
 					}
 					active={eraserActive}
+				/>
+				{/* Ink color picker */}
+				<ColorPicker
+					setColor={(c: string) => onInkColorChange(c)}
+					selected={inkColor}
+					ariaLabel="Ink color picker"
 				/>
 			</ToolbarGroup>
 			<ToolbarDivider />
@@ -230,8 +241,6 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 							{hasSelectedItems && (
 								<>
 									<DuplicateButton
-										items={view.root.items}
-										canvasSize={canvasSize}
 										count={selectedItems.length}
 										duplicate={() => {
 											Tree.runTransaction(view.root.items, () => {
@@ -290,10 +299,7 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 									<div className="flex items-center h-full toolbar-slide-in-delayed">
 										<ToolbarDivider />
 										<ToolbarGroup>
-											<ColorPicker
-												shapes={selectedShapes}
-												count={selectedShapes.length}
-											/>
+											<ShapeColorPicker shapes={selectedShapes} />
 										</ToolbarGroup>
 									</div>
 								)
