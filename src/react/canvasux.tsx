@@ -621,9 +621,12 @@ export function Canvas(props: {
 			{cursor.visible && (inkActive || eraserActive) && (
 				<g pointerEvents="none">
 					{(() => {
-						const r = eraserActive ? 12 : 6;
-						const stroke = eraserActive ? "#dc2626" : "#2563eb";
-						const fill = eraserActive ? "rgba(220,38,38,0.08)" : "rgba(37,99,235,0.08)";
+						// For ink: radius is half of actual stroke width in screen space.
+						// stroke width rendered is zoom * inkWidth (but we clamp min visually earlier when drawing ephemeral lines)
+						const screenStrokeWidth = inkWidth * zoom;
+						const r = eraserActive ? 12 : Math.max(2, screenStrokeWidth / 2);
+						const stroke = eraserActive ? "#dc2626" : inkColor;
+						const fill = eraserActive ? "rgba(220,38,38,0.08)" : `${inkColor}22`; // light tint
 						return (
 							<circle
 								cx={cursor.x}
