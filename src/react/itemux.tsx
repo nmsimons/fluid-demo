@@ -425,22 +425,21 @@ export function RotateHandle({ item }: { item: Item }) {
 	return (
 		<div
 			className="absolute flex flex-row w-full justify-center items-center"
-			style={{ top: -48 }}
+			style={{ top: -80, height: 160, pointerEvents: "auto" }}
+			onPointerDown={onPointerDown}
+			data-rotate-handle
 		>
+			{/* Visible knob */}
 			<div
-				onPointerDown={onPointerDown}
-				data-rotate-handle
-				className="absolute bg-black shadow-lg z-50 cursor-grab"
+				className="bg-black shadow-lg z-50 cursor-grab"
 				style={{
 					width: size,
 					height: size,
 					borderRadius: "50%",
-					// Extreme padding to test if touch failures are due to hit area sizing
-					padding: 60,
-					margin: -60, // net visual size ~ unchanged, hit area ~ (size + 120)
-					touchAction: "none",
-					// Uncomment for visualizing hit area during debugging:
-					// outline: '1px dashed red'
+					position: "absolute",
+					top: 80 - size / 2,
+					left: "50%",
+					transform: "translateX(-50%)",
 				}}
 			/>
 		</div>
@@ -550,24 +549,42 @@ export function CornerResizeHandles({
 				return {};
 		}
 	};
-	const Handle = ({ position }: { position: string }) => (
-		<div
-			data-resize-handle
-			className="absolute bg-black cursor-nw-resize hover:bg-black shadow-lg z-50"
-			style={{
-				width: resizing ? 30 : 26,
-				height: resizing ? 30 : 26,
-				borderRadius: 6,
-				// Extreme padding to exaggerate interactive area for diagnostics
-				padding: 40,
-				margin: -40,
-				touchAction: "none",
-				...pos(position),
-				// outline: '1px dashed blue'
-			}}
-			onPointerDown={onPointerDown}
-		/>
-	);
+	const Handle = ({ position }: { position: string }) => {
+		// Wrapper large zone
+		const zone = pos(position);
+		const WRAP = 120; // large square zone for touch
+		const wrapStyle: React.CSSProperties = {
+			position: "absolute",
+			width: WRAP,
+			height: WRAP,
+			pointerEvents: "auto",
+			touchAction: "none",
+			...zone,
+			// shift so small handle remains at corner while wrapper extends inward
+		};
+		const handleSize = resizing ? 30 : 26;
+		const adjust = (v: number) => v - (WRAP - handleSize) / 2;
+		if (Object.prototype.hasOwnProperty.call(zone, "left")) wrapStyle.left = adjust((zone as Record<string, number>).left);
+		if (Object.prototype.hasOwnProperty.call(zone, "right")) wrapStyle.right = adjust((zone as Record<string, number>).right);
+		if (Object.prototype.hasOwnProperty.call(zone, "top")) wrapStyle.top = adjust((zone as Record<string, number>).top);
+		if (Object.prototype.hasOwnProperty.call(zone, "bottom")) wrapStyle.bottom = adjust((zone as Record<string, number>).bottom);
+		return (
+			<div data-resize-handle style={wrapStyle} onPointerDown={onPointerDown}>
+				<div
+					className="absolute bg-black cursor-nw-resize hover:bg-black shadow-lg z-50"
+					style={{
+						width: resizing ? 30 : 26,
+						height: resizing ? 30 : 26,
+						borderRadius: 6,
+						pointerEvents: "none",
+						// Place at corner inside wrapper
+						[position.includes("right") ? "right" : "left"]: 0,
+						[position.includes("bottom") ? "bottom" : "top"]: 0,
+					}}
+				/>
+			</div>
+		);
+	};
 	return (
 		<>
 			<Handle position="top-left" />
