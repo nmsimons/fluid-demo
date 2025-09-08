@@ -35,6 +35,18 @@ export function useCanvasNavigation(params: {
 	const [isPanning, setIsPanning] = useState(false);
 	const lastPos = useRef<{ x: number; y: number } | null>(null);
 	const movedRef = useRef(false);
+	// Pinch gesture tracking (touch)
+	const activeTouches = useRef<Map<number, { x: number; y: number }>>(new Map());
+	const pinchState = useRef<null | {
+		initialDistance: number;
+		initialCenter: { x: number; y: number };
+		initialZoom: number;
+		initialPan: { x: number; y: number };
+		lastAppliedZoom: number;
+	}>(null);
+
+	const clampZoom = (z: number) =>
+		Math.min(ZOOM_STEPS[ZOOM_STEPS.length - 1], Math.max(ZOOM_STEPS[0], z));
 
 	// Wheel zoom (non-passive) with cursor anchoring and discrete steps
 	useEffect(() => {
@@ -128,38 +140,53 @@ export function useCanvasNavigation(params: {
 		presence.itemSelection?.clearSelection();
 	};
 
-	// Begin panning on empty background
-	const beginPanIfBackground = (e: React.MouseEvent) => {
-		// Only start pan on right mouse button (button === 2)
-		if (e.button !== 2) return;
-		if (presence.drag.state.local || presence.resize.state?.local) return;
-		const target = e.target as Element | null;
-		if (target?.closest("[data-svg-item-id]")) return;
-		if (target?.closest("[data-item-id]")) return;
-		// Prevent default context menu pathway
-		e.preventDefault();
-		setIsPanning(true);
-		lastPos.current = { x: e.clientX, y: e.clientY };
-		movedRef.current = false;
+	// Begin panning on empty background (mouse right-button OR single-finger touch when not in ink/eraser mode)
+	const beginPanIfBackground = (e: React.MouseEvent | React.PointerEvent) => {
+		const isPointer = (ev: unknown): ev is React.PointerEvent =>
+			typeof ev === "object" &&
+			ev !== null &&
+			"pointerType" in (ev as Record<string, unknown>);
+		const touchPrimary =
+			isPointer(e) &&
+			e.pointerType === "touch" &&
+			(e as unknown as { isPrimary?: boolean }).isPrimary !== false;
+		if (("button" in e && e.button === 2) || touchPrimary) {
+			if (presence.drag.state.local || presence.resize.state?.local) return;
+			const target = e.target as Element | null;
+			if (target?.closest("[data-svg-item-id]")) return;
+			if (target?.closest("[data-item-id]")) return;
+			e.preventDefault();
+			setIsPanning(true);
+			lastPos.current = { x: e.clientX, y: e.clientY };
+			movedRef.current = false;
+		}
 	};
 
-	// Allow panning via empty HTML background inside foreignObject
-	const handleHtmlBackgroundMouseDown = (e: React.MouseEvent) => {
-		// Right button only
-		if (e.button !== 2) return;
-		if (presence.drag.state.local || presence.resize.state?.local) return;
-		const target = e.target as HTMLElement;
-		if (target.closest("[data-item-id]")) return;
-		e.preventDefault();
-		setIsPanning(true);
-		lastPos.current = { x: e.clientX, y: e.clientY };
-		movedRef.current = false;
+	// Allow panning via empty HTML background inside foreignObject (same logic as above)
+	const handleHtmlBackgroundMouseDown = (e: React.MouseEvent | React.PointerEvent) => {
+		const isPointer = (ev: unknown): ev is React.PointerEvent =>
+			typeof ev === "object" &&
+			ev !== null &&
+			"pointerType" in (ev as Record<string, unknown>);
+		const touchPrimary =
+			isPointer(e) &&
+			e.pointerType === "touch" &&
+			(e as unknown as { isPrimary?: boolean }).isPrimary !== false;
+		if (("button" in e && e.button === 2) || touchPrimary) {
+			if (presence.drag.state.local || presence.resize.state?.local) return;
+			const target = e.target as HTMLElement;
+			if (target.closest("[data-item-id]")) return;
+			e.preventDefault();
+			setIsPanning(true);
+			lastPos.current = { x: e.clientX, y: e.clientY };
+			movedRef.current = false;
+		}
 	};
 
-	// Global mouse move/up for panning
+	// Global move/up for panning (pointer events to support touch + mouse)
 	useEffect(() => {
 		if (!isPanning) return;
-		const onMove = (ev: MouseEvent) => {
+		const onMove = (ev: PointerEvent) => {
 			if (!lastPos.current) return;
 			const dx = ev.clientX - lastPos.current.x;
 			const dy = ev.clientY - lastPos.current.y;
@@ -173,19 +200,19 @@ export function useCanvasNavigation(params: {
 			setIsPanning(false);
 			lastPos.current = null;
 			const rootEl = document.documentElement as HTMLElement & { dataset: DOMStringMap };
-			if (rootEl.dataset) {
-				delete rootEl.dataset.panning;
-			}
+			if (rootEl.dataset) delete rootEl.dataset.panning;
 			if (movedRef.current) {
 				const svg = svgRef.current as (SVGSVGElement & { dataset: DOMStringMap }) | null;
 				if (svg) svg.dataset.suppressClearUntil = String(Date.now() + 150);
 			}
 		};
-		document.addEventListener("mousemove", onMove);
-		document.addEventListener("mouseup", onUp);
+		document.addEventListener("pointermove", onMove);
+		document.addEventListener("pointerup", onUp);
+		document.addEventListener("pointercancel", onUp);
 		return () => {
-			document.removeEventListener("mousemove", onMove);
-			document.removeEventListener("mouseup", onUp);
+			document.removeEventListener("pointermove", onMove);
+			document.removeEventListener("pointerup", onUp);
+			document.removeEventListener("pointercancel", onUp);
 		};
 	}, [isPanning]);
 
@@ -199,6 +226,92 @@ export function useCanvasNavigation(params: {
 			};
 		}
 	}, [isPanning]);
+
+	// Pinch zoom gesture listeners (attached to svg element)
+	useEffect(() => {
+		const svg = svgRef.current;
+		if (!svg) return;
+		const handlePointerDown = (e: PointerEvent) => {
+			if (e.pointerType !== "touch") return;
+			activeTouches.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+			if (activeTouches.current.size === 2) {
+				// Initialize pinch
+				const pts = Array.from(activeTouches.current.values());
+				const dx = pts[1].x - pts[0].x;
+				const dy = pts[1].y - pts[0].y;
+				const dist = Math.hypot(dx, dy) || 1;
+				const center = { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 };
+				pinchState.current = {
+					initialDistance: dist,
+					initialCenter: center,
+					initialZoom: zoom,
+					initialPan: { ...pan },
+					lastAppliedZoom: zoom,
+				};
+			}
+		};
+		const handlePointerMove = (e: PointerEvent) => {
+			if (e.pointerType !== "touch") return;
+			if (!activeTouches.current.has(e.pointerId)) return;
+			activeTouches.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+			if (pinchState.current && activeTouches.current.size === 2) {
+				const pts = Array.from(activeTouches.current.values());
+				const dx = pts[1].x - pts[0].x;
+				const dy = pts[1].y - pts[0].y;
+				const dist = Math.hypot(dx, dy) || 1;
+				const scale = dist / pinchState.current.initialDistance;
+				const newZoomRaw = pinchState.current.initialZoom * scale;
+				const newZoom = clampZoom(newZoomRaw);
+				// Apply a small hysteresis to reduce jitter (only apply if >=1% change from last applied)
+				if (
+					Math.abs(newZoom - pinchState.current.lastAppliedZoom) <
+					pinchState.current.lastAppliedZoom * 0.01
+				)
+					return;
+				// rAF batch apply (avoid layout thrash). Store to pinchState before scheduling.
+				pinchState.current.lastAppliedZoom = newZoom;
+				requestAnimationFrame(() => {
+					// Recompute center in case layout scrolled (minimal risk)
+					const rect = svg.getBoundingClientRect();
+					const center = {
+						x: pinchState.current!.initialCenter.x - rect.left,
+						y: pinchState.current!.initialCenter.y - rect.top,
+					};
+					const p = {
+						x:
+							(center.x - pinchState.current!.initialPan.x) /
+							pinchState.current!.initialZoom,
+						y:
+							(center.y - pinchState.current!.initialPan.y) /
+							pinchState.current!.initialZoom,
+					};
+					const newPan = { x: center.x - newZoom * p.x, y: center.y - newZoom * p.y };
+					setPan(newPan);
+					if (onZoomChange) onZoomChange(newZoom);
+					else setInternalZoom(newZoom);
+				});
+			}
+		};
+		const endPointer = (e: PointerEvent) => {
+			if (e.pointerType !== "touch") return;
+			activeTouches.current.delete(e.pointerId);
+			if (activeTouches.current.size < 2) {
+				pinchState.current = null;
+			}
+		};
+		svg.addEventListener("pointerdown", handlePointerDown);
+		svg.addEventListener("pointermove", handlePointerMove);
+		svg.addEventListener("pointerup", endPointer);
+		svg.addEventListener("pointercancel", endPointer);
+		svg.addEventListener("pointerleave", endPointer);
+		return () => {
+			svg.removeEventListener("pointerdown", handlePointerDown);
+			svg.removeEventListener("pointermove", handlePointerMove);
+			svg.removeEventListener("pointerup", endPointer);
+			svg.removeEventListener("pointercancel", endPointer);
+			svg.removeEventListener("pointerleave", endPointer);
+		};
+	}, [svgRef.current, zoom, pan, onZoomChange]);
 
 	return {
 		canvasPosition,

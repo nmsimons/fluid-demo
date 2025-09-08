@@ -74,7 +74,7 @@ export function SelectionOverlay(props: {
 						onClick={(e) => {
 							e.stopPropagation();
 						}}
-						onMouseDown={(e) => {
+						onPointerDown={(e) => {
 							e.stopPropagation();
 							const container = document.querySelector(
 								`[data-item-id='${item.id}']`
@@ -84,7 +84,7 @@ export function SelectionOverlay(props: {
 							) as HTMLElement | null;
 							const target = rotateHandle ?? container;
 							if (target) {
-								const evt = new MouseEvent("mousedown", {
+								const evt = new PointerEvent("pointerdown", {
 									bubbles: true,
 									cancelable: true,
 									clientX: e.clientX,
@@ -132,7 +132,7 @@ export function SelectionOverlay(props: {
 								onClick={(e) => {
 									e.stopPropagation();
 								}}
-								onMouseDown={(e) => {
+								onPointerDown={(e) => {
 									e.stopPropagation();
 									const container = document.querySelector(
 										`[data-item-id='${item.id}']`
@@ -142,7 +142,7 @@ export function SelectionOverlay(props: {
 									) as HTMLElement[];
 									const handle = handles[i] ?? container;
 									if (handle) {
-										const evt = new MouseEvent("mousedown", {
+										const evt = new PointerEvent("pointerdown", {
 											bubbles: true,
 											cancelable: true,
 											clientX: e.clientX,

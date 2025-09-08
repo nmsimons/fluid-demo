@@ -474,7 +474,11 @@ export function Canvas(props: {
 			}}
 			onClick={handleBackgroundClick}
 			onMouseDown={beginPanIfBackground}
-			onPointerDown={handlePointerDown}
+			onPointerDown={(e) => {
+				// allow right-click or touch single-finger pan when not in ink / eraser mode
+				if (!(inkActive || eraserActive)) beginPanIfBackground(e);
+				handlePointerDown(e);
+			}}
 			onPointerMove={handlePointerMove}
 			onPointerLeave={handlePointerLeave}
 			onPointerUp={handlePointerUp}

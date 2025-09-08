@@ -1,81 +1,93 @@
-import React, { JSX, useState, useEffect, useContext, useRef } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
+import { Tree } from "fluid-framework";
 import { FluidTable, Item, Note, Shape } from "../schema/app_schema.js";
 import { PresenceContext } from "./contexts/PresenceContext.js";
+import { useTree, objectIdNumber } from "./hooks/useTree.js";
 import { ShapeView } from "./shapeux.js";
-import { Tree } from "fluid-framework";
-import { DragAndRotatePackage } from "../utils/presence/drag.js";
-import { ResizePackage } from "../utils/presence/Interfaces/ResizeManager.js";
 import { NoteView } from "./noteux.js";
-import { objectIdNumber, useTree } from "./hooks/useTree.js";
+import { TableView } from "./tableux.js";
 import { usePresenceManager } from "./hooks/usePresenceManger.js";
 import { PresenceManager } from "../utils/presence/Interfaces/PresenceManager.js";
-import { TableView } from "./tableux.js";
-import { ChevronLeft16Filled } from "@fluentui/react-icons";
+import { DragAndRotatePackage } from "../utils/presence/drag.js";
+import { ResizePackage } from "../utils/presence/Interfaces/ResizeManager.js";
 import { LayoutContext } from "./hooks/useLayoutManger.js";
+import { ChevronLeft16Filled } from "@fluentui/react-icons";
 
-/**
- * Utility function to generate consistent user colors
- * Creates a unique color for each user based on their ID
- */
-const getUserColor = (userId: string): string => {
-	const colors = [
-		"#3b82f6", // blue
-		"#ef4444", // red
-		"#10b981", // green
-		"#f59e0b", // yellow
-		"#8b5cf6", // purple
-		"#06b6d4", // cyan
-		"#f97316", // orange
-		"#84cc16", // lime
-		"#ec4899", // pink
-		"#6366f1", // indigo
-		"#f43f5e", // rose
-		"#06b6d4", // cyan
-		"#14b8a6", // teal
-		"#a855f7", // violet
-		"#0ea5e9", // sky
-	];
+// ============================================================================
+// Helpers
+// ============================================================================
+const USER_COLORS = [
+	"#3b82f6",
+	"#ef4444",
+	"#10b981",
+	"#f59e0b",
+	"#8b5cf6",
+	"#06b6d4",
+	"#f97316",
+	"#84cc16",
+	"#ec4899",
+	"#6366f1",
+	"#f43f5e",
+	"#14b8a6",
+	"#a855f7",
+	"#0ea5e9",
+];
+const userColor = (id: string) => {
+	let h = 0;
+	for (let i = 0; i < id.length; i++) h = id.charCodeAt(i) + ((h << 5) - h);
+	return USER_COLORS[Math.abs(h) % USER_COLORS.length];
+};
+const initials = (n: string) => {
+	if (!n) return "?";
+	const p = n.trim().split(/\s+/);
+	return p.length === 1 ? p[0][0].toUpperCase() : (p[0][0] + p[p.length - 1][0]).toUpperCase();
+};
+const itemType = (item: Item) =>
+	Tree.is(item.content, Shape)
+		? "shape"
+		: Tree.is(item.content, Note)
+			? "note"
+			: Tree.is(item.content, FluidTable)
+				? "table"
+				: "unknown";
 
-	// Simple hash function to get consistent color
-	let hash = 0;
-	for (let i = 0; i < userId.length; i++) {
-		hash = userId.charCodeAt(i) + ((hash << 5) - hash);
-	}
-	return colors[Math.abs(hash) % colors.length];
+export const calculateCanvasMouseCoordinates = (
+	e: { clientX: number; clientY: number },
+	pan?: { x: number; y: number },
+	zoom = 1
+) => {
+	const c = document.getElementById("canvas");
+	const r = c?.getBoundingClientRect() || ({ left: 0, top: 0 } as DOMRect);
+	const sx = e.clientX - r.left;
+	const sy = e.clientY - r.top;
+	return { x: (sx - (pan?.x ?? 0)) / zoom, y: (sy - (pan?.y ?? 0)) / zoom };
+};
+export const calculateOffsetFromCanvasOrigin = (
+	e: { clientX: number; clientY: number },
+	item: Item,
+	pan?: { x: number; y: number },
+	zoom = 1
+) => {
+	const c = calculateCanvasMouseCoordinates(e, pan, zoom);
+	return { x: c.x - item.x, y: c.y - item.y };
+};
+export {
+	calculateCanvasMouseCoordinates as canvasCoords,
+	calculateOffsetFromCanvasOrigin as dragOffset,
 };
 
-/**
- * Utility function to extract initials from a user name
- */
-const getInitials = (name: string): string => {
-	if (!name) return "?";
-	const words = name.trim().split(/\s+/);
-	if (words.length === 1) {
-		return words[0].charAt(0).toUpperCase();
-	}
-	return (words[0].charAt(0) + words[words.length - 1].charAt(0)).toUpperCase();
-};
-
-const getContentType = (item: Item): string => {
-	if (Tree.is(item.content, Shape)) {
-		return "shape";
-	} else if (Tree.is(item.content, Note)) {
-		return "note";
-	} else if (Tree.is(item.content, FluidTable)) {
-		return "table";
-	} else {
-		return "unknown";
-	}
-};
-
-export function ContentElement(props: {
+// ============================================================================
+// Content dispatcher
+// ============================================================================
+export function ContentElement({
+	item,
+	shapeProps,
+}: {
 	item: Item;
 	shapeProps?: { sizeOverride?: number };
-}): JSX.Element {
-	const { item, shapeProps } = props;
+}) {
 	useTree(item.content);
-
-	if (Tree.is(item.content, Shape)) {
+	if (Tree.is(item.content, Shape))
 		return (
 			<ShapeView
 				key={objectIdNumber(item.content)}
@@ -83,15 +95,16 @@ export function ContentElement(props: {
 				sizeOverride={shapeProps?.sizeOverride}
 			/>
 		);
-	} else if (Tree.is(item.content, Note)) {
+	if (Tree.is(item.content, Note))
 		return <NoteView key={objectIdNumber(item.content)} note={item.content} />;
-	} else if (Tree.is(item.content, FluidTable)) {
+	if (Tree.is(item.content, FluidTable))
 		return <TableView key={objectIdNumber(item.content)} fluidTable={item.content} />;
-	} else {
-		return <></>;
-	}
+	return <></>;
 }
 
+// ============================================================================
+// ItemView – unified pointer drag / rotate / resize via presence
+// ============================================================================
 export function ItemView(props: {
 	item: Item;
 	index: number;
@@ -99,30 +112,17 @@ export function ItemView(props: {
 	hideSelectionControls?: boolean;
 	pan?: { x: number; y: number };
 	zoom?: number;
-}): JSX.Element {
+}) {
 	const { item, index, hideSelectionControls } = props;
-	const itemInval = useTree(item);
-	const [offset, setOffset] = useState({ x: 0, y: 0 });
-
-	const presence = useContext(PresenceContext); // Placeholder for context if needed
+	useTree(item);
+	const presence = useContext(PresenceContext);
 	const layout = useContext(LayoutContext);
-
 	const [selected, setSelected] = useState(presence.itemSelection.testSelection({ id: item.id }));
-
-	// Shape-specific props for temporary overrides during resize
-	const [shapeProps, setShapeProps] = useState<{
-		sizeOverride?: number;
-	}>({});
-
-	// Cache intrinsic (unscaled) size to update layout synchronously during drag/resize
-	const intrinsicSizeRef = useRef<{ w: number; h: number }>({ w: 0, h: 0 });
-
-	const [itemProps, setItemProps] = useState<{
-		left: number;
-		top: number;
-		zIndex: number;
-		transform: string;
-	}>({
+	const [shapeProps, setShapeProps] = useState<{ sizeOverride?: number }>({});
+	const dragRef = useRef<{ pointerId: number; moved: boolean } | null>(null);
+	const offset = useRef({ x: 0, y: 0 });
+	const intrinsic = useRef({ w: 0, h: 0 });
+	const [view, setView] = useState({
 		left: item.x,
 		top: item.y,
 		zIndex: index,
@@ -130,105 +130,76 @@ export function ItemView(props: {
 	});
 
 	useEffect(() => {
-		setItemProps({
+		setView((v) => ({
+			...v,
 			left: item.x,
 			top: item.y,
 			zIndex: index,
-			transform:
-				getContentType(item) === "table" ? `rotate(0)` : `rotate(${item.rotation}deg)`,
-		});
-	}, [itemInval, item]);
+			transform: itemType(item) === "table" ? "rotate(0)" : `rotate(${item.rotation}deg)`,
+		}));
+	}, [item.x, item.y, item.rotation, index]);
 
-	const setPropsOnDrag = (dragData: DragAndRotatePackage) => {
-		if (dragData && dragData.id === item.id) {
-			setItemProps({
-				left: dragData.x,
-				top: dragData.y,
-				zIndex: index,
-				transform:
-					getContentType(item) === "table"
-						? `rotate(0)`
-						: `rotate(${dragData.rotation}deg)`,
-			});
-			// Update layout immediately to keep overlays in sync (local and remote drags)
-			const w =
-				intrinsicSizeRef.current.w ||
-				(Tree.is(item.content, Shape) ? (shapeProps.sizeOverride ?? item.content.size) : 0);
-			const h =
-				intrinsicSizeRef.current.h ||
-				(Tree.is(item.content, Shape) ? (shapeProps.sizeOverride ?? item.content.size) : 0);
-			if (w && h) {
-				layout.set(item.id, {
-					left: dragData.x,
-					top: dragData.y,
-					right: dragData.x + w,
-					bottom: dragData.y + h,
-				});
-			}
-		}
+	// Presence listeners
+	const applyDrag = (d: DragAndRotatePackage) => {
+		if (!d || d.id !== item.id) return;
+		setView((v) => ({
+			...v,
+			left: d.x,
+			top: d.y,
+			transform: itemType(item) === "table" ? "rotate(0)" : `rotate(${d.rotation}deg)`,
+		}));
+		const w =
+			intrinsic.current.w ||
+			(Tree.is(item.content, Shape) ? (shapeProps.sizeOverride ?? item.content.size) : 0);
+		const h =
+			intrinsic.current.h ||
+			(Tree.is(item.content, Shape) ? (shapeProps.sizeOverride ?? item.content.size) : 0);
+		if (w && h) layout.set(item.id, { left: d.x, top: d.y, right: d.x + w, bottom: d.y + h });
 	};
-
-	const setPropsOnResize = (resizeData: ResizePackage | null) => {
-		if (resizeData && resizeData.id === item.id && Tree.is(item.content, Shape)) {
-			// Update position via itemProps
-			setItemProps((prev) => ({
-				...prev,
-				left: resizeData.x,
-				top: resizeData.y,
-			}));
-
-			// Update size via shapeProps override
-			setShapeProps({
-				sizeOverride: resizeData.size,
-			});
-
-			// Update intrinsic size cache and layout immediately
-			intrinsicSizeRef.current = { w: resizeData.size, h: resizeData.size };
-			layout.set(item.id, {
-				left: resizeData.x,
-				top: resizeData.y,
-				right: resizeData.x + resizeData.size,
-				bottom: resizeData.y + resizeData.size,
-			});
-		} else if (!resizeData || resizeData.id !== item.id) {
-			// Clear overrides when no resize data for this item
-			setShapeProps({});
-		}
+	const applyResize = (r: ResizePackage | null) => {
+		if (r && r.id === item.id && Tree.is(item.content, Shape)) {
+			setView((v) => ({ ...v, left: r.x, top: r.y }));
+			setShapeProps({ sizeOverride: r.size });
+			intrinsic.current = { w: r.size, h: r.size };
+			layout.set(item.id, { left: r.x, top: r.y, right: r.x + r.size, bottom: r.y + r.size });
+		} else if (!r || r.id !== item.id) setShapeProps({});
 	};
-
-	const clearShapeProps = () => {
-		setShapeProps({});
-	};
-
 	usePresenceManager(
 		presence.drag as PresenceManager<DragAndRotatePackage>,
-		(update) => {
-			if (update) {
-				setPropsOnDrag(update);
-			}
-		},
-		setPropsOnDrag
+		(u) => u && applyDrag(u),
+		applyDrag
 	);
-
 	usePresenceManager(
 		presence.resize as PresenceManager<ResizePackage | null>,
-		(update) => {
-			setPropsOnResize(update);
-		},
-		setPropsOnResize
+		(u) => applyResize(u),
+		applyResize
 	);
-
 	usePresenceManager(
 		presence.itemSelection,
 		() => {},
-		(update) => {
-			setSelected(update.some((selection) => selection.id === item.id));
-		}
+		(sel) => setSelected(sel.some((s) => s.id === item.id))
 	);
 
-	const handleDrag = (e: React.DragEvent<HTMLDivElement>) => {
+	// Pointer lifecycle
+	const coords = (e: { clientX: number; clientY: number }) => {
+		const m = calculateCanvasMouseCoordinates(e, props.pan, props.zoom);
+		return { x: m.x - offset.current.x, y: m.y - offset.current.y };
+	};
+	const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+		if (e.button !== 0) return;
 		e.stopPropagation();
-		const { x, y } = getOffsetCoordinates(e);
+		presence.itemSelection.setSelection({ id: item.id });
+		offset.current = calculateOffsetFromCanvasOrigin(e, item, props.pan, props.zoom);
+		dragRef.current = { pointerId: e.pointerId, moved: false };
+		e.currentTarget.setPointerCapture(e.pointerId);
+	};
+	const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+		if (!dragRef.current || dragRef.current.pointerId !== e.pointerId) return;
+		const { x, y } = coords(e);
+		if (!dragRef.current.moved) {
+			if (Math.abs(x - item.x) < 2 && Math.abs(y - item.y) < 2) return;
+			dragRef.current.moved = true;
+		}
 		presence.drag.setDragging({
 			id: item.id,
 			x,
@@ -237,221 +208,381 @@ export function ItemView(props: {
 			branch: presence.branch,
 		});
 	};
-
-	const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
-		e.stopPropagation();
-		presence.itemSelection.setSelection({ id: item.id });
-		setOffset(calculateOffsetFromCanvasOrigin(e, item, props.pan, props.zoom));
-		e.dataTransfer.setDragImage(new Image(), 0, 0);
-	};
-
-	const handleDragEnd = (e: React.DragEvent<HTMLDivElement>) => {
-		e.stopPropagation();
-		const { x, y } = getOffsetCoordinates(e);
-		Tree.runTransaction(item, () => {
-			item.x = x;
-			item.y = y;
-		});
-		presence.drag.clearDragging();
-	};
-
-	const getOffsetCoordinates = (e: React.DragEvent<HTMLDivElement>): { x: number; y: number } => {
-		const mouseCoordinates = calculateCanvasMouseCoordinates(e, props.pan, props.zoom);
-		const coordinates = { x: mouseCoordinates.x - offset.x, y: mouseCoordinates.y - offset.y };
-		return coordinates;
-	};
-
-	const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
-		e.stopPropagation();
-		if (presence.itemSelection) {
-			if (e.ctrlKey || e.metaKey) {
-				// Multi-select: toggle selection of this item
-				presence.itemSelection.toggleSelection({ id: item.id });
-			} else {
-				// Single-select: clear other selections and select this item
-				presence.itemSelection.setSelection({ id: item.id });
-			}
+	const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+		if (!dragRef.current || dragRef.current.pointerId !== e.pointerId) return;
+		const { x, y } = coords(e);
+		if (dragRef.current.moved) {
+			Tree.runTransaction(item, () => {
+				item.x = x;
+				item.y = y;
+			});
+			presence.drag.clearDragging();
 		}
+		e.currentTarget.releasePointerCapture(e.pointerId);
+		dragRef.current = null;
 	};
 
-	// Always use the natural z-order based on position in array
-	itemProps.zIndex = index;
-
+	// Layout measurement
 	const ref = useRef<HTMLDivElement>(null);
 	useEffect(() => {
 		const el = ref.current;
 		if (!el) return;
-
-		// Helper to measure and update layout cache
-		const measureAndUpdate = () => {
-			let w0 = 0;
-			let h0 = 0;
+		const measure = () => {
+			let w = 0,
+				h = 0;
 			if (Tree.is(item.content, Shape)) {
 				const size = shapeProps.sizeOverride ?? item.content.size;
-				w0 = size;
-				h0 = size;
+				w = size;
+				h = size;
 			} else {
-				// offsetWidth/Height not affected by CSS transform scale on ancestor; use them first
-				w0 = el.offsetWidth;
-				h0 = el.offsetHeight;
-				if ((!w0 || !h0) && typeof el.getBoundingClientRect === "function") {
+				w = el.offsetWidth;
+				h = el.offsetHeight;
+				if ((!w || !h) && el.getBoundingClientRect) {
 					const bb = el.getBoundingClientRect();
-					// Divide by zoom only if we used the transformed client rect
-					const zoom = props.zoom || 1;
-					w0 = (w0 || bb.width) / zoom;
-					h0 = (h0 || bb.height) / zoom;
+					const z = props.zoom || 1;
+					w = (w || bb.width) / z;
+					h = (h || bb.height) / z;
 				}
 			}
-			if (!w0 || !h0) return;
-			const prev = intrinsicSizeRef.current;
-			const changed = prev.w !== w0 || prev.h !== h0;
-			intrinsicSizeRef.current = { w: w0, h: h0 };
-			const left = itemProps.left;
-			const top = itemProps.top;
-			layout.set(item.id, { left, top, right: left + w0, bottom: top + h0 });
-			if (changed) {
-				// Notify overlays that a layout size changed so they can re-render
-				window.dispatchEvent(new CustomEvent("layout-changed"));
-			}
+			if (!w || !h) return;
+			intrinsic.current = { w, h };
+			layout.set(item.id, {
+				left: view.left,
+				top: view.top,
+				right: view.left + w,
+				bottom: view.top + h,
+			});
 		};
-
-		// Initial measure
-		measureAndUpdate();
-
-		// Observe size changes (e.g., table content growth)
+		measure();
 		let ro: ResizeObserver | null = null;
 		if (typeof ResizeObserver !== "undefined") {
-			ro = new ResizeObserver(() => {
-				measureAndUpdate();
-			});
+			ro = new ResizeObserver(measure);
 			ro.observe(el);
 		}
+		return () => ro?.disconnect();
+	}, [item.id, item.content, view.left, view.top, shapeProps.sizeOverride, props.zoom, layout]);
 
-		return () => {
-			ro?.disconnect();
-		};
-		// Include zoom so if zoom changes we recompute intrinsic model-space size
-	}, [
-		layout,
-		item.id,
-		itemProps.left,
-		itemProps.top,
-		shapeProps.sizeOverride,
-		item.content,
-		props.zoom,
-	]);
-
+	// Never mutate view directly (React may freeze state objects in strict/dev modes)
+	const style = { ...view, zIndex: index };
 	return (
 		<div
 			ref={ref}
 			data-item-id={item.id}
-			onClick={(e) => handleClick(e)}
-			onDragStart={(e) => handleDragStart(e)}
-			onDrag={(e) => handleDrag(e)}
-			onDragEnd={(e) => handleDragEnd(e)}
-			draggable="true"
-			className={`absolute`}
-			style={{ ...itemProps }}
+			onPointerDown={onPointerDown}
+			onPointerMove={onPointerMove}
+			onPointerUp={onPointerUp}
+			className="absolute"
+			style={style}
+			onClick={(e) => {
+				e.stopPropagation();
+				if (presence.itemSelection) {
+					if (e.ctrlKey || e.metaKey)
+						presence.itemSelection.toggleSelection({ id: item.id });
+					else presence.itemSelection.setSelection({ id: item.id });
+				}
+			}}
 		>
-			{
-				<SelectionBox
-					selected={selected}
-					item={item}
-					onResizeEnd={clearShapeProps}
-					visualHidden={!!hideSelectionControls}
-				/>
-			}
+			<SelectionBox
+				selected={!!selected}
+				item={item}
+				onResizeEnd={() => setShapeProps({})}
+				visualHidden={!!hideSelectionControls}
+			/>
 			<ContentElement item={item} shapeProps={shapeProps} />
 		</div>
 	);
 }
 
-// CommentIndicator removed; replaced by SVG CommentOverlay
+// ============================================================================
+// Selection visuals
+// ============================================================================
+export function SelectionBox({
+	selected,
+	item,
+	onResizeEnd,
+	visualHidden,
+}: {
+	selected: boolean;
+	item: Item;
+	onResizeEnd?: () => void;
+	visualHidden?: boolean;
+}) {
+	useTree(item);
+	const pad = 8;
+	return (
+		<>
+			<div style={{ display: selected ? (visualHidden ? "none" : "block") : "none" }}>
+				<SelectionControls item={item} padding={pad} onResizeEnd={onResizeEnd} />
+			</div>
+			<div
+				className={`absolute border-3 border-dashed border-black bg-transparent ${selected && !visualHidden ? "" : " hidden"}`}
+				style={{
+					left: -pad,
+					top: -pad,
+					width: `calc(100% + ${pad * 2}px)`,
+					height: `calc(100% + ${pad * 2}px)`,
+					zIndex: 1000,
+					pointerEvents: "none",
+				}}
+			/>
+		</>
+	);
+}
+export function SelectionControls({
+	item,
+	padding,
+	onResizeEnd,
+}: {
+	item: Item;
+	padding: number;
+	onResizeEnd?: () => void;
+}) {
+	useTree(item);
+	const showRotate = itemType(item) !== "table";
+	return (
+		<>
+			{showRotate && <RotateHandle item={item} />}
+			<CornerResizeHandles item={item} padding={padding} onResizeEnd={onResizeEnd} />
+		</>
+	);
+}
 
-/**
- * RemoteSelectionIndicators Component
- *
- * Displays user-specific selection indicators for remote selections.
- * Shows a collapsible badge system: when multiple users select an item,
- * shows a count badge that expands to individual user badges when clicked.
- */
-export function RemoteSelectionIndicators(props: { remoteSelectedUsers: string[] }): JSX.Element {
-	const { remoteSelectedUsers } = props;
+// ============================================================================
+// Rotate
+// ============================================================================
+export function RotateHandle({ item }: { item: Item }) {
+	const presence = useContext(PresenceContext);
+	useTree(item);
+	const [active, setActive] = useState(false);
+	const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+		e.stopPropagation();
+		e.preventDefault();
+		setActive(true);
+		const el = document.querySelector(`[data-item-id="${item.id}"]`) as HTMLElement | null;
+		if (!el) return;
+		const move = (ev: PointerEvent) => {
+			const r = el.getBoundingClientRect();
+			const c =
+				document.getElementById("canvas")?.getBoundingClientRect() ||
+				({ left: 0, top: 0 } as DOMRect);
+			const cx = (r.left + r.right) / 2 - c.left;
+			const cy = (r.top + r.bottom) / 2 - c.top;
+			const mx = ev.clientX - c.left;
+			const my = ev.clientY - c.top;
+			let deg = (Math.atan2(my - cy, mx - cx) * 180) / Math.PI + 90;
+			deg %= 360;
+			if (deg < 0) deg += 360;
+			presence.drag.setDragging({
+				id: item.id,
+				x: item.x,
+				y: item.y,
+				rotation: deg,
+				branch: presence.branch,
+			});
+		};
+		const up = () => {
+			setActive(false);
+			document.removeEventListener("pointermove", move);
+			const st = presence.drag.state.local;
+			if (st) {
+				Tree.runTransaction(item, () => {
+					item.rotation = st.rotation;
+				});
+				presence.drag.clearDragging();
+				const canvasEl = document.getElementById("canvas") as
+					| (SVGSVGElement & { dataset: DOMStringMap })
+					| null;
+				if (canvasEl) canvasEl.dataset.suppressClearUntil = String(Date.now() + 150);
+			}
+		};
+		document.addEventListener("pointermove", move);
+		document.addEventListener("pointerup", up, { once: true });
+	};
+	const size = active ? 16 : 12;
+	return (
+		<div
+			className="absolute flex flex-row w-full justify-center items-center"
+			style={{ top: -35 }}
+		>
+			<div
+				onPointerDown={onPointerDown}
+				className="absolute bg-black shadow-lg z-50 cursor-grab"
+				style={{ width: size, height: size, borderRadius: "50%" }}
+			/>
+		</div>
+	);
+}
+
+// ============================================================================
+// Resize (shapes only)
+// ============================================================================
+export function CornerResizeHandles({
+	item,
+	padding,
+	onResizeEnd,
+}: {
+	item: Item;
+	padding: number;
+	onResizeEnd?: () => void;
+}) {
+	if (!Tree.is(item.content, Shape)) return <></>;
+	const shape = item.content;
+	useTree(shape);
+	const presence = useContext(PresenceContext);
+	const [resizing, setResizing] = useState(false);
+	const initSize = useRef(shape.size);
+	const centerModel = useRef({ x: 0, y: 0 });
+	const centerScreen = useRef({ x: 0, y: 0 });
+	const initDist = useRef(0);
+	const initVec = useRef({ dx: 0, dy: 0 });
+	const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+		e.stopPropagation();
+		e.preventDefault();
+		setResizing(true);
+		initSize.current = shape.size;
+		centerModel.current = { x: item.x + shape.size / 2, y: item.y + shape.size / 2 };
+		let el: HTMLElement | null = e.currentTarget.parentElement;
+		while (el && !el.getAttribute("data-item-id")) el = el.parentElement;
+		if (el) {
+			const r = el.getBoundingClientRect();
+			centerScreen.current = { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+		}
+		initVec.current = {
+			dx: e.clientX - centerScreen.current.x,
+			dy: e.clientY - centerScreen.current.y,
+		};
+		initDist.current = Math.sqrt(initVec.current.dx ** 2 + initVec.current.dy ** 2);
+		const move = (ev: PointerEvent) => {
+			const dx = ev.clientX - centerScreen.current.x;
+			const dy = ev.clientY - centerScreen.current.y;
+			const dot = dx * initVec.current.dx + dy * initVec.current.dy;
+			const initMagSq = initVec.current.dx ** 2 + initVec.current.dy ** 2;
+			const proj = dot / Math.sqrt(initMagSq || 1);
+			const ratio = Math.max(0.1, proj / initDist.current);
+			const newSize = Math.max(20, Math.min(300, initSize.current * ratio));
+			const newX = centerModel.current.x - newSize / 2;
+			const newY = centerModel.current.y - newSize / 2;
+			presence.resize.setResizing({ id: item.id, x: newX, y: newY, size: newSize });
+		};
+		const up = () => {
+			setResizing(false);
+			document.removeEventListener("pointermove", move);
+			const r = presence.resize.state.local;
+			if (r && r.id === item.id) {
+				Tree.runTransaction(item, () => {
+					shape.size = r.size;
+					item.x = r.x;
+					item.y = r.y;
+				});
+			}
+			presence.resize.clearResizing();
+			onResizeEnd?.();
+			const canvasEl = document.getElementById("canvas") as
+				| (SVGSVGElement & { dataset: DOMStringMap })
+				| null;
+			if (canvasEl) canvasEl.dataset.suppressClearUntil = String(Date.now() + 150);
+		};
+		document.addEventListener("pointermove", move);
+		document.addEventListener("pointerup", up, { once: true });
+	};
+	const pos = (p: string) => {
+		const o = resizing ? 6 : 4;
+		switch (p) {
+			case "top-left":
+				return { left: -padding - o, top: -padding - o };
+			case "top-right":
+				return { right: -padding - o, top: -padding - o };
+			case "bottom-left":
+				return { left: -padding - o, bottom: -padding - o };
+			case "bottom-right":
+				return { right: -padding - o, bottom: -padding - o };
+			default:
+				return {};
+		}
+	};
+	const Handle = ({ position }: { position: string }) => (
+		<div
+			className="absolute bg-black cursor-nw-resize hover:bg-black shadow-lg z-50"
+			style={{ width: resizing ? 12 : 8, height: resizing ? 12 : 8, ...pos(position) }}
+			onPointerDown={onPointerDown}
+		/>
+	);
+	return (
+		<>
+			<Handle position="top-left" />
+			<Handle position="top-right" />
+			<Handle position="bottom-left" />
+			<Handle position="bottom-right" />
+		</>
+	);
+}
+
+// ============================================================================
+// Remote selection indicators
+// ============================================================================
+interface ConnectedUser {
+	value: { name: string; id: string; image?: string };
+	client: { attendeeId: string };
+}
+export function RemoteSelectionIndicators({
+	remoteSelectedUsers,
+}: {
+	remoteSelectedUsers: string[];
+}) {
 	const presence = useContext(PresenceContext);
 	const [expanded, setExpanded] = useState(false);
-
-	if (remoteSelectedUsers.length === 0) {
-		return <></>;
-	}
-
-	// Get user information for each remote selection
-	const remoteUsers = remoteSelectedUsers
-		.map((userId) => {
-			// Find the user in the connected users list
-			const connectedUsers = presence.users.getConnectedUsers();
-			const user = connectedUsers.find((u) => u.client.attendeeId === userId);
-			return user;
-		})
-		.filter((user) => user !== undefined);
-
-	// If no valid users found, don't show anything
-	if (remoteUsers.length === 0) {
-		return <></>;
-	}
-
-	// If only one user, show their badge directly
-	if (remoteUsers.length === 1) {
+	if (!remoteSelectedUsers.length) return <></>;
+	const connected = presence.users.getConnectedUsers().map((u) => ({
+		value: {
+			name: u.value.name,
+			id: u.value.id,
+			image: "image" in u.value ? (u.value as { image?: string }).image : undefined,
+		},
+		client: { attendeeId: u.client.attendeeId },
+	})) as ConnectedUser[];
+	const users: ConnectedUser[] = remoteSelectedUsers
+		.map((id) => connected.find((u) => u.client.attendeeId === id)!)
+		.filter((u): u is ConnectedUser => !!u);
+	if (!users.length) return <></>;
+	if (users.length === 1)
 		return (
 			<div
 				className="absolute pointer-events-none"
 				style={{ top: 0, right: 0, zIndex: 1001 }}
 			>
-				<RemoteUserIndicator user={remoteUsers[0]} index={0} />
+				<RemoteUserIndicator user={users[0]} index={0} />
 			</div>
 		);
-	}
-
-	const handleExpand = () => {
-		setExpanded(true);
-	};
-
-	const handleCollapse = () => {
-		setExpanded(false);
-	};
-
-	// Multiple users: show collapsible system
 	return (
 		<div className="absolute" style={{ top: 0, right: 0, zIndex: 1001 }}>
 			{expanded ? (
-				// Expanded view: show individual user badges with staggered animation
 				<div className="pointer-events-none relative">
-					{remoteUsers.map((user, index) => (
+					{users.map((u, i) => (
 						<div
-							key={user.client.attendeeId}
+							key={u.client.attendeeId}
 							className="transition-all duration-300 ease-out"
 							style={{
 								transform: `translateX(${expanded ? 0 : 20}px)`,
 								opacity: expanded ? 1 : 0,
-								transitionDelay: `${index * 50}ms`,
+								transitionDelay: `${i * 50}ms`,
 							}}
 						>
-							<RemoteUserIndicator user={user} index={index} />
+							<RemoteUserIndicator user={u} index={i} />
 						</div>
 					))}
-					{/* Collapse button */}
 					<div
 						className="absolute pointer-events-auto cursor-pointer w-6 h-6 rounded-full bg-gray-600 hover:bg-gray-700 transition-all duration-200 border-2 border-white shadow-lg flex items-center justify-center"
 						style={{
 							top: -12,
-							right: -12 - remoteUsers.length * 26,
+							right: -12 - users.length * 26,
 							zIndex: 1002,
 							transform: `scale(${expanded ? 1 : 0})`,
 							opacity: expanded ? 1 : 0,
-							transitionDelay: `${remoteUsers.length * 50}ms`,
+							transitionDelay: `${users.length * 50}ms`,
 						}}
 						onClick={(e) => {
 							e.stopPropagation();
-							handleCollapse();
+							setExpanded(false);
 						}}
 						title="Collapse user list"
 					>
@@ -459,475 +590,87 @@ export function RemoteSelectionIndicators(props: { remoteSelectedUsers: string[]
 					</div>
 				</div>
 			) : (
-				// Collapsed view: show count badge with smooth transition
 				<div
 					className="transition-all duration-300 ease-out"
-					style={{
-						transform: `scale(${expanded ? 0 : 1})`,
-						opacity: expanded ? 0 : 1,
-					}}
+					style={{ transform: `scale(${expanded ? 0 : 1})`, opacity: expanded ? 0 : 1 }}
 				>
-					<MultiUserCountBadge
-						userCount={remoteUsers.length}
-						users={remoteUsers}
-						onExpand={handleExpand}
+					<UserCountBadge
+						userCount={users.length}
+						users={users}
+						onExpand={() => setExpanded(true)}
 					/>
 				</div>
 			)}
 		</div>
 	);
 }
-
-/**
- * MultiUserCountBadge Component
- *
- * Displays a count badge showing the number of users who have selected an item.
- * Includes a preview of the first few users and can be clicked to expand.
- */
-function MultiUserCountBadge(props: {
+function UserCountBadge({
+	userCount,
+	users,
+	onExpand,
+}: {
 	userCount: number;
 	users: Array<{
 		value: { name: string; id: string; image?: string };
 		client: { attendeeId: string };
 	}>;
 	onExpand: () => void;
-}): JSX.Element {
-	const { userCount, users, onExpand } = props;
-
-	// Get names of first few users for tooltip
-	const previewUsers = users.slice(0, 3);
-	const remainingCount = Math.max(0, userCount - 3);
-
-	const tooltipText =
-		previewUsers.map((u) => u.value.name).join(", ") +
-		(remainingCount > 0 ? ` and ${remainingCount} more` : "") +
-		` selected this item`;
-
+}) {
+	const tip =
+		users
+			.slice(0, 3)
+			.map((u) => u.value.name)
+			.join(", ") +
+		(userCount > 3 ? ` and ${userCount - 3} more` : "") +
+		" selected this item";
 	return (
 		<div
 			className="pointer-events-auto cursor-pointer flex items-center justify-center text-white text-xs font-semibold rounded-full bg-black hover:bg-gray-800 transition-colors duration-200 border-2 border-white shadow-lg hover:shadow-xl"
 			style={{
-				width: "24px",
-				height: "24px",
+				width: 24,
+				height: 24,
 				position: "absolute",
 				top: -12,
 				right: -12,
 				zIndex: 1001,
 			}}
+			title={tip}
 			onClick={(e) => {
 				e.stopPropagation();
 				onExpand();
 			}}
-			title={tooltipText}
 		>
 			{userCount}
 		</div>
 	);
 }
-
-/**
- * RemoteUserIndicator Component
- *
- * Displays a single user's selection indicator with their initials and color.
- * Shows as a circle positioned in the top right corner of the selected item.
- */
-function RemoteUserIndicator(props: {
+function RemoteUserIndicator({
+	user,
+	index,
+}: {
 	user: { value: { name: string; id: string; image?: string }; client: { attendeeId: string } };
 	index: number;
-}): JSX.Element {
-	const { user, index } = props;
-
-	const initials = getInitials(user.value.name);
-	const backgroundColor = getUserColor(user.client.attendeeId);
-
-	// Offset multiple indicators so they don't overlap
-	const offset = index * 26; // 24px circle + 2px margin
-
+}) {
+	const i = initials(user.value.name);
+	const c = userColor(user.client.attendeeId);
+	const off = index * 26;
 	return (
 		<div
 			className="flex items-center justify-center text-white font-semibold rounded-full border-2 border-white shadow-lg"
 			style={{
-				width: "24px",
-				height: "24px",
-				backgroundColor,
+				width: 24,
+				height: 24,
+				backgroundColor: c,
 				position: "absolute",
 				top: -12,
-				right: -12 - offset,
+				right: -12 - off,
 				zIndex: 1001,
-				fontSize: "10px",
+				fontSize: 10,
 				lineHeight: "1",
 			}}
 			title={`Selected by ${user.value.name}`}
 		>
-			{initials}
+			{i}
 		</div>
-	);
-}
-
-// calculate the mouse coordinates relative to the canvas div
-const calculateCanvasMouseCoordinates = (
-	e: React.MouseEvent<HTMLDivElement>,
-	pan?: { x: number; y: number },
-	zoom: number = 1
-): { x: number; y: number } => {
-	const canvasElement = document.getElementById("canvas");
-	const canvasRect = canvasElement?.getBoundingClientRect() || { left: 0, top: 0 };
-	// Screen to model: subtract canvas origin and pan, then divide by zoom
-	const sx = e.clientX - canvasRect.left;
-	const sy = e.clientY - canvasRect.top;
-	const x = (sx - (pan?.x ?? 0)) / zoom;
-	const y = (sy - (pan?.y ?? 0)) / zoom;
-	return { x, y };
-};
-
-// calculate the offset of the pointer from the item's origin
-// this is used to ensure the item moves smoothly with the pointer
-// when dragging
-const calculateOffsetFromCanvasOrigin = (
-	e: React.MouseEvent<HTMLDivElement>,
-	item: Item,
-	pan?: { x: number; y: number },
-	zoom: number = 1
-): { x: number; y: number } => {
-	const coordinates = calculateCanvasMouseCoordinates(e, pan, zoom);
-	const newX = coordinates.x - item.x;
-	const newY = coordinates.y - item.y;
-	return {
-		x: newX,
-		y: newY,
-	};
-};
-
-export function SelectionBox(props: {
-	selected: boolean;
-	item: Item;
-	onResizeEnd?: () => void;
-	visualHidden?: boolean;
-}): JSX.Element {
-	const { selected, item, onResizeEnd, visualHidden } = props;
-	useTree(item);
-	const padding = 8;
-	return (
-		<>
-			{/* Keep controls mounted for event forwarding; hide visuals when requested */}
-			<div style={{ display: selected ? (visualHidden ? "none" : "block") : "none" }}>
-				<SelectionControls item={item} padding={padding} onResizeEnd={onResizeEnd} />
-			</div>
-			{/* Legacy dashed rectangle visuals, hidden when visualHidden is true or not selected */}
-			<div
-				className={`absolute border-3 border-dashed border-black bg-transparent ${
-					selected && !visualHidden ? "" : " hidden"
-				}`}
-				style={{
-					left: -padding,
-					top: -padding,
-					width: `calc(100% + ${padding * 2}px)`,
-					height: `calc(100% + ${padding * 2}px)`,
-					zIndex: 1000,
-					pointerEvents: "none",
-				}}
-			></div>
-		</>
-	);
-}
-
-export function SelectionControls(props: {
-	item: Item;
-	padding: number;
-	onResizeEnd?: () => void;
-}): JSX.Element {
-	const { item, padding, onResizeEnd } = props;
-	useTree(item);
-
-	// Don't show rotation handle for tables since they can't be rotated
-	const showRotationHandle = getContentType(item) !== "table";
-
-	return (
-		<>
-			{showRotationHandle && <RotateHandle item={item} />}
-			<CornerResizeHandles item={item} padding={padding} onResizeEnd={onResizeEnd} />
-		</>
-	);
-}
-
-export function RotateHandle(props: { item: Item }): JSX.Element {
-	const { item } = props;
-	const presence = useContext(PresenceContext);
-
-	useTree(item);
-
-	const [active, setActive] = useState(false);
-
-	const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-		e.bubbles = false;
-		e.stopPropagation();
-		e.preventDefault();
-		setActive(true);
-
-		// Get the item element to calculate its actual dimensions
-		const itemElement = document.querySelector(`[data-item-id="${item.id}"]`) as HTMLElement;
-		if (!itemElement) return;
-
-		// Track if we're currently rotating to prevent canvas click
-		let isRotating = false;
-
-		const handleMouseMove = (event: MouseEvent) => {
-			isRotating = true; // Mark that we've started rotating
-
-			// Get current item bounds
-			const itemRect = itemElement.getBoundingClientRect();
-			const canvasElement = document.getElementById("canvas");
-			const canvasRect = canvasElement?.getBoundingClientRect() || { left: 0, top: 0 };
-
-			// Calculate center of the item in canvas coordinates
-			const centerX = (itemRect.left + itemRect.right) / 2 - canvasRect.left;
-			const centerY = (itemRect.top + itemRect.bottom) / 2 - canvasRect.top;
-
-			// Calculate mouse position in canvas coordinates
-			const mouseX = event.clientX - canvasRect.left;
-			const mouseY = event.clientY - canvasRect.top;
-
-			// Calculate angle from center to mouse
-			const deltaX = mouseX - centerX;
-			const deltaY = mouseY - centerY;
-			const angleInRadians = Math.atan2(deltaY, deltaX);
-			const angleInDegrees = (angleInRadians * 180) / Math.PI + 90;
-
-			// Normalize the angle to be between 0 and 360
-			let normalizedAngle = angleInDegrees % 360;
-			if (normalizedAngle < 0) normalizedAngle += 360;
-
-			// Use presence API for real-time feedback instead of persistent storage
-			presence.drag.setDragging({
-				id: item.id,
-				x: item.x,
-				y: item.y,
-				rotation: normalizedAngle,
-				branch: presence.branch,
-			});
-		};
-
-		const handleMouseUp = () => {
-			setActive(false);
-			document.removeEventListener("mousemove", handleMouseMove);
-			document.removeEventListener("mouseup", handleMouseUp);
-
-			// If we were rotating, commit the final rotation to persistent storage
-			if (isRotating) {
-				// Get the current rotation from the drag state
-				const dragState = presence.drag.state.local;
-				if (dragState) {
-					Tree.runTransaction(item, () => {
-						item.rotation = dragState.rotation;
-					});
-				}
-
-				// Clear the drag state
-				presence.drag.clearDragging();
-				// Suppress only the immediate background canvas click, not clicks on other items
-				const canvasEl = document.getElementById("canvas") as
-					| (SVGSVGElement & { dataset: DOMStringMap })
-					| null;
-				if (canvasEl) {
-					canvasEl.dataset.suppressClearUntil = String(Date.now() + 150);
-				}
-			}
-		};
-
-		document.addEventListener("mousemove", handleMouseMove);
-		document.addEventListener("mouseup", handleMouseUp);
-	};
-
-	const handleClick = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
-		e.stopPropagation();
-	};
-
-	const handleSize = active ? 16 : 12;
-
-	return (
-		<div
-			className="absolute flex flex-row w-full justify-center items-center"
-			style={{
-				top: -35, // Moved farther from the rectangle
-			}}
-		>
-			<div
-				onClick={(e) => handleClick(e)}
-				onMouseDown={(e) => handleMouseDown(e)}
-				className={`absolute bg-black shadow-lg z-50 cursor-grab`}
-				style={{
-					width: `${handleSize}px`,
-					height: `${handleSize}px`,
-					borderRadius: "50%", // Make it circular to distinguish from square resize handles
-				}}
-			></div>
-		</div>
-	);
-}
-
-export function CornerResizeHandles(props: {
-	item: Item;
-	padding: number;
-	onResizeEnd?: () => void;
-}): JSX.Element {
-	const { item, padding, onResizeEnd } = props;
-
-	// Only show resize handles for shapes
-	if (!Tree.is(item.content, Shape)) {
-		return <></>;
-	}
-
-	const shape = item.content;
-	useTree(shape);
-
-	const [resizing, setResizing] = useState(false);
-	const initialSize = useRef(shape.size);
-	const initialCenter = useRef({ x: 0, y: 0 });
-	const centerPos = useRef({ x: 0, y: 0 });
-	const initialDistance = useRef(0);
-	const presence = useContext(PresenceContext);
-
-	const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-		e.bubbles = false;
-		e.stopPropagation();
-		e.preventDefault();
-
-		setResizing(true);
-		initialSize.current = shape.size;
-
-		// Calculate the center of the shape in canvas coordinates
-		initialCenter.current = {
-			x: item.x + shape.size / 2,
-			y: item.y + shape.size / 2,
-		};
-
-		// Calculate the center of the shape in screen coordinates
-		// Need to find the actual item element, not just the handle
-		let itemElement = e.currentTarget.parentElement;
-		while (itemElement && !itemElement.getAttribute("data-item-id")) {
-			itemElement = itemElement.parentElement;
-		}
-
-		if (itemElement) {
-			const rect = itemElement.getBoundingClientRect();
-			centerPos.current = {
-				x: rect.left + rect.width / 2,
-				y: rect.top + rect.height / 2,
-			};
-		}
-
-		// Calculate initial distance from center to mouse
-		const initialDeltaX = e.clientX - centerPos.current.x;
-		const initialDeltaY = e.clientY - centerPos.current.y;
-		initialDistance.current = Math.sqrt(
-			initialDeltaX * initialDeltaX + initialDeltaY * initialDeltaY
-		);
-		// Add global mouse move and up listeners
-		const handleMouseMove = (event: MouseEvent) => {
-			// Calculate current distance from center to mouse
-			const currentDeltaX = event.clientX - centerPos.current.x;
-			const currentDeltaY = event.clientY - centerPos.current.y;
-
-			// Calculate the dot product to determine if we're moving towards or away from center
-			// relative to the initial drag direction
-			const dotProduct = currentDeltaX * initialDeltaX + currentDeltaY * initialDeltaY;
-			const initialMagnitudeSquared =
-				initialDeltaX * initialDeltaX + initialDeltaY * initialDeltaY;
-
-			// Project current position onto initial direction vector
-			const projectionLength = dotProduct / Math.sqrt(initialMagnitudeSquared);
-
-			// Use the projection length to determine size - this prevents growth when dragging past center
-			const distanceRatio = Math.max(0.1, projectionLength / initialDistance.current);
-			const newSize = Math.max(20, Math.min(300, initialSize.current * distanceRatio));
-
-			// Calculate new position to keep center fixed
-			const newX = initialCenter.current.x - newSize / 2;
-			const newY = initialCenter.current.y - newSize / 2;
-
-			// Update via presence API for real-time feedback
-			presence.resize.setResizing({
-				id: item.id,
-				x: newX,
-				y: newY,
-				size: newSize,
-			});
-		};
-
-		const handleMouseUp = () => {
-			setResizing(false);
-			document.removeEventListener("mousemove", handleMouseMove);
-			document.removeEventListener("mouseup", handleMouseUp);
-
-			// Get the final values from the presence data and commit to persistent storage
-			const currentResizeData = presence.resize.state?.local;
-			if (currentResizeData && currentResizeData.id === item.id) {
-				Tree.runTransaction(item, () => {
-					shape.size = currentResizeData.size;
-					item.x = currentResizeData.x;
-					item.y = currentResizeData.y;
-				});
-			}
-
-			// Clear the presence data
-			presence.resize.clearResizing();
-
-			// Clear the shape props override
-			onResizeEnd?.();
-
-			// Suppress only the immediate background canvas click, not clicks on other items
-			const canvasEl = document.getElementById("canvas") as
-				| (SVGSVGElement & { dataset: DOMStringMap })
-				| null;
-			if (canvasEl) {
-				canvasEl.dataset.suppressClearUntil = String(Date.now() + 150);
-			}
-		};
-
-		document.addEventListener("mousemove", handleMouseMove);
-		document.addEventListener("mouseup", handleMouseUp);
-	};
-
-	const handleClick = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
-		e.stopPropagation();
-	};
-
-	// Create a handle component for reuse
-	const ResizeHandle = ({ position }: { position: string }) => (
-		<div
-			className={`absolute bg-black cursor-nw-resize hover:bg-black shadow-lg z-50`}
-			style={{
-				width: resizing ? "12px" : "8px",
-				height: resizing ? "12px" : "8px",
-				...getHandlePosition(position, padding),
-			}}
-			onClick={(e) => handleClick(e)}
-			onMouseDown={(e) => handleMouseDown(e)}
-		/>
-	);
-
-	const getHandlePosition = (position: string, padding: number) => {
-		const offset = resizing ? 6 : 4; // Half of handle size (12px/2 or 8px/2)
-		switch (position) {
-			case "top-left":
-				return { left: -padding - offset, top: -padding - offset };
-			case "top-right":
-				return { right: -padding - offset, top: -padding - offset };
-			case "bottom-left":
-				return { left: -padding - offset, bottom: -padding - offset };
-			case "bottom-right":
-				return { right: -padding - offset, bottom: -padding - offset };
-			default:
-				return {};
-		}
-	};
-
-	return (
-		<>
-			<ResizeHandle position="top-left" />
-			<ResizeHandle position="top-right" />
-			<ResizeHandle position="bottom-left" />
-			<ResizeHandle position="bottom-right" />
-		</>
 	);
 }
