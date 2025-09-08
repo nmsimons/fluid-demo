@@ -1,3 +1,43 @@
+// ============================================================================
+// itemux.tsx
+//
+// Centralized view & interaction layer for all "items" rendered on the canvas.
+// Items include Shapes, Notes, and Tables. This file coordinates:
+//   * Rendering the correct content component (ShapeView / NoteView / TableView)
+//   * Local optimistic interaction (drag / rotate / resize) using ephemeral
+//     presence channels before committing final values to the Fluid tree.
+//   * Selection visualization and remote collaborator indicators.
+//
+// Key architectural choices:
+//   1. Pointer events are unified (mouse / pen / touch) via onPointerDown and
+//      document-level listeners for move + up to avoid losing events when the
+//      pointer leaves the element or during fast touch interactions.
+//   2. Dragging uses an absolute delta model (currentCanvas - startCanvas) plus
+//      the item's initial position. Earlier incremental / clamped logic was
+//      intentionally removed to reduce complexity and eliminate jump / stutter
+//      issues with foreignObject (SVG / HTML overlay) elements like tables.
+//   3. Resizing (shapes only) maintains the geometric center of the shape and
+//      scales uniformly by projecting the live pointer vector onto the initial
+//      pointer vector (dot product + magnitude ratio). This avoids distortion
+//      and gives intuitive "corner pull" semantics even when rotated (rotation
+//      currently only affects visual transform; resize math is center-based).
+//   4. Rotation computes the angle from the center of the item to the pointer,
+//      adding +90° so that 0° aligns with a visually upright orientation.
+//   5. A small movement threshold (increased when starting inside an interactive
+//      child like <input>) differentiates click vs drag while preserving the
+//      ability to focus and use embedded controls.
+//   6. A global document.documentElement.dataset.manipulating flag gates pan /
+//      navigation logic elsewhere so canvas panning does not interfere with
+//      precision drag / rotate / resize operations, especially on touch.
+//
+// Math hotspots (see inline comments for detail):
+//   * calculateCanvasMouseCoordinates: screen -> canvas space (pan & zoom)
+//   * Drag deltas: dx, dy relative to start pointer in canvas space.
+//   * Rotation: atan2 to derive degrees; normalized to [0, 360).
+//   * Resize: dot product projection to get scale ratio while preserving center.
+//
+// No functional logic is altered by the commentary added in this pass.
+// ============================================================================
 import React, { useContext, useEffect, useRef, useState } from "react";
 import { clampShapeSize } from "../constants/shape.js";
 import { Tree } from "fluid-framework";
@@ -57,10 +97,18 @@ export const calculateCanvasMouseCoordinates = (
 	pan?: { x: number; y: number },
 	zoom = 1
 ) => {
+    // Translate a raw (clientX, clientY) into logical canvas coordinates by:
+    //   1. Subtracting the canvas element's top-left (DOMRect) to obtain a local
+    //      position relative to the canvas in CSS pixels.
+    //   2. Removing the current pan offset so (0,0) corresponds to the logical
+    //      unpanned origin the model expects.
+    //   3. Dividing by zoom to map CSS pixels back into model (logical) units.
+    // This keeps the model fully resolution / zoom independent and ensures
+    // consistent math for drag / resize / rotate no matter the viewport scale.
 	const c = document.getElementById("canvas");
 	const r = c?.getBoundingClientRect() || ({ left: 0, top: 0 } as DOMRect);
-	const sx = e.clientX - r.left;
-	const sy = e.clientY - r.top;
+	const sx = e.clientX - r.left; // screen -> canvas local X (CSS px)
+	const sy = e.clientY - r.top; // screen -> canvas local Y (CSS px)
 	return { x: (sx - (pan?.x ?? 0)) / zoom, y: (sy - (pan?.y ?? 0)) / zoom };
 };
 export const calculateOffsetFromCanvasOrigin = (
@@ -69,6 +117,9 @@ export const calculateOffsetFromCanvasOrigin = (
 	pan?: { x: number; y: number },
 	zoom = 1
 ) => {
+	// Computes the pointer offset relative to the item's top-left corner in
+	// model coordinates. Useful for anchor-preserving drag strategies (not used
+	// by the current absolute delta approach but retained for potential reuse).
 	const c = calculateCanvasMouseCoordinates(e, pan, zoom);
 	return { x: c.x - item.x, y: c.y - item.y };
 };
@@ -143,6 +194,9 @@ export function ItemView(props: {
 	// Presence listeners
 	const applyDrag = (d: DragAndRotatePackage) => {
 		if (!d || d.id !== item.id) return;
+		// Ephemeral (presence) update: we optimistically render the new position
+		// immediately for smooth remote & local collaborative movement. Commit to
+		// the authoritative Fluid tree only on pointerup / drag end.
 		setView((v) => ({
 			...v,
 			left: d.x,
@@ -155,10 +209,16 @@ export function ItemView(props: {
 		const h =
 			intrinsic.current.h ||
 			(Tree.is(item.content, Shape) ? (shapeProps.sizeOverride ?? item.content.size) : 0);
+		// Update the spatial index (layout) so hit-testing / selection overlays can
+		// track live motion. This uses either measured intrinsic size (for table /
+		// note) or shape size. Only performed if dimensions are known.
 		if (w && h) layout.set(item.id, { left: d.x, top: d.y, right: d.x + w, bottom: d.y + h });
 	};
 	const applyResize = (r: ResizePackage | null) => {
 		if (r && r.id === item.id && Tree.is(item.content, Shape)) {
+			// During a resize we shift the item's (x,y) so that scaling occurs around
+			// the geometric center, keeping the visual center stationary while edges
+			// expand / contract uniformly.
 			setView((v) => ({ ...v, left: r.x, top: r.y }));
 			setShapeProps({ sizeOverride: r.size });
 			intrinsic.current = { w: r.size, h: r.size };
@@ -219,11 +279,18 @@ export function ItemView(props: {
 			const st = dragRef.current;
 			if (!st || st.pointerId !== e.pointerId) return;
 			const cur = coordsCanvas(ev);
+			// Absolute deltas in canvas (model) units. We don't accumulate over time;
+			// instead we compute from the original pointer-down each move. This
+			// mitigates compounded floating error and neutralizes missed events.
 			const dx = cur.x - st.startCanvasX;
 			const dy = cur.y - st.startCanvasY;
 			if (!st.started) {
+				// Movement intent detection: we require a minimum radial distance from
+				// start before declaring a drag. If the pointer began inside an
+				// interactive descendant (input / textarea / button), we double the
+				// threshold to favor click & focus behaviors over unintended drags.
 				const threshold = st.interactiveStart ? THRESHOLD_BASE * 2 : THRESHOLD_BASE; // more intent needed if started in input
-				if (Math.hypot(dx, dy) < threshold) return;
+				if (Math.hypot(dx, dy) < threshold) return; // not yet a drag
 				st.started = true;
 				document.documentElement.dataset.manipulating = "1";
 				// Prevent default now (stop text selection / scrolling while dragging)
@@ -236,6 +303,9 @@ export function ItemView(props: {
 				}
 			}
 			if (st.started) {
+				// Apply absolute delta to the original item position. Using the start
+				// position avoids reliance on possibly stale view state and ensures
+				// perfect reversibility / determinism for remote clients.
 				presence.drag.setDragging({
 					id: item.id,
 					x: st.startItemX + dx,
@@ -255,6 +325,8 @@ export function ItemView(props: {
 					cur.x = dragState.x;
 					cur.y = dragState.y;
 				}
+				// Commit the final position atomically into the Fluid tree so all
+				// collaborators converge on the authoritative state.
 				Tree.runTransaction(item, () => {
 					item.x = cur.x;
 					item.y = cur.y;
@@ -297,6 +369,9 @@ export function ItemView(props: {
 				w = size;
 				h = size;
 			} else {
+				// For HTML-backed items (notes / tables) we rely on DOM measurement.
+				// offsetWidth/Height are in CSS pixels; if zoomed, divide by zoom to
+				// convert back to model units so layout comparisons remain consistent.
 				w = el.offsetWidth;
 				h = el.offsetHeight;
 				if ((!w || !h) && el.getBoundingClientRect) {
@@ -308,6 +383,9 @@ export function ItemView(props: {
 			}
 			if (!w || !h) return;
 			intrinsic.current = { w, h };
+			// Update layout bounds so other systems (e.g. selection region tests)
+			// have accurate spatial data even when presence (drag) modifies the
+			// visual position before commit.
 			layout.set(item.id, {
 				left: view.left,
 				top: view.top,
@@ -445,6 +523,14 @@ export function RotateHandle({ item }: { item: Item }) {
 		const el = document.querySelector(`[data-item-id="${item.id}"]`) as HTMLElement | null;
 		if (!el) return;
 		const move = (ev: PointerEvent) => {
+			// Rotation math:
+			//   * r = element bounds in screen space.
+			//   * c = canvas bounds (origin for local normalization).
+			//   * (cx, cy) = center of the element in canvas-local coordinates.
+			//   * (mx, my) = current pointer in canvas-local coordinates.
+			//   * Angle computed via atan2(dy, dx) returns radians from +X axis.
+			//   * Convert to degrees, then +90 so 0deg visually corresponds to "up".
+			//   * Normalize to [0, 360) for consistency & easier modulo reasoning.
 			const r = el.getBoundingClientRect();
 			const c =
 				document.getElementById("canvas")?.getBoundingClientRect() ||
