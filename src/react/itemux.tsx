@@ -564,10 +564,14 @@ export function CornerResizeHandles({
 		};
 		const handleSize = resizing ? 30 : 26;
 		const adjust = (v: number) => v - (WRAP - handleSize) / 2;
-		if (Object.prototype.hasOwnProperty.call(zone, "left")) wrapStyle.left = adjust((zone as Record<string, number>).left);
-		if (Object.prototype.hasOwnProperty.call(zone, "right")) wrapStyle.right = adjust((zone as Record<string, number>).right);
-		if (Object.prototype.hasOwnProperty.call(zone, "top")) wrapStyle.top = adjust((zone as Record<string, number>).top);
-		if (Object.prototype.hasOwnProperty.call(zone, "bottom")) wrapStyle.bottom = adjust((zone as Record<string, number>).bottom);
+		if (Object.prototype.hasOwnProperty.call(zone, "left"))
+			wrapStyle.left = adjust((zone as Record<string, number>).left);
+		if (Object.prototype.hasOwnProperty.call(zone, "right"))
+			wrapStyle.right = adjust((zone as Record<string, number>).right);
+		if (Object.prototype.hasOwnProperty.call(zone, "top"))
+			wrapStyle.top = adjust((zone as Record<string, number>).top);
+		if (Object.prototype.hasOwnProperty.call(zone, "bottom"))
+			wrapStyle.bottom = adjust((zone as Record<string, number>).bottom);
 		return (
 			<div data-resize-handle style={wrapStyle} onPointerDown={onPointerDown}>
 				<div
