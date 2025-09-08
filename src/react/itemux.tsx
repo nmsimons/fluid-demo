@@ -435,9 +435,12 @@ export function RotateHandle({ item }: { item: Item }) {
 					width: size,
 					height: size,
 					borderRadius: "50%",
-					padding: 20,
-					margin: -20, // expand hit area without visual size change
+					// Extreme padding to test if touch failures are due to hit area sizing
+					padding: 60,
+					margin: -60, // net visual size ~ unchanged, hit area ~ (size + 120)
 					touchAction: "none",
+					// Uncomment for visualizing hit area during debugging:
+					// outline: '1px dashed red'
 				}}
 			/>
 		</div>
@@ -555,10 +558,12 @@ export function CornerResizeHandles({
 				width: resizing ? 30 : 26,
 				height: resizing ? 30 : 26,
 				borderRadius: 6,
-				padding: 16,
-				margin: -16, // increase hit area
+				// Extreme padding to exaggerate interactive area for diagnostics
+				padding: 40,
+				margin: -40,
 				touchAction: "none",
 				...pos(position),
+				// outline: '1px dashed blue'
 			}}
 			onPointerDown={onPointerDown}
 		/>
