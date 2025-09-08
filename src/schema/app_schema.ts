@@ -4,6 +4,7 @@
  */
 
 import { TableSchema, SchemaFactoryAlpha } from "@fluidframework/tree/alpha";
+import { SHAPE_MIN_SIZE, SHAPE_MAX_SIZE } from "../constants/shape.js";
 import {
 	TreeViewConfiguration,
 	Tree,
@@ -405,8 +406,11 @@ export class Items extends sf.array("Items", [Item]) {
 		canvasSize: { width: number; height: number },
 		shapeColors: string[]
 	): Item {
-		const maxSize = 120;
-		const minSize = 100;
+	// Use shared sizing constants so UI + creation stay in sync
+	const maxSize = SHAPE_MAX_SIZE;
+	// For initial randomization we keep a slightly larger minimum than edit minimum
+	// to avoid spawning nearly invisible shapes; could be revisited.
+	const minSize = Math.max(100, SHAPE_MIN_SIZE);
 
 		const shape = new Shape({
 			size: this.getRandomNumber(minSize, maxSize),

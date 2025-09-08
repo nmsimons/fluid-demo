@@ -1,4 +1,5 @@
 import React, { useContext, useEffect, useRef, useState } from "react";
+import { clampShapeSize } from "../constants/shape.js";
 import { Tree } from "fluid-framework";
 import { FluidTable, Item, Note, Shape } from "../schema/app_schema.js";
 import { PresenceContext } from "./contexts/PresenceContext.js";
@@ -459,7 +460,9 @@ export function CornerResizeHandles({
 			const initMagSq = initVec.current.dx ** 2 + initVec.current.dy ** 2;
 			const proj = dot / Math.sqrt(initMagSq || 1);
 			const ratio = Math.max(0.1, proj / initDist.current);
-			const newSize = Math.max(20, Math.min(300, initSize.current * ratio));
+			// Increased max size from 300 to 1200 (4x) to match expanded shape size limits
+			const desired = initSize.current * ratio;
+			const newSize = clampShapeSize(desired);
 			const newX = centerModel.current.x - newSize / 2;
 			const newY = centerModel.current.y - newSize / 2;
 			presence.resize.setResizing({ id: item.id, x: newX, y: newY, size: newSize });
