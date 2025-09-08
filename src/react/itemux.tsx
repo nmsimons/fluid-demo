@@ -360,7 +360,11 @@ export function RotateHandle({ item }: { item: Item }) {
 		e.preventDefault();
 		setActive(true);
 		// Improve touch reliability
-		try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch { /* unsupported */ }
+		try {
+			(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+		} catch {
+			/* unsupported */
+		}
 		const el = document.querySelector(`[data-item-id="${item.id}"]`) as HTMLElement | null;
 		if (!el) return;
 		const move = (ev: PointerEvent) => {
@@ -386,7 +390,11 @@ export function RotateHandle({ item }: { item: Item }) {
 		const up = () => {
 			setActive(false);
 			document.removeEventListener("pointermove", move);
-			try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* ignore */ }
+			try {
+				(e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+			} catch {
+				/* ignore */
+			}
 			const st = presence.drag.state.local;
 			if (st) {
 				Tree.runTransaction(item, () => {
@@ -410,6 +418,7 @@ export function RotateHandle({ item }: { item: Item }) {
 		>
 			<div
 				onPointerDown={onPointerDown}
+				data-rotate-handle
 				className="absolute bg-black shadow-lg z-50 cursor-grab"
 				style={{
 					width: size,
@@ -450,7 +459,11 @@ export function CornerResizeHandles({
 		e.stopPropagation();
 		e.preventDefault();
 		setResizing(true);
-		try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch { /* unsupported */ }
+		try {
+			(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+		} catch {
+			/* unsupported */
+		}
 		initSize.current = shape.size;
 		centerModel.current = { x: item.x + shape.size / 2, y: item.y + shape.size / 2 };
 		let el: HTMLElement | null = e.currentTarget.parentElement;
@@ -481,7 +494,11 @@ export function CornerResizeHandles({
 		const up = () => {
 			setResizing(false);
 			document.removeEventListener("pointermove", move);
-			try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* ignore */ }
+			try {
+				(e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+			} catch {
+				/* ignore */
+			}
 			const r = presence.resize.state.local;
 			if (r && r.id === item.id) {
 				Tree.runTransaction(item, () => {
@@ -517,6 +534,7 @@ export function CornerResizeHandles({
 	};
 	const Handle = ({ position }: { position: string }) => (
 		<div
+			data-resize-handle
 			className="absolute bg-black cursor-nw-resize hover:bg-black shadow-lg z-50"
 			style={{
 				width: resizing ? 22 : 18,

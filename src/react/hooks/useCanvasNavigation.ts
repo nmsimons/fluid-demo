@@ -151,10 +151,13 @@ export function useCanvasNavigation(params: {
 			e.pointerType === "touch" &&
 			(e as unknown as { isPrimary?: boolean }).isPrimary !== false;
 		if (("button" in e && e.button === 2) || touchPrimary) {
+			const tgt = e.target as Element | null;
+			// Don't start panning if interacting with explicit handles
+			if (tgt?.closest("[data-rotate-handle]") || tgt?.closest("[data-resize-handle]"))
+				return;
 			if (presence.drag.state.local || presence.resize.state?.local) return;
-			const target = e.target as Element | null;
-			if (target?.closest("[data-svg-item-id]")) return;
-			if (target?.closest("[data-item-id]")) return;
+			if (tgt?.closest("[data-svg-item-id]")) return;
+			if (tgt?.closest("[data-item-id]")) return;
 			e.preventDefault();
 			setIsPanning(true);
 			lastPos.current = { x: e.clientX, y: e.clientY };
@@ -173,9 +176,12 @@ export function useCanvasNavigation(params: {
 			e.pointerType === "touch" &&
 			(e as unknown as { isPrimary?: boolean }).isPrimary !== false;
 		if (("button" in e && e.button === 2) || touchPrimary) {
+			const tgt = e.target as HTMLElement | null;
+			// Skip when touching explicit manipulation handles
+			if (tgt?.closest("[data-rotate-handle]") || tgt?.closest("[data-resize-handle]"))
+				return;
 			if (presence.drag.state.local || presence.resize.state?.local) return;
-			const target = e.target as HTMLElement;
-			if (target.closest("[data-item-id]")) return;
+			if (tgt?.closest("[data-item-id]")) return;
 			e.preventDefault();
 			setIsPanning(true);
 			lastPos.current = { x: e.clientX, y: e.clientY };
