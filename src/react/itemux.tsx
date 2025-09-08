@@ -359,6 +359,8 @@ export function RotateHandle({ item }: { item: Item }) {
 		e.stopPropagation();
 		e.preventDefault();
 		setActive(true);
+		// Improve touch reliability
+		try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch { /* unsupported */ }
 		const el = document.querySelector(`[data-item-id="${item.id}"]`) as HTMLElement | null;
 		if (!el) return;
 		const move = (ev: PointerEvent) => {
@@ -384,6 +386,7 @@ export function RotateHandle({ item }: { item: Item }) {
 		const up = () => {
 			setActive(false);
 			document.removeEventListener("pointermove", move);
+			try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* ignore */ }
 			const st = presence.drag.state.local;
 			if (st) {
 				Tree.runTransaction(item, () => {
@@ -399,16 +402,23 @@ export function RotateHandle({ item }: { item: Item }) {
 		document.addEventListener("pointermove", move);
 		document.addEventListener("pointerup", up, { once: true });
 	};
-	const size = active ? 16 : 12;
+	const size = active ? 18 : 14;
 	return (
 		<div
 			className="absolute flex flex-row w-full justify-center items-center"
-			style={{ top: -35 }}
+			style={{ top: -40 }}
 		>
 			<div
 				onPointerDown={onPointerDown}
 				className="absolute bg-black shadow-lg z-50 cursor-grab"
-				style={{ width: size, height: size, borderRadius: "50%" }}
+				style={{
+					width: size,
+					height: size,
+					borderRadius: "50%",
+					padding: 14,
+					margin: -14, // expand hit area without visual size change
+					touchAction: "none",
+				}}
 			/>
 		</div>
 	);
@@ -440,6 +450,7 @@ export function CornerResizeHandles({
 		e.stopPropagation();
 		e.preventDefault();
 		setResizing(true);
+		try { (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); } catch { /* unsupported */ }
 		initSize.current = shape.size;
 		centerModel.current = { x: item.x + shape.size / 2, y: item.y + shape.size / 2 };
 		let el: HTMLElement | null = e.currentTarget.parentElement;
@@ -470,6 +481,7 @@ export function CornerResizeHandles({
 		const up = () => {
 			setResizing(false);
 			document.removeEventListener("pointermove", move);
+			try { (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId); } catch { /* ignore */ }
 			const r = presence.resize.state.local;
 			if (r && r.id === item.id) {
 				Tree.runTransaction(item, () => {
@@ -489,7 +501,7 @@ export function CornerResizeHandles({
 		document.addEventListener("pointerup", up, { once: true });
 	};
 	const pos = (p: string) => {
-		const o = resizing ? 6 : 4;
+		const o = resizing ? 10 : 8; // enlarged for touch
 		switch (p) {
 			case "top-left":
 				return { left: -padding - o, top: -padding - o };
@@ -506,7 +518,15 @@ export function CornerResizeHandles({
 	const Handle = ({ position }: { position: string }) => (
 		<div
 			className="absolute bg-black cursor-nw-resize hover:bg-black shadow-lg z-50"
-			style={{ width: resizing ? 12 : 8, height: resizing ? 12 : 8, ...pos(position) }}
+			style={{
+				width: resizing ? 22 : 18,
+				height: resizing ? 22 : 18,
+				borderRadius: 4,
+				padding: 10,
+				margin: -10, // increase hit area
+				touchAction: "none",
+				...pos(position),
+			}}
 			onPointerDown={onPointerDown}
 		/>
 	);
