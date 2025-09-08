@@ -4,6 +4,45 @@
  */
 
 import React, { JSX, useContext, useRef, useState, useEffect } from "react";
+/**
+ * Canvas component
+ * -------------------------------------------------------------
+ * This file implements the collaborative drawing / layout surface.
+ * Responsibilities:
+ * 1. Coordinate system management (pan + zoom) via useCanvasNavigation hook.
+ * 2. Two-layer rendering strategy:
+ *    - SVG layer: scalable content (ink + selection + presence overlays).
+ *    - HTML foreignObject layer: React DOM for complex items (tables, notes, shapes).
+ * 3. Ephemeral inking (local + remote) using the Presence API (no persistence until stroke commit).
+ * 4. Persistent ink commit into SharedTree schema (`App.inks`).
+ * 5. Eraser hit-testing using a zoom-aware circular cursor.
+ * 6. Selection / presence overlays (only re-rendering when underlying presence keys change).
+ *
+ * Coordinate Spaces:
+ * - Screen space: raw pointer clientX/clientY (pixels in viewport).
+ * - Canvas space: screen adjusted by <svg> boundingClientRect.
+ * - Logical space: pan+zoom transformed coordinates used for ink persistence.
+ *   logical = (screen - pan) / zoom
+ *
+ * Performance Considerations:
+ * - Pointer inking uses coalesced events (when supported) to capture high‑resolution input without flooding React.
+ * - Points are stored in a ref array (`tempPointsRef`) and broadcast at most once per animation frame to presence.
+ * - Batching final stroke commit inside a SharedTree transaction.
+ * - Presence driven overlays subscribe with keys (`selKey`, `motionKey`) to minimize diff churn.
+ *
+ * Presence vs Persistent Ink:
+ * - While drawing: stroke exists only in presence (ephemeral) so other users see it immediately.
+ * - On pointer up: stroke is converted into a persistent `InkStroke` (schema object) and appended to `App.inks`.
+ * - Remote ephemerals are rendered translucently; committed strokes are opaque.
+ *
+ * Erasing (current implementation):
+ * - Simple hit test deletes the first stroke that intersects the eraser circle.
+ * - Future enhancement: partial segment splitting (prototype attempted earlier) and adjustable eraser size.
+ *
+ * Cursor Rendering:
+ * - Logical ink width is scaled by zoom for visual accuracy, but polyline uses vectorEffect="non-scaling-stroke" to retain crispness.
+ * - Custom circle overlay drawn in screen space for ink / eraser feedback.
+ */
 import { Items, Item, InkStroke, InkPoint, InkStyle, InkBBox, App } from "../schema/app_schema.js";
 import { Tree } from "fluid-framework";
 import { IFluidContainer } from "fluid-framework";
@@ -43,12 +82,16 @@ export function Canvas(props: {
 		inkColor = "#2563eb",
 		inkWidth = 4,
 	} = props;
+	// Global presence context (ephemeral collaboration state: selections, drags, ink, etc.)
 	const presence = useContext(PresenceContext);
 	useTree(items);
 	const layout = useContext(LayoutContext);
 
 	const svgRef = useRef<SVGSVGElement>(null);
-	// Freehand ink capture (with ephemeral presence broadcasting)
+	// Freehand ink capture lifecycle:
+	// 1. pointerDown -> start stroke (local ephemeral + presence broadcast)
+	// 2. pointerMove -> accumulate points (filtered) & throttle presence update via rAF
+	// 3. pointerUp/Cancel -> commit to SharedTree + clear presence
 	const [inking, setInking] = useState(false);
 	const tempPointsRef = useRef<InkPoint[]>([]);
 	const pointerIdRef = useRef<number | null>(null);
@@ -137,7 +180,7 @@ export function Canvas(props: {
 			return undefined;
 		}
 	})();
-	const inksNode = root?.inks;
+	const inksNode = root?.inks; // SharedTree field storing persistent InkStroke objects
 	// Stable hook ordering: call a dummy state hook first, then conditionally subscribe
 	const [dummy] = useState(0); // eslint-disable-line @typescript-eslint/no-unused-vars
 	if (inksNode) {
@@ -150,7 +193,8 @@ export function Canvas(props: {
 		if (onPanChange) onPanChange(pan);
 	}, [pan, onPanChange]);
 
-	// Convert screen coords to logical (content) coords
+	// Convert screen coords (client) into logical content coordinates.
+	// logical = (screenWithinSvg - pan) / zoom; used for storing ink points invariant to zoom level.
 	const toLogical = (clientX: number, clientY: number): { x: number; y: number } => {
 		const rect = svgRef.current?.getBoundingClientRect();
 		if (!rect) return { x: 0, y: 0 };
@@ -159,7 +203,9 @@ export function Canvas(props: {
 		return { x: (sx - pan.x) / zoom, y: (sy - pan.y) / zoom };
 	};
 
-	// Erase helper: removes first stroke intersecting eraser circle at logical point
+	// Erase helper (simple deletion): removes the first stroke whose polyline (inflated by stroke width)
+	// intersects the eraser logical circle. This is O(N * M) where N=strokes, M=points per stroke; fast enough
+	// for typical collaborative canvases. Bounding box check performs coarse rejection before segment math.
 	const performErase = (p: { x: number; y: number }) => {
 		if (!root?.inks) return;
 		const eraserScreenRadius = 12; // cursor visual radius
@@ -210,6 +256,7 @@ export function Canvas(props: {
 
 	// Begin inking on left button background press (not on items)
 	const handlePointerDown = (e: React.PointerEvent) => {
+		// Manage three mutually exclusive interactions: inking, erasing, panning(right mouse handled upstream).
 		if (inkActive || eraserActive) {
 			const targetEl = e.target as Element | null;
 			if (targetEl?.closest("[data-item-id], [data-svg-item-id]")) {
@@ -242,7 +289,7 @@ export function Canvas(props: {
 		tempPointsRef.current = [new InkPoint({ x: p.x, y: p.y, t: Date.now() })];
 		lastPointRef.current = p;
 		strokeIdRef.current = crypto.randomUUID();
-		// Broadcast initial presence stroke
+		// Broadcast initial presence stroke (ephemeral only, not yet committed)
 		presence.ink?.setStroke({
 			id: strokeIdRef.current,
 			points: tempPointsRef.current.map((pt) => ({ x: pt.x, y: pt.y, t: pt.t })),
@@ -255,6 +302,7 @@ export function Canvas(props: {
 	};
 
 	const handlePointerMove = (e: React.PointerEvent) => {
+		// Update cursor visibility + optionally perform erase scrubbing.
 		if (!(inkActive || eraserActive)) {
 			if (cursor.visible) setCursor((c) => ({ ...c, visible: false }));
 			if (eraserHoverId) setEraserHoverId(null);
@@ -329,10 +377,12 @@ export function Canvas(props: {
 
 	const handlePointerLeave = () => setCursor((c) => ({ ...c, visible: false }));
 
-	// Add move listener while inking
+	// During active inking we subscribe to raw pointermove on document (outside React) for performance
+	// and to avoid losing events when pointer exits the SVG temporarily.
 	useEffect(() => {
 		if (!inking) return;
 		const handleMove = (ev: PointerEvent) => {
+			// Skip events from other concurrent pointers (multi-touch scenarios)
 			if (pointerIdRef.current !== null && ev.pointerId !== pointerIdRef.current) return;
 			// Use coalesced events for smoother touch / pen input when available
 			const hasCoalesced = (
@@ -344,7 +394,7 @@ export function Canvas(props: {
 			for (const cev of events) {
 				const p = toLogical(cev.clientX, cev.clientY);
 				const last = lastPointRef.current;
-				// Adaptive distance filter: allow denser points for touch
+				// Adaptive point thinning: allow denser sampling for touch (smoother curves) vs mouse/pen
 				const isTouch = pointerTypeRef.current === "touch";
 				const minDist2 = isTouch ? 0.5 : 4; // ~0.7px for touch vs 2px for mouse/pen
 				if (last) {
@@ -355,7 +405,7 @@ export function Canvas(props: {
 				lastPointRef.current = p;
 				tempPointsRef.current.push(new InkPoint({ x: p.x, y: p.y, t: Date.now() }));
 			}
-			// Throttle via requestAnimationFrame
+			// Throttle presence broadcast to at most one per animation frame.
 			if (!pendingRaf.current) {
 				pendingRaf.current = requestAnimationFrame(() => {
 					pendingRaf.current = 0;
@@ -368,6 +418,7 @@ export function Canvas(props: {
 			}
 		};
 		const handleUpOrCancel = (ev: PointerEvent) => {
+			// Commit stroke to persistent model; clear ephemeral presence.
 			if (pointerIdRef.current !== null && ev.pointerId !== pointerIdRef.current) return;
 			if (!inking) return;
 			setInking(false);

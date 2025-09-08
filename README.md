@@ -62,14 +62,7 @@ All the code required to set up the Fluid Framework and SharedTree data structur
 
 The application uses a comprehensive SharedTree schema defined in the `src/schema/` folder:
 
-- **`app_schema.ts`**: Main schema definitions including:
-    - `Shape`: Geometric shapes (circle, square, triangle, star) with size, color, and type
-    - `Note`: Text-based sticky notes with authorship
-    - `FluidTable`: Collaborative tables with multiple column types
-    - `Item`: Canvas items that can contain shapes, notes, or tables
-    - `Vote`: Voting system for comments and items
-    - `Comment`: Threaded comments with user attribution
-    - `DateTime`: Date/time values for timestamps
+- **`app_schema.ts`**: Main schema definitions including: - `Shape`: Geometric shapes (circle, square, triangle, star) with size, color, and type - `Note`: Text-based sticky notes with authorship - `FluidTable`: Collaborative tables with multiple column types - `Item`: Canvas items that can contain shapes, notes, or tables - `Vote`: Voting system for comments and items - `Comment`: Threaded comments with user attribution - `DateTime`: Date/time values for timestamps
 - **`container_schema.ts`**: Fluid container configuration
 - **`table_schema.ts`**: Extended table functionality and column definitions
 
@@ -195,6 +188,90 @@ This separation allows for:
 - **Event Batching**: Optimized event handling for smooth collaboration
 
 The application follows Fluid Framework best practices by treating the SharedTree as the single source of truth and using tree events to update the UI reactively.
+
+## Canvas Rendering & Interaction Model
+
+The canvas uses a hybrid SVG + HTML strategy to balance fidelity, performance, and layout flexibility:
+
+### Layering
+
+- **SVG Root (`canvasux.tsx`)**: Owns the unified coordinate system (pan + zoom transform) and renders: - Persistent ink polylines (vector, efficient at scale) - Ephemeral ink (local + remote) with reduced opacity - Selection, presence, and comment overlays positioned in logical space - Custom cursor / eraser feedback (screen-space overlay)
+- **HTML Layer (foreignObject)**: Hosts complex React components (tables, notes, shapes) so they can leverage normal DOM/CSS layout & accessibility while still moving/zooming with the SVG transform.
+
+### Coordinate Spaces
+
+| Space   | Purpose                                  | Example               |
+| ------- | ---------------------------------------- | --------------------- |
+| Screen  | Raw pointer events (clientX/clientY)     | 742, 312              |
+| Canvas  | Screen adjusted by SVG bounding rect     | (screen - svgRect)    |
+| Logical | Pan + zoom invariant content coordinates | (canvas - pan) / zoom |
+
+All ink points are stored in logical space so panning/zooming does not degrade precision.
+
+### Pan & Zoom
+
+Implemented in `useCanvasNavigation`:
+
+- **Pan**: Right-mouse drag (or programmatic) updates a pan vector applied via `transform="translate(x,y) scale(z)"` on root groups.
+- **Zoom**: Discrete zoom steps (predefined array) selected by wheel gestures; position under cursor is preserved (anchor zoom) by adjusting pan.
+- **Bounding Context**: Pattern background uses inverse scaling for dot size consistency.
+
+### Inking Workflow
+
+1. Pointer down (ink mode) starts an ephemeral stroke (presence broadcast only).
+2. Pointer moves add points (with adaptive thinning: denser for touch). Updates are throttled with `requestAnimationFrame` to avoid WebSocket flooding.
+3. Pointer up commits the stroke as a persistent `InkStroke` (schema object) with a computed bounding box; presence is cleared.
+4. Remote ephemeral strokes render semi-transparently until those users commit.
+
+### Eraser (Current)
+
+- Circular hit test in logical space combines stroke half-width + eraser radius.
+- First intersecting stroke is deleted (future enhancement: partial splitting + adjustable radius).
+
+### Performance Techniques
+
+- Coalesced pointer events (when supported) for high‑resolution pen/touch without overwhelming React.
+- VectorEffect `non-scaling-stroke` preserves stroke aesthetics under zoom while hit tests still use logical widths.
+- Presence overlays keyed by selection/motion hashes to avoid unnecessary re-renders.
+- Bounding box pre-filter before per-segment intersection math.
+
+## Presence Ink Interface
+
+Ephemeral ink presence is defined by `InkPresenceManager` (see `src/utils/presence/Interfaces/InkManager.ts`):
+
+| Method             | Description                               |
+| ------------------ | ----------------------------------------- |
+| `setStroke`        | Begin a new local ephemeral stroke        |
+| `updateStroke`     | Replace cumulative point list during draw |
+| `clearStroke`      | End/abort local stroke and notify others  |
+| `getRemoteStrokes` | Snapshot of all active remote strokes     |
+
+Design rationale:
+
+- Keeps transient drawing state out of SharedTree (lower churn + faster feedback).
+- One active stroke per attendee simplifies rendering (direct mapping to a polyline).
+- Cumulative point updates allow late joiners to render the full in-progress stroke instantly.
+
+## Future Enhancements (Roadmap)
+
+These items are candidates for iterative improvement:
+
+- Partial stroke erasing with segment splitting & gap smoothing
+- Adjustable eraser size + visual radius slider
+- Stroke simplification (Douglas–Peucker) for large point sets (store original + simplified)
+- Pressure / velocity-based dynamic width (pen devices)
+- Local persistence of preferred ink color/width (e.g. `localStorage`)
+- Undo batching for multi-segment erasures or long strokes
+
+## Quick Reference: Key Files
+
+| File                                          | Purpose                                                                |
+| --------------------------------------------- | ---------------------------------------------------------------------- |
+| `src/react/canvasux.tsx`                      | Main collaborative canvas (SVG + HTML layering, ink + overlays)        |
+| `src/react/hooks/useCanvasNavigation.ts`      | Pan/zoom logic with discrete zoom steps & cursor anchoring             |
+| `src/utils/presence/Interfaces/InkManager.ts` | Ephemeral ink presence contract                                        |
+| `src/utils/presence/ink.ts`                   | Implementation utilities for broadcasting ink (if present)             |
+| `src/schema/app_schema.ts`                    | Persistent ink schema (`InkStroke`, `InkPoint`, `InkStyle`, `InkBBox`) |
 
 ## User Interface
 
