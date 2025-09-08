@@ -120,8 +120,8 @@ export function ItemView(props: {
 	const layout = useContext(LayoutContext);
 	const [selected, setSelected] = useState(presence.itemSelection.testSelection({ id: item.id }));
 	const [shapeProps, setShapeProps] = useState<{ sizeOverride?: number }>({});
-	const dragRef = useRef<{ pointerId: number; moved: boolean } | null>(null);
-	const offset = useRef({ x: 0, y: 0 });
+	const dragRef = useRef<DragState | null>(null);
+	// (offset ref removed in delta-based drag implementation)
 	const intrinsic = useRef({ w: 0, h: 0 });
 	const [view, setView] = useState({
 		left: item.x,
@@ -181,47 +181,108 @@ export function ItemView(props: {
 		(sel) => setSelected(sel.some((s) => s.id === item.id))
 	);
 
-	// Pointer lifecycle
-	const coords = (e: { clientX: number; clientY: number }) => {
-		const m = calculateCanvasMouseCoordinates(e, props.pan, props.zoom);
-		return { x: m.x - offset.current.x, y: m.y - offset.current.y };
-	};
+	// Pointer lifecycle (delta-based to avoid foreignObject measurement jumps)
+	const coordsCanvas = (e: { clientX: number; clientY: number }) =>
+		calculateCanvasMouseCoordinates(e, props.pan, props.zoom);
+	interface DragState {
+		pointerId: number;
+		started: boolean;
+		startItemX: number;
+		startItemY: number;
+		startCanvasX: number;
+		startCanvasY: number;
+		interactiveStart: boolean;
+	}
 	const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
 		if (e.button !== 0) return;
-		e.stopPropagation();
-		presence.itemSelection.setSelection({ id: item.id });
-		offset.current = calculateOffsetFromCanvasOrigin(e, item, props.pan, props.zoom);
-		dragRef.current = { pointerId: e.pointerId, moved: false };
-		e.currentTarget.setPointerCapture(e.pointerId);
-	};
-	const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-		if (!dragRef.current || dragRef.current.pointerId !== e.pointerId) return;
-		const { x, y } = coords(e);
-		if (!dragRef.current.moved) {
-			if (Math.abs(x - item.x) < 2 && Math.abs(y - item.y) < 2) return;
-			dragRef.current.moved = true;
+		const targetEl = e.target as HTMLElement;
+		const interactive = !!targetEl.closest(
+			'textarea, input, select, button, [contenteditable="true"], .dropdown, .menu'
+		);
+		// Only stop propagation for non-interactive regions so table/header buttons & dropdowns still fire.
+		if (!interactive) {
+			e.stopPropagation();
+			presence.itemSelection.setSelection({ id: item.id });
 		}
-		presence.drag.setDragging({
-			id: item.id,
-			x,
-			y,
-			rotation: item.rotation,
-			branch: presence.branch,
-		});
+		const start = coordsCanvas(e);
+		dragRef.current = {
+			pointerId: e.pointerId,
+			started: false,
+			startItemX: item.x,
+			startItemY: item.y,
+			startCanvasX: start.x,
+			startCanvasY: start.y,
+			interactiveStart: interactive,
+		};
+		const THRESHOLD_BASE = 4;
+		const docMove = (ev: PointerEvent) => {
+			const st = dragRef.current;
+			if (!st || st.pointerId !== e.pointerId) return;
+			const cur = coordsCanvas(ev);
+			const dx = cur.x - st.startCanvasX;
+			const dy = cur.y - st.startCanvasY;
+			if (!st.started) {
+				const threshold = st.interactiveStart ? THRESHOLD_BASE * 2 : THRESHOLD_BASE; // more intent needed if started in input
+				if (Math.hypot(dx, dy) < threshold) return;
+				st.started = true;
+				document.documentElement.dataset.manipulating = "1";
+				// Prevent default now (stop text selection / scrolling while dragging)
+				ev.preventDefault();
+				// Capture pointer only once drag has actually begun to not interfere with click activation
+				try {
+					(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+				} catch {
+					/* ignore */
+				}
+			}
+			if (st.started) {
+				presence.drag.setDragging({
+					id: item.id,
+					x: st.startItemX + dx,
+					y: st.startItemY + dy,
+					rotation: item.rotation,
+					branch: presence.branch,
+				});
+			}
+		};
+		const finish = () => {
+			const st = dragRef.current;
+			if (!st || st.pointerId !== e.pointerId) return;
+			if (st.started) {
+				const cur = { x: st.startItemX, y: st.startItemY };
+				const dragState = presence.drag.state.local;
+				if (dragState && dragState.id === item.id) {
+					cur.x = dragState.x;
+					cur.y = dragState.y;
+				}
+				Tree.runTransaction(item, () => {
+					item.x = cur.x;
+					item.y = cur.y;
+				});
+				presence.drag.clearDragging();
+				delete document.documentElement.dataset.manipulating;
+			} else {
+				// Click (not drag). If note and not inside an input start we focus.
+				if (itemType(item) === "note" && !st.interactiveStart) {
+					const host = (e.currentTarget as HTMLElement).querySelector(
+						"textarea"
+					) as HTMLTextAreaElement | null;
+					host?.focus();
+				}
+			}
+			dragRef.current = null;
+			document.removeEventListener("pointermove", docMove);
+			document.removeEventListener("pointerup", finish);
+			document.removeEventListener("pointercancel", finish);
+			document.removeEventListener("lostpointercapture", finish);
+		};
+		document.addEventListener("pointermove", docMove);
+		document.addEventListener("pointerup", finish);
+		document.addEventListener("pointercancel", finish);
 	};
-	const onPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
-		if (!dragRef.current || dragRef.current.pointerId !== e.pointerId) return;
-		const { x, y } = coords(e);
-		if (dragRef.current.moved) {
-			Tree.runTransaction(item, () => {
-				item.x = x;
-				item.y = y;
-			});
-			presence.drag.clearDragging();
-		}
-		e.currentTarget.releasePointerCapture(e.pointerId);
-		dragRef.current = null;
-	};
+	// No-op handlers required because we attach to document
+	const onPointerMove = () => {};
+	const onPointerUp = () => {};
 
 	// Layout measurement
 	const ref = useRef<HTMLDivElement>(null);
@@ -264,7 +325,13 @@ export function ItemView(props: {
 	}, [item.id, item.content, view.left, view.top, shapeProps.sizeOverride, props.zoom, layout]);
 
 	// Never mutate view directly (React may freeze state objects in strict/dev modes)
-	const style = { ...view, zIndex: index };
+	const style = {
+		...view,
+		zIndex: index,
+		touchAction: "none",
+		WebkitUserSelect: "none",
+		userSelect: "none",
+	} as const;
 	return (
 		<div
 			ref={ref}
