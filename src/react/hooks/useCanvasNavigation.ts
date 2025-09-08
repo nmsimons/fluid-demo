@@ -151,6 +151,7 @@ export function useCanvasNavigation(params: {
 			e.pointerType === "touch" &&
 			(e as unknown as { isPrimary?: boolean }).isPrimary !== false;
 		if (("button" in e && e.button === 2) || touchPrimary) {
+			if (document.documentElement.dataset.manipulating) return;
 			const tgt = e.target as Element | null;
 			// Don't start panning if interacting with explicit handles
 			if (tgt?.closest("[data-rotate-handle]") || tgt?.closest("[data-resize-handle]"))
@@ -176,6 +177,7 @@ export function useCanvasNavigation(params: {
 			e.pointerType === "touch" &&
 			(e as unknown as { isPrimary?: boolean }).isPrimary !== false;
 		if (("button" in e && e.button === 2) || touchPrimary) {
+			if (document.documentElement.dataset.manipulating) return;
 			const tgt = e.target as HTMLElement | null;
 			// Skip when touching explicit manipulation handles
 			if (tgt?.closest("[data-rotate-handle]") || tgt?.closest("[data-resize-handle]"))

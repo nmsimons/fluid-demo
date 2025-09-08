@@ -365,6 +365,16 @@ export function RotateHandle({ item }: { item: Item }) {
 		} catch {
 			/* unsupported */
 		}
+		// Set initial drag presence immediately so pan guard sees it
+		presence.drag.setDragging({
+			id: item.id,
+			x: item.x,
+			y: item.y,
+			rotation: item.rotation,
+			branch: presence.branch,
+		});
+		// Global manipulating flag as additional safeguard against background pan
+		document.documentElement.dataset.manipulating = "1";
 		const el = document.querySelector(`[data-item-id="${item.id}"]`) as HTMLElement | null;
 		if (!el) return;
 		const move = (ev: PointerEvent) => {
@@ -395,6 +405,7 @@ export function RotateHandle({ item }: { item: Item }) {
 			} catch {
 				/* ignore */
 			}
+			delete document.documentElement.dataset.manipulating;
 			const st = presence.drag.state.local;
 			if (st) {
 				Tree.runTransaction(item, () => {
@@ -410,11 +421,11 @@ export function RotateHandle({ item }: { item: Item }) {
 		document.addEventListener("pointermove", move);
 		document.addEventListener("pointerup", up, { once: true });
 	};
-	const size = active ? 18 : 14;
+	const size = active ? 22 : 18;
 	return (
 		<div
 			className="absolute flex flex-row w-full justify-center items-center"
-			style={{ top: -40 }}
+			style={{ top: -48 }}
 		>
 			<div
 				onPointerDown={onPointerDown}
@@ -424,8 +435,8 @@ export function RotateHandle({ item }: { item: Item }) {
 					width: size,
 					height: size,
 					borderRadius: "50%",
-					padding: 14,
-					margin: -14, // expand hit area without visual size change
+					padding: 20,
+					margin: -20, // expand hit area without visual size change
 					touchAction: "none",
 				}}
 			/>
@@ -464,6 +475,9 @@ export function CornerResizeHandles({
 		} catch {
 			/* unsupported */
 		}
+		// Seed resize presence so pan guard sees active manipulation instantly
+		presence.resize.setResizing({ id: item.id, x: item.x, y: item.y, size: shape.size });
+		document.documentElement.dataset.manipulating = "1";
 		initSize.current = shape.size;
 		centerModel.current = { x: item.x + shape.size / 2, y: item.y + shape.size / 2 };
 		let el: HTMLElement | null = e.currentTarget.parentElement;
@@ -499,6 +513,7 @@ export function CornerResizeHandles({
 			} catch {
 				/* ignore */
 			}
+			delete document.documentElement.dataset.manipulating;
 			const r = presence.resize.state.local;
 			if (r && r.id === item.id) {
 				Tree.runTransaction(item, () => {
@@ -537,11 +552,11 @@ export function CornerResizeHandles({
 			data-resize-handle
 			className="absolute bg-black cursor-nw-resize hover:bg-black shadow-lg z-50"
 			style={{
-				width: resizing ? 22 : 18,
-				height: resizing ? 22 : 18,
-				borderRadius: 4,
-				padding: 10,
-				margin: -10, // increase hit area
+				width: resizing ? 30 : 26,
+				height: resizing ? 30 : 26,
+				borderRadius: 6,
+				padding: 16,
+				margin: -16, // increase hit area
 				touchAction: "none",
 				...pos(position),
 			}}
