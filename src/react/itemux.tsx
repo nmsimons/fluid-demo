@@ -97,14 +97,14 @@ export const calculateCanvasMouseCoordinates = (
 	pan?: { x: number; y: number },
 	zoom = 1
 ) => {
-    // Translate a raw (clientX, clientY) into logical canvas coordinates by:
-    //   1. Subtracting the canvas element's top-left (DOMRect) to obtain a local
-    //      position relative to the canvas in CSS pixels.
-    //   2. Removing the current pan offset so (0,0) corresponds to the logical
-    //      unpanned origin the model expects.
-    //   3. Dividing by zoom to map CSS pixels back into model (logical) units.
-    // This keeps the model fully resolution / zoom independent and ensures
-    // consistent math for drag / resize / rotate no matter the viewport scale.
+	// Translate a raw (clientX, clientY) into logical canvas coordinates by:
+	//   1. Subtracting the canvas element's top-left (DOMRect) to obtain a local
+	//      position relative to the canvas in CSS pixels.
+	//   2. Removing the current pan offset so (0,0) corresponds to the logical
+	//      unpanned origin the model expects.
+	//   3. Dividing by zoom to map CSS pixels back into model (logical) units.
+	// This keeps the model fully resolution / zoom independent and ensures
+	// consistent math for drag / resize / rotate no matter the viewport scale.
 	const c = document.getElementById("canvas");
 	const r = c?.getBoundingClientRect() || ({ left: 0, top: 0 } as DOMRect);
 	const sx = e.clientX - r.left; // screen -> canvas local X (CSS px)

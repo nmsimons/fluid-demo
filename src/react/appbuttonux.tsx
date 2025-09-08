@@ -34,6 +34,13 @@ import {
 	PositionToBackRegular,
 	CopyRegular,
 	Circle24Filled,
+	ArrowUndoFilled,
+	ArrowRedoFilled,
+	InkingToolFilled,
+	InkingToolRegular,
+	EraserToolFilled,
+	EraserToolRegular,
+	DeleteRegular,
 } from "@fluentui/react-icons";
 import {
 	Menu,
@@ -47,6 +54,182 @@ import {
 	Label,
 	MenuDivider,
 } from "@fluentui/react-components";
+import { Badge } from "@fluentui/react-badge";
+
+// ---------------------------------------------------------------------------
+// NEW: Additional toolbar item components to keep AppToolbar lean & consistent
+// ---------------------------------------------------------------------------
+
+// Undo / Redo ---------------------------------------------------------------
+export function UndoButton(props: { onUndo: () => void; disabled?: boolean }): JSX.Element {
+	const { onUndo, disabled } = props;
+	return (
+		<TooltipButton
+			tooltip="Undo"
+			keyboardShortcut="Ctrl+Z"
+			onClick={() => onUndo()}
+			icon={<ArrowUndoFilled />}
+			disabled={disabled}
+		/>
+	);
+}
+export function RedoButton(props: { onRedo: () => void; disabled?: boolean }): JSX.Element {
+	const { onRedo, disabled } = props;
+	return (
+		<TooltipButton
+			tooltip="Redo"
+			keyboardShortcut="Ctrl+Y"
+			onClick={() => onRedo()}
+			icon={<ArrowRedoFilled />}
+			disabled={disabled}
+		/>
+	);
+}
+
+// Ink / Eraser toggles -----------------------------------------------------
+export function InkToggleButton(props: {
+	inkActive: boolean;
+	eraserActive: boolean;
+	onToggleInk: () => void;
+	onToggleEraser: () => void;
+}): JSX.Element {
+	const { inkActive, eraserActive, onToggleInk, onToggleEraser } = props;
+	return (
+		<TooltipButton
+			tooltip={inkActive ? "Exit ink mode" : "Enter ink mode"}
+			onClick={() => {
+				if (eraserActive) onToggleEraser();
+				onToggleInk();
+			}}
+			icon={
+				<span style={{ fontSize: 14 }}>
+					{inkActive ? <InkingToolFilled /> : <InkingToolRegular />}
+				</span>
+			}
+			active={inkActive}
+		/>
+	);
+}
+export function EraserToggleButton(props: {
+	inkActive: boolean;
+	eraserActive: boolean;
+	onToggleInk: () => void;
+	onToggleEraser: () => void;
+}): JSX.Element {
+	const { inkActive, eraserActive, onToggleInk, onToggleEraser } = props;
+	return (
+		<TooltipButton
+			tooltip={eraserActive ? "Exit eraser" : "Eraser"}
+			onClick={() => {
+				if (inkActive) onToggleInk();
+				onToggleEraser();
+			}}
+			icon={
+				<span style={{ fontSize: 14 }}>
+					{eraserActive ? <EraserToolFilled /> : <EraserToolRegular />}
+				</span>
+			}
+			active={eraserActive}
+		/>
+	);
+}
+
+// Clear All ----------------------------------------------------------------
+export function ClearAllButton(props: { onClear: () => void; disabled?: boolean }): JSX.Element {
+	const { onClear, disabled } = props;
+	return (
+		<TooltipButton
+			tooltip="Remove all items and ink"
+			keyboardShortcut="Ctrl+Shift+Delete"
+			icon={<DeleteRegular />}
+			onClick={() => onClear()}
+			disabled={disabled}
+		/>
+	);
+}
+
+// Comments pane toggle (wraps ShowPaneButton semantics) --------------------
+export function CommentsPaneToggleButton(props: {
+	paneHidden: boolean;
+	onToggle: (hidden: boolean) => void;
+}): JSX.Element {
+	const { paneHidden, onToggle } = props;
+	return (
+		<TooltipButton
+			onClick={() => onToggle(!paneHidden)}
+			icon={paneHidden ? <CommentRegular /> : <CommentFilled />}
+			tooltip={paneHidden ? "Show Comments" : "Hide Comments"}
+			keyboardShortcut="Ctrl+M"
+		/>
+	);
+}
+
+// Selection count badge ----------------------------------------------------
+export function SelectionCountBadge(props: { count: number }): JSX.Element {
+	const { count } = props;
+	if (count <= 1) return <></>;
+	return (
+		<div className="flex items-center px-2">
+			<Badge appearance="filled" color="brand" size="small">
+				{count} selected
+			</Badge>
+		</div>
+	);
+}
+
+// Zoom Menu ----------------------------------------------------------------
+export function ZoomMenu(props: {
+	zoom?: number;
+	onZoomChange?: (z: number) => void;
+}): JSX.Element {
+	const { zoom, onZoomChange } = props;
+	const formatZoom = (z: number | undefined) => `${Math.round((z ?? 1) * 100)}%`;
+	const handleSlider = (e: React.ChangeEvent<HTMLInputElement>) => {
+		const val = parseInt(e.target.value, 10);
+		onZoomChange?.(val / 100);
+	};
+	return (
+		<Menu>
+			<MenuTrigger>
+				<button
+					className="px-2 py-1 rounded bg-black/70 text-white hover:bg-black transition-colors text-sm border border-white/20 inline-flex items-center justify-center"
+					style={{ width: 72 }}
+					aria-label="Zoom"
+				>
+					<span className="tabular-nums font-medium">{formatZoom(zoom)}</span>
+					<span className="ml-1 text-[10px]">▼</span>
+				</button>
+			</MenuTrigger>
+			<MenuPopover>
+				<MenuList>
+					<div
+						className="px-3 py-2 w-56 select-none"
+						onClick={(e) => e.stopPropagation()}
+					>
+						<div className="flex justify-between text-xs mb-2">
+							<span className="font-semibold">Zoom</span>
+							<button
+								onClick={() => onZoomChange?.(1)}
+								className="text-blue-500 hover:underline"
+							>
+								Reset
+							</button>
+						</div>
+						<input
+							type="range"
+							min={25}
+							max={400}
+							step={5}
+							value={Math.round((zoom ?? 1) * 100)}
+							onChange={handleSlider}
+							className="w-full"
+						/>
+					</div>
+				</MenuList>
+			</MenuPopover>
+		</Menu>
+	);
+}
 
 export const SHAPE_COLORS = [
 	"#000000",

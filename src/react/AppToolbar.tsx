@@ -12,7 +12,6 @@ import {
 	NewSquareButton,
 	NewTriangleButton,
 	NewStarButton,
-	ShowPaneButton,
 	NewNoteButton,
 	NewTableButton,
 	VoteButton,
@@ -31,24 +30,19 @@ import {
 	BringItemToFrontButton,
 	SendItemToBackButton,
 	InkColorPicker,
+	UndoButton,
+	RedoButton,
+	InkToggleButton,
+	EraserToggleButton,
+	ClearAllButton,
+	CommentsPaneToggleButton,
+	SelectionCountBadge,
+	ZoomMenu,
 } from "./appbuttonux.js";
 import { DeleteSelectedRowsButton } from "./tablebuttonux.js";
-import { TooltipButton } from "./buttonux.js";
+// All toolbar button UIs now componentized; direct TooltipButton usage removed.
 import { MessageBar, MessageBarBody, MessageBarTitle } from "@fluentui/react-message-bar";
 import { Toolbar, ToolbarDivider, ToolbarGroup } from "@fluentui/react-toolbar";
-import { Menu, MenuTrigger, MenuPopover, MenuList } from "@fluentui/react-menu";
-import { Badge } from "@fluentui/react-badge";
-import {
-	ArrowRedoFilled,
-	ArrowUndoFilled,
-	CommentFilled,
-	CommentRegular,
-	DeleteRegular,
-	InkingToolFilled,
-	InkingToolRegular,
-	EraserToolFilled,
-	EraserToolRegular,
-} from "@fluentui/react-icons";
 import type { SelectionManager } from "../utils/presence/Interfaces/SelectionManager.js";
 import { TypedSelection } from "../utils/presence/selection.js";
 
@@ -107,62 +101,30 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 		onInkWidthChange,
 	} = props;
 
-	const formatZoom = (z: number | undefined) => `${Math.round((z ?? 1) * 100)}%`;
-	const handleSlider = (e: React.ChangeEvent<HTMLInputElement>) => {
-		const val = parseInt(e.target.value, 10);
-		onZoomChange?.(val / 100);
-	};
-	// Removed quick preset buttons per request; only slider + reset remain.
+	// Zoom slider logic moved into ZoomMenu component.
 
 	return (
 		<Toolbar className="h-[48px] shadow-lg flex-nowrap overflow-x-auto overflow-y-hidden whitespace-nowrap min-h-[48px] max-h-[48px]">
 			{/* Undo / Redo group (leftmost) */}
 			<ToolbarGroup>
-				<TooltipButton
-					tooltip="Undo"
-					keyboardShortcut="Ctrl+Z"
-					onClick={() => undoRedo.undo()}
-					icon={<ArrowUndoFilled />}
-					disabled={!canUndo}
-				/>
-				<TooltipButton
-					tooltip="Redo"
-					keyboardShortcut="Ctrl+Y"
-					onClick={() => undoRedo.redo()}
-					icon={<ArrowRedoFilled />}
-					disabled={!canRedo}
-				/>
+				<UndoButton onUndo={() => undoRedo.undo()} disabled={!canUndo} />
+				<RedoButton onRedo={() => undoRedo.redo()} disabled={!canRedo} />
 			</ToolbarGroup>
 			<ToolbarDivider />
 			{/* Inking / Eraser group */}
 			<ToolbarGroup>
-				<TooltipButton
-					tooltip={inkActive ? "Exit ink mode" : "Enter ink mode"}
-					onClick={() => {
-						if (eraserActive) onToggleEraser();
-						onToggleInk();
-					}}
-					icon={
-						<span style={{ fontSize: 14 }}>
-							{inkActive ? <InkingToolFilled /> : <InkingToolRegular />}
-						</span>
-					}
-					active={inkActive}
+				<InkToggleButton
+					inkActive={inkActive}
+					eraserActive={eraserActive}
+					onToggleInk={onToggleInk}
+					onToggleEraser={onToggleEraser}
 				/>
-				<TooltipButton
-					tooltip={eraserActive ? "Exit eraser" : "Eraser"}
-					onClick={() => {
-						if (inkActive) onToggleInk();
-						onToggleEraser();
-					}}
-					icon={
-						<span style={{ fontSize: 14 }}>
-							{eraserActive ? <EraserToolFilled /> : <EraserToolRegular />}
-						</span>
-					}
-					active={eraserActive}
+				<EraserToggleButton
+					inkActive={inkActive}
+					eraserActive={eraserActive}
+					onToggleInk={onToggleInk}
+					onToggleEraser={onToggleEraser}
 				/>
-				{/* Ink color picker */}
 				<InkColorPicker
 					setColor={(c: string) => onInkColorChange(c)}
 					selected={inkColor}
@@ -225,14 +187,10 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 				return (
 					<div className="flex items-center h-full toolbar-slide-in">
 						<ToolbarDivider />
-						{/* Multi-selection indicator */}
+						{/* Multi-selection indicator (componentized) */}
 						{selectedItems.length > 1 && (
 							<ToolbarGroup>
-								<div className="flex items-center px-2">
-									<Badge appearance="filled" color="brand" size="small">
-										{selectedItems.length} selected
-									</Badge>
-								</div>
+								<SelectionCountBadge count={selectedItems.length} />
 							</ToolbarGroup>
 						)}
 						<ToolbarGroup>
@@ -345,18 +303,11 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 			})()}
 			<ToolbarDivider />
 			<ToolbarGroup>
-				<TooltipButton
-					tooltip="Remove all items and ink"
-					keyboardShortcut="Ctrl+Shift+Delete"
-					icon={<DeleteRegular />}
-					onClick={() => {
+				<ClearAllButton
+					onClear={() => {
 						Tree.runTransaction(view.root, () => {
-							if (view.root.items.length > 0) {
-								view.root.items.removeRange();
-							}
-							if (view.root.inks.length > 0) {
-								view.root.inks.removeRange();
-							}
+							if (view.root.items.length > 0) view.root.items.removeRange();
+							if (view.root.inks.length > 0) view.root.inks.removeRange();
 						});
 					}}
 					disabled={view.root.items.length === 0 && view.root.inks.length === 0}
@@ -364,13 +315,9 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 			</ToolbarGroup>
 			<ToolbarDivider />
 			<ToolbarGroup>
-				<ShowPaneButton
-					hiddenIcon={<CommentRegular />}
-					shownIcon={<CommentFilled />}
-					hidePane={setCommentPaneHidden}
+				<CommentsPaneToggleButton
 					paneHidden={commentPaneHidden}
-					tooltip="Comments"
-					keyboardShortcut="Ctrl+M"
+					onToggle={(h) => setCommentPaneHidden(h)}
 				/>
 			</ToolbarGroup>
 			{/* Right side grouping (auto) */}
@@ -380,46 +327,7 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 						<MessageBarComponent message="While viewing an AI Task, others will not see your changes (and you will not see theirs) until you complete the task." />
 					</div>
 				)}
-				{/* Zoom dropdown */}
-				<Menu>
-					<MenuTrigger>
-						<button
-							className="px-2 py-1 rounded bg-black/70 text-white hover:bg-black transition-colors text-sm border border-white/20 inline-flex items-center justify-center"
-							style={{ width: 72 }}
-							aria-label="Zoom"
-						>
-							<span className="tabular-nums font-medium">{formatZoom(zoom)}</span>
-							<span className="ml-1 text-[10px]">▼</span>
-						</button>
-					</MenuTrigger>
-					<MenuPopover>
-						<MenuList>
-							<div
-								className="px-3 py-2 w-56 select-none"
-								onClick={(e) => e.stopPropagation()}
-							>
-								<div className="flex justify-between text-xs mb-2">
-									<span className="font-semibold">Zoom</span>
-									<button
-										onClick={() => onZoomChange?.(1)}
-										className="text-blue-500 hover:underline"
-									>
-										Reset
-									</button>
-								</div>
-								<input
-									type="range"
-									min={25}
-									max={400}
-									step={5}
-									value={Math.round((zoom ?? 1) * 100)}
-									onChange={handleSlider}
-									className="w-full"
-								/>
-							</div>
-						</MenuList>
-					</MenuPopover>
-				</Menu>
+				<ZoomMenu zoom={zoom} onZoomChange={onZoomChange} />
 			</ToolbarGroup>
 		</Toolbar>
 	);
