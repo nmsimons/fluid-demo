@@ -16,6 +16,16 @@ export function SelectionOverlay(props: {
 	let top = b?.top ?? item.y;
 	let w = b ? Math.max(0, b.right - b.left) : 0;
 	let h = b ? Math.max(0, b.bottom - b.top) : 0;
+
+	// If there is an active resize presence entry for THIS item, prefer its live size
+	// to avoid one-frame lag while dragging the HTML handles before layout cache updates.
+	const resizePresence = presence.resize.state?.local;
+	if (resizePresence && resizePresence.id === item.id && Tree.is(item.content, Shape)) {
+		w = resizePresence.size;
+		h = resizePresence.size;
+		left = resizePresence.x;
+		top = resizePresence.y;
+	}
 	if (w === 0 || h === 0) {
 		const container = document.querySelector(
 			`[data-item-id='${item.id}']`
@@ -29,8 +39,8 @@ export function SelectionOverlay(props: {
 	}
 	const padding = 8;
 	const active = getActiveDragForItem(presence, item.id);
-	// If this client (or a remote) is actively dragging, prefer live drag coordinates to avoid a frame of lag
-	if (active) {
+	// If dragging (but not resizing) override position/rotation for smoothness.
+	if (active && !(resizePresence && resizePresence.id === item.id)) {
 		left = active.x;
 		top = active.y;
 	}
