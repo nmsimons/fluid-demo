@@ -1,3 +1,34 @@
+// ============================================================================
+// SelectionOverlay.tsx
+//
+// Draws the SVG selection rectangle + rotation handle + (proxied) resize
+// handles for the currently selected item inside the canvas overlay layer.
+//
+// Design goals:
+//   * Keep all interactive geometry (handles, rotation knob) in a single SVG
+//     coordinate space so we can counter-scale by zoom and maintain consistent
+//     on-screen touch targets.
+//   * Mirror live presence (drag / resize) to avoid perceptual lag between
+//     pointer movement and overlay position / size.
+//   * For shapes, show 4 corner resize handles. For tables we suppress rotation
+//     & resize (tables are axis-aligned, not rotatable in current UX).
+//
+// Geometry overview:
+//   * padding: additional space around the raw item bounds used for the
+//     dashed selection rectangle.
+//   * rotationGapPx: desired screen distance from top edge of selection rect
+//     to the center of the rotation handle (screen pixels). Converted to local
+//     units via division by zoom (then the whole overlay is rotated / translated).
+//   * outwardGapPx: outward screen distance beyond the padded rectangle to
+//     place corner resize handles. Converted similarly to local units.
+//   * strokeDasharray: scaled by zoom so dash appearance remains constant.
+//
+// Event plumbing:
+//   * Rotation & resize actions are delegated to the underlying HTML elements
+//     (in itemux.tsx) by synthesizing a pointerdown on the existing handles.
+//     This avoids duplicating business logic; overlay is a visual proxy only.
+//
+// ============================================================================
 import React from "react";
 import { FluidTable, Item, Shape } from "../../schema/app_schema.js";
 import { Tree } from "fluid-framework";
@@ -17,8 +48,8 @@ export function SelectionOverlay(props: {
 	let w = b ? Math.max(0, b.right - b.left) : 0;
 	let h = b ? Math.max(0, b.bottom - b.top) : 0;
 
-	// If there is an active resize presence entry for THIS item, prefer its live size
-	// to avoid one-frame lag while dragging the HTML handles before layout cache updates.
+	// Prefer live resize presence for THIS item (if shape) so the overlay matches
+	// the ephemeral size mid-drag. Layout cache may update a frame later.
 	const resizePresence = presence.resize.state?.local;
 	if (resizePresence && resizePresence.id === item.id && Tree.is(item.content, Shape)) {
 		w = resizePresence.size;
@@ -49,13 +80,12 @@ export function SelectionOverlay(props: {
 	const isShape = Tree.is(item.content, Shape);
 	if (isTable) angle = 0;
 
-	// Screen-constant geometry helpers
-	const rotationGapPx = 22; // (was 35) desired screen distance from top edge of selection rect to rotation handle center
-	const outwardGapPx = 2; // desired screen outward offset for resize handles beyond selection rect edge (beyond padding)
-	// Convert: (Y - padding)*zoom = gap  => Y = padding + gap/zoom
-	const rotationOffsetLocal = padding + rotationGapPx / zoom;
-	// For resize: (outwardLocal - padding)*zoom = outwardGapPx => outwardLocal = padding + outwardGapPx/zoom
-	const outwardLocal = padding + outwardGapPx / zoom;
+	// Screen-constant geometry (expressed in screen px, converted to local):
+	const rotationGapPx = 22; // vertical offset for rotation handle center
+	const outwardGapPx = 2; // outward offset for resize handles beyond padding
+	// Convert to local coordinates (before rotation) by dividing by zoom.
+	const rotationOffsetLocal = padding + rotationGapPx / zoom; // center y of rotation handle
+	const outwardLocal = padding + outwardGapPx / zoom; // distance from item edges to handle centers
 	return (
 		<g
 			data-svg-item-id={item.id}
@@ -112,17 +142,21 @@ export function SelectionOverlay(props: {
 						const handleSize = 8 / zoom;
 						const half = handleSize / 2;
 						const positions = [
+							// Top-left
 							{ x: -outwardLocal, y: -outwardLocal, cursor: "nwse-resize" as const },
+							// Top-right
 							{
 								x: w + outwardLocal,
 								y: -outwardLocal,
 								cursor: "nesw-resize" as const,
 							},
+							// Bottom-left
 							{
 								x: -outwardLocal,
 								y: h + outwardLocal,
 								cursor: "nesw-resize" as const,
 							},
+							// Bottom-right
 							{
 								x: w + outwardLocal,
 								y: h + outwardLocal,

@@ -1,3 +1,32 @@
+// ============================================================================
+// PresenceOverlay.tsx
+//
+// Renders collaborator presence badges anchored to the top-left selection corner
+// (same geometry as SelectionOverlay) for any remote users currently selecting
+// the item. Supports two modes:
+//   * Single user: renders that user's colored badge with initials.
+//   * Multiple users: collapsed summary badge (count). Clicking expands into a
+//     vertical stack of individual badges plus a close (×) badge.
+//
+// Geometry & scaling:
+//   * All measurements are specified in screen pixels then divided by zoom to
+//     achieve screen-constant sizing within the rotated/translated item space.
+//   * Anchor uses the selection padding + outward gap so badges sit just
+//     outside the selection rectangle, consistent with resize handles.
+//   * Rotates with shapes (but not tables) for consistent spatial relation.
+//
+// Performance notes:
+//   * No React state here; expansion state is lifted to parent and passed via
+//     props so this component remains a pure function (easier to memo if needed).
+//   * Active drag presence (in-flight movement) is mirrored to avoid a flicker
+//     caused by layout cache lag.
+//
+// Accessibility / interactions:
+//   * Badges stop propagation on mousedown so dragging the canvas underneath
+//     isn't triggered.
+//   * Expansion click uses pointer events only (SVG <text>/<circle> grouping).
+//
+// ============================================================================
 import React from "react";
 import { FluidTable, Item } from "../../schema/app_schema.js";
 import { Tree } from "fluid-framework";
@@ -32,7 +61,8 @@ export function PresenceOverlay(props: {
 	const w = Math.max(0, b.right - b.left);
 	const h = Math.max(0, b.bottom - b.top);
 	const active = getActiveDragForItem(presence, item.id);
-	// Use active drag coordinates if present for perfectly in-sync visuals
+	// While the item is being actively dragged we substitute presence coordinates
+	// so the badge cluster moves perfectly in sync with the item.
 	if (active) {
 		left = active.x;
 		top = active.y;
@@ -55,15 +85,18 @@ export function PresenceOverlay(props: {
 	const closeExtraGap = 8; // px gap before close button
 
 	// Selection overlay geometry (must mirror SelectionOverlay constants)
-	const selectionPadding = 8; // matches SelectionOverlay padding
-	const outwardGapPx = 2; // matches outward gap used for resize handles
-	// Top-left resize handle center (in local coords) is at (-outwardLocal, -outwardLocal)
+	const selectionPadding = 8; // px screen (same as SelectionOverlay padding)
+	const outwardGapPx = 2; // px screen outward offset for resize handles
+	// The top-left resize handle center (local coords) is positioned at
+	// (-outwardLocal, -outwardLocal). outwardLocal is derived so that after the
+	// shape is scaled by zoom the screen distance matches outwardGapPx.
 	const outwardLocal = selectionPadding + outwardGapPx / zoom;
 
-	// Desired screen-space shift from the handle center: move right a bit & just below
-	// Adjusted per feedback: move left (remove prior +8) and further down a bit
-	const shiftRightPx = -12; // px (moved 4px further left)
-	const shiftDownPx = 18; // px (increase from 12)
+	// Additional positioning offsets (screen px) relative to the handle center.
+	// These provide a visual offset so the badge doesn't overlap the corner
+	// handle region and reads clearly. Tuned via design feedback.
+	const shiftRightPx = -12; // negative shifts left relative to corner
+	const shiftDownPx = 18; // place slightly below corner
 
 	// Convert to local units (pre-scale)
 	const r = badgeRadius / zoom;
@@ -73,7 +106,8 @@ export function PresenceOverlay(props: {
 	const spacing = stackSpacing / zoom;
 	const closeOffset = closeExtraGap / zoom;
 
-	// Anchor position for first badge (single or collapsed group)
+	// Final local anchor position where the first badge (or count) is drawn.
+	// Adjust by the outwardLocal (base corner) plus converted screen shifts.
 	const anchorX = -outwardLocal + shiftRightPx / zoom;
 	const anchorY = -outwardLocal + shiftDownPx / zoom;
 
