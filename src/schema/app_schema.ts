@@ -230,7 +230,10 @@ export class FluidTable extends TableSchema.table({
 				row.removeCell(column);
 			}
 			// Remove the column from the table
-			this.removeColumn(column);
+			const columnIndex = this.columns.indexOf(column);
+			if (columnIndex !== -1) {
+				this.removeColumns(columnIndex);
+			}
 		});
 	}
 
@@ -250,14 +253,16 @@ export class FluidTable extends TableSchema.table({
 	addColumn(): void {
 		Tree.runTransaction(this, () => {
 			const columnCount = this.columns.length;
-			this.insertColumn({
-				column: new FluidColumnSchema({
-					id: crypto.randomUUID(),
-					props: {
-						name: `Column ${columnCount + 1}`,
-						hint: hintValues.string,
-					},
-				}),
+			this.insertColumns({
+				columns: [
+					new FluidColumnSchema({
+						id: crypto.randomUUID(),
+						props: {
+							name: `Column ${columnCount + 1}`,
+							hint: hintValues.string,
+						},
+					}),
+				],
 				index: columnCount,
 			});
 		});
