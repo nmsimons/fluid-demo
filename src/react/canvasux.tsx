@@ -478,7 +478,7 @@ export function Canvas(props: {
 			style={{
 				touchAction: "none",
 				cursor: isPanning ? "grabbing" : undefined,
-				zIndex: 0, // Canvas background - should not interfere with items
+				zIndex: 0, // Canvas background - keep original positioning
 				pointerEvents: "auto", // Allow pointer events but don't force them
 			}}
 			onClick={handleBackgroundClick}

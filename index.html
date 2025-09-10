@@ -46,6 +46,21 @@
 				user-select: none;
 				pointer-events: auto !important;
 			}
+
+			/* iOS-specific fixes that don't affect PC */
+			@supports (-webkit-touch-callout: none) {
+				/* Constrain items below toolbar only on iOS */
+				[data-item-id] {
+					z-index: 50 !important;
+				}
+
+				/* Try to make SVG overlay interactive on iOS */
+				#canvas g[data-svg-item-id] rect,
+				#canvas g[data-svg-item-id] circle {
+					pointer-events: auto !important;
+					touch-action: manipulation !important;
+				}
+			}
 		</style>
 	</head>
 	<body>
