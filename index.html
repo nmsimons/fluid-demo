@@ -53,22 +53,6 @@
 				[data-item-id] {
 					z-index: 50 !important;
 				}
-
-				/* Hide original SVG overlays on iOS and show the dedicated overlay */
-				#canvas g[data-svg-item-id] {
-					display: none !important;
-				}
-
-				/* Enable the iOS-specific overlay */
-				:root {
-					--ios-overlay-display: block;
-				}
-
-				/* Make iOS overlay interactive */
-				#canvas-overlay-ios * {
-					pointer-events: auto !important;
-					touch-action: manipulation !important;
-				}
 			}
 		</style>
 	</head>

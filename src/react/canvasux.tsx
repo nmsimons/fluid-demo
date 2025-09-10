@@ -471,325 +471,290 @@ export function Canvas(props: {
 	}, [inking, root]);
 
 	return (
-		<>
-			<svg
-				id="canvas"
-				ref={svgRef}
-				className="relative flex h-full w-full bg-transparent"
-				style={{
-					touchAction: "none",
-					cursor: isPanning ? "grabbing" : undefined,
-					zIndex: 0, // Canvas background - keep original positioning
-					pointerEvents: "auto", // Allow pointer events but don't force them
-				}}
-				onClick={handleBackgroundClick}
-				onMouseDown={beginPanIfBackground}
-				onPointerDown={(e) => {
-					// Check if something is already being manipulated
-					if (document.documentElement.dataset.manipulating) {
-						handlePointerDown(e);
-						return;
-					}
-
-					// Check if this is a handle interaction - if so, don't interfere
-					const target = e.target as Element | null;
-					const isHandle = target?.closest("[data-resize-handle], [data-rotate-handle]");
-					if (isHandle) {
-						// Let the handle component deal with this event
-						return;
-					}
-
-					// For touch events, check if we're touching an item first
-					if (e.pointerType === "touch") {
-						const isOnItem =
-							target?.closest("[data-item-id]") ||
-							target?.closest("[data-svg-item-id]");
-
-						// Only allow panning if not on an item and not in ink/eraser mode
-						if (!isOnItem && !(inkActive || eraserActive)) {
-							beginPanIfBackground(e);
-						}
-					} else {
-						// For non-touch (mouse), use original logic
-						if (!(inkActive || eraserActive)) beginPanIfBackground(e);
-					}
+		<svg
+			id="canvas"
+			ref={svgRef}
+			className="relative flex h-full w-full bg-transparent"
+			style={{
+				touchAction: "none",
+				cursor: isPanning ? "grabbing" : undefined,
+				zIndex: 0, // Canvas background - keep original positioning
+				pointerEvents: "auto", // Allow pointer events but don't force them
+			}}
+			onClick={handleBackgroundClick}
+			onMouseDown={beginPanIfBackground}
+			onPointerDown={(e) => {
+				// Check if something is already being manipulated
+				if (document.documentElement.dataset.manipulating) {
 					handlePointerDown(e);
-				}}
-				onPointerMove={handlePointerMove}
-				onPointerLeave={handlePointerLeave}
-				onPointerUp={handlePointerUp}
-				onContextMenu={(e) => {
-					// Always suppress default context menu on canvas
-					e.preventDefault();
-				}}
-			>
-				{/* Light dot grid background that pans and zooms with content */}
-				<defs>
-					<pattern
-						id="dot-grid-pattern"
-						patternUnits="userSpaceOnUse"
-						width={48}
-						height={48}
-						patternTransform={`translate(${pan.x} ${pan.y}) scale(${zoom})`}
-					>
-						{/* Keep dot screen size constant: radius scales inverse to zoom with a minimum for visibility */}
-						<circle cx={24} cy={24} r={1 / zoom} fill="#9ca3af" />
-					</pattern>
-				</defs>
-				<rect
-					x={0}
-					y={0}
-					width="100%"
-					height="100%"
-					fill="url(#dot-grid-pattern)"
-					pointerEvents="none"
-				/>
-				{/* Ink rendering layer (moved before items to sit underneath all items) */}
-				<g
-					transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}
-					pointerEvents="none"
-					data-layer="ink"
+					return;
+				}
+
+				// Check if this is a handle interaction - if so, don't interfere
+				const target = e.target as Element | null;
+				const isHandle = target?.closest("[data-resize-handle], [data-rotate-handle]");
+				if (isHandle) {
+					// Let the handle component deal with this event
+					return;
+				}
+
+				// For touch events, check if we're touching an item first
+				if (e.pointerType === "touch") {
+					const isOnItem =
+						target?.closest("[data-item-id]") || target?.closest("[data-svg-item-id]");
+
+					// Only allow panning if not on an item and not in ink/eraser mode
+					if (!isOnItem && !(inkActive || eraserActive)) {
+						beginPanIfBackground(e);
+					}
+				} else {
+					// For non-touch (mouse), use original logic
+					if (!(inkActive || eraserActive)) beginPanIfBackground(e);
+				}
+				handlePointerDown(e);
+			}}
+			onPointerMove={handlePointerMove}
+			onPointerLeave={handlePointerLeave}
+			onPointerUp={handlePointerUp}
+			onContextMenu={(e) => {
+				// Always suppress default context menu on canvas
+				e.preventDefault();
+			}}
+		>
+			{/* Light dot grid background that pans and zooms with content */}
+			<defs>
+				<pattern
+					id="dot-grid-pattern"
+					patternUnits="userSpaceOnUse"
+					width={48}
+					height={48}
+					patternTransform={`translate(${pan.x} ${pan.y}) scale(${zoom})`}
 				>
-					{Array.from(inksIterable).map((s: InkStroke) => {
-						const pts = Array.from(s.simplified ?? s.points) as InkPoint[];
-						if (!pts.length) return null;
-						const base = s.style?.strokeWidth ?? 4;
-						const w = Math.max(0.5, base * zoom);
-						return (
-							<g key={s.id}>
-								<polyline
-									fill="none"
-									stroke={s.style?.strokeColor ?? "#000"}
-									strokeWidth={w}
-									strokeOpacity={s.style?.opacity ?? 1}
-									strokeLinecap={"round"}
-									strokeLinejoin={"round"}
-									vectorEffect="non-scaling-stroke"
-									points={pts.map((p: InkPoint) => `${p.x},${p.y}`).join(" ")}
-								/>
-							</g>
+					{/* Keep dot screen size constant: radius scales inverse to zoom with a minimum for visibility */}
+					<circle cx={24} cy={24} r={1 / zoom} fill="#9ca3af" />
+				</pattern>
+			</defs>
+			<rect
+				x={0}
+				y={0}
+				width="100%"
+				height="100%"
+				fill="url(#dot-grid-pattern)"
+				pointerEvents="none"
+			/>
+			{/* Ink rendering layer (moved before items to sit underneath all items) */}
+			<g
+				transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}
+				pointerEvents="none"
+				data-layer="ink"
+			>
+				{Array.from(inksIterable).map((s: InkStroke) => {
+					const pts = Array.from(s.simplified ?? s.points) as InkPoint[];
+					if (!pts.length) return null;
+					const base = s.style?.strokeWidth ?? 4;
+					const w = Math.max(0.5, base * zoom);
+					return (
+						<g key={s.id}>
+							<polyline
+								fill="none"
+								stroke={s.style?.strokeColor ?? "#000"}
+								strokeWidth={w}
+								strokeOpacity={s.style?.opacity ?? 1}
+								strokeLinecap={"round"}
+								strokeLinejoin={"round"}
+								vectorEffect="non-scaling-stroke"
+								points={pts.map((p: InkPoint) => `${p.x},${p.y}`).join(" ")}
+							/>
+						</g>
+					);
+				})}
+				{/* Eraser hover highlight (draw after base strokes) */}
+				{eraserActive &&
+					eraserHoverId &&
+					(() => {
+						const stroke = Array.from(inksIterable).find(
+							(s: InkStroke) => s.id === eraserHoverId
 						);
-					})}
-					{/* Eraser hover highlight (draw after base strokes) */}
-					{eraserActive &&
-						eraserHoverId &&
-						(() => {
-							const stroke = Array.from(inksIterable).find(
-								(s: InkStroke) => s.id === eraserHoverId
-							);
-							if (!stroke) return null;
-							const pts = Array.from(
-								stroke.simplified ?? stroke.points
-							) as InkPoint[];
-							if (!pts.length) return null;
-							return (
-								<polyline
-									key={`hover-${stroke.id}`}
-									fill="none"
-									stroke="#dc2626"
-									strokeWidth={Math.max(
-										0.5,
-										(stroke.style?.strokeWidth ?? 4) * zoom + 2
-									)}
-									strokeOpacity={0.9}
-									strokeLinecap="round"
-									strokeLinejoin="round"
-									vectorEffect="non-scaling-stroke"
-									strokeDasharray="4 3"
-									points={pts.map((p: InkPoint) => `${p.x},${p.y}`).join(" ")}
-								/>
-							);
-						})()}
-					{/* Remote ephemeral strokes */}
-					{presence.ink?.getRemoteStrokes().map((r) => {
-						const pts = r.stroke.points;
+						if (!stroke) return null;
+						const pts = Array.from(stroke.simplified ?? stroke.points) as InkPoint[];
 						if (!pts.length) return null;
-						const w = Math.max(0.5, r.stroke.width * zoom);
 						return (
 							<polyline
-								key={`ephemeral-${r.attendeeId}`}
+								key={`hover-${stroke.id}`}
 								fill="none"
-								stroke={r.stroke.color}
-								strokeWidth={w}
-								strokeOpacity={0.4}
+								stroke="#dc2626"
+								strokeWidth={Math.max(
+									0.5,
+									(stroke.style?.strokeWidth ?? 4) * zoom + 2
+								)}
+								strokeOpacity={0.9}
 								strokeLinecap="round"
 								strokeLinejoin="round"
 								vectorEffect="non-scaling-stroke"
-								points={pts.map((p) => `${p.x},${p.y}`).join(" ")}
+								strokeDasharray="4 3"
+								points={pts.map((p: InkPoint) => `${p.x},${p.y}`).join(" ")}
 							/>
 						);
-					})}
-					{/* Local ephemeral (if drawing) */}
-					{inking && tempPointsRef.current.length > 0 && (
+					})()}
+				{/* Remote ephemeral strokes */}
+				{presence.ink?.getRemoteStrokes().map((r) => {
+					const pts = r.stroke.points;
+					if (!pts.length) return null;
+					const w = Math.max(0.5, r.stroke.width * zoom);
+					return (
 						<polyline
-							key="local-ephemeral"
+							key={`ephemeral-${r.attendeeId}`}
 							fill="none"
-							stroke={inkColor}
-							strokeWidth={Math.max(0.5, inkWidth * zoom)}
-							strokeOpacity={0.7}
+							stroke={r.stroke.color}
+							strokeWidth={w}
+							strokeOpacity={0.4}
 							strokeLinecap="round"
 							strokeLinejoin="round"
 							vectorEffect="non-scaling-stroke"
-							points={tempPointsRef.current.map((p) => `${p.x},${p.y}`).join(" ")}
+							points={pts.map((p) => `${p.x},${p.y}`).join(" ")}
 						/>
-					)}
-				</g>
-				{/* Full-size HTML layer hosting existing item views */}
-				<foreignObject x={0} y={0} width="100%" height="100%">
-					{/* Full-size wrapper to capture background drags anywhere inside the foreignObject */}
-					<div
-						className="relative h-full w-full"
-						onMouseDown={handleHtmlBackgroundMouseDown}
-						onContextMenu={(e) => {
-							e.preventDefault();
-						}}
-						onDragOver={(e) => {
-							e.preventDefault();
-							e.dataTransfer.dropEffect = "move";
-						}}
-						style={{ userSelect: "none" }}
-					>
-						<ItemsHtmlLayer
-							items={items}
-							canvasPosition={canvasPosition}
-							pan={pan}
+					);
+				})}
+				{/* Local ephemeral (if drawing) */}
+				{inking && tempPointsRef.current.length > 0 && (
+					<polyline
+						key="local-ephemeral"
+						fill="none"
+						stroke={inkColor}
+						strokeWidth={Math.max(0.5, inkWidth * zoom)}
+						strokeOpacity={0.7}
+						strokeLinecap="round"
+						strokeLinejoin="round"
+						vectorEffect="non-scaling-stroke"
+						points={tempPointsRef.current.map((p) => `${p.x},${p.y}`).join(" ")}
+					/>
+				)}
+			</g>
+			{/* Full-size HTML layer hosting existing item views */}
+			<foreignObject x={0} y={0} width="100%" height="100%">
+				{/* Full-size wrapper to capture background drags anywhere inside the foreignObject */}
+				<div
+					className="relative h-full w-full"
+					onMouseDown={handleHtmlBackgroundMouseDown}
+					onContextMenu={(e) => {
+						e.preventDefault();
+					}}
+					onDragOver={(e) => {
+						e.preventDefault();
+						e.dataTransfer.dropEffect = "move";
+					}}
+					style={{ userSelect: "none" }}
+				>
+					<ItemsHtmlLayer
+						items={items}
+						canvasPosition={canvasPosition}
+						pan={pan}
+						zoom={zoom}
+					/>
+				</div>
+			</foreignObject>
+			{/* Per-item SVG wrappers (overlay), built from measured layout */}
+			<g
+				key={`sel-${selKey}-${motionKey}-${layoutVersion}`}
+				transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}
+			>
+				{items.map((item) => {
+					if (!(item instanceof Item)) return null;
+					const isSelected = presence.itemSelection?.testSelection({ id: item.id });
+					if (!isSelected) return null; // only draw selection overlays for selected items
+					return (
+						<SelectionOverlay
+							key={`wrap-${item.id}`}
+							item={item}
+							layout={layout}
+							presence={presence}
 							zoom={zoom}
 						/>
-					</div>
-				</foreignObject>
-				{/* Per-item SVG wrappers (overlay), built from measured layout */}
-				<g
-					key={`sel-${selKey}-${motionKey}-${layoutVersion}`}
-					transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}
-				>
-					{items.map((item) => {
-						if (!(item instanceof Item)) return null;
-						const isSelected = presence.itemSelection?.testSelection({ id: item.id });
-						if (!isSelected) return null; // only draw selection overlays for selected items
-						return (
-							<SelectionOverlay
-								key={`wrap-${item.id}`}
-								item={item}
-								layout={layout}
-								presence={presence}
-								zoom={zoom}
-							/>
-						);
-					})}
-				</g>
-				{/* Presence indicators overlay for all items with remote selections */}
-				<g
-					key={`presence-${selKey}-${motionKey}-${layoutVersion}`}
-					transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}
-				>
-					{items.map((item) => {
-						if (!(item instanceof Item)) return null;
-						const remoteIds =
-							presence.itemSelection?.testRemoteSelection({ id: item.id }) ?? [];
-						if (!remoteIds.length) return null;
-						const isExpanded = expandedPresence.has(item.id);
-						const toggleExpanded = (e: React.MouseEvent) => {
-							e.stopPropagation();
-							setExpandedPresence((prev) => {
-								const next = new Set(prev);
-								if (next.has(item.id)) next.delete(item.id);
-								else next.add(item.id);
-								return next;
-							});
-						};
-						return (
-							<PresenceOverlay
-								key={`presence-${item.id}`}
-								item={item}
-								layout={layout}
-								presence={presence}
-								remoteIds={remoteIds}
-								zoom={zoom}
-								getInitials={getInitials}
-								getUserColor={getUserColor}
-								expanded={isExpanded}
-								onToggleExpanded={toggleExpanded}
-							/>
-						);
-					})}
-				</g>
-				{/* Comment indicators (zoom-invariant) */}
-				<g
-					key={`comments-${selKey}-${motionKey}-${layoutVersion}`}
-					transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}
-				>
-					{items.map((item) => {
-						if (!(item instanceof Item)) return null;
-						const isSelected =
-							presence.itemSelection?.testSelection({ id: item.id }) ?? false;
-						return (
-							<CommentOverlay
-								key={`comment-${item.id}`}
-								item={item}
-								layout={layout}
-								zoom={zoom}
-								commentPaneVisible={commentPaneVisible}
-								selected={isSelected}
-								presence={presence}
-							/>
-						);
-					})}
-				</g>
-				{/* Screen-space cursor overlay */}
-				{cursor.visible && (inkActive || eraserActive) && (
-					<g pointerEvents="none">
-						{(() => {
-							// For ink: radius is half of actual stroke width in screen space.
-							// stroke width rendered is zoom * inkWidth (but we clamp min visually earlier when drawing ephemeral lines)
-							const screenStrokeWidth = inkWidth * zoom;
-							const r = eraserActive ? 12 : Math.max(2, screenStrokeWidth / 2);
-							const stroke = eraserActive ? "#dc2626" : inkColor;
-							const fill = eraserActive ? "rgba(220,38,38,0.08)" : `${inkColor}22`; // light tint
-							return (
-								<circle
-									cx={cursor.x}
-									cy={cursor.y}
-									r={r}
-									fill={fill}
-									stroke={stroke}
-									strokeDasharray={eraserActive ? "4 3" : undefined}
-									strokeWidth={1}
-								/>
-							);
-						})()}
-					</g>
-				)}
-			</svg>
-			{/* iOS-specific overlay SVG positioned above everything */}
-			<svg
-				id="canvas-overlay-ios"
-				className="absolute inset-0 pointer-events-none"
-				style={{
-					zIndex: 200,
-					display: "var(--ios-overlay-display, none)",
-				}}
+					);
+				})}
+			</g>
+			{/* Presence indicators overlay for all items with remote selections */}
+			<g
+				key={`presence-${selKey}-${motionKey}-${layoutVersion}`}
+				transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}
 			>
-				<g
-					key={`ios-sel-${selKey}-${motionKey}-${layoutVersion}`}
-					transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}
-					style={{ pointerEvents: "auto" }}
-				>
-					{items.map((item) => {
-						if (!(item instanceof Item)) return null;
-						const isSelected = presence.itemSelection?.testSelection({ id: item.id });
-						if (!isSelected) return null;
+				{items.map((item) => {
+					if (!(item instanceof Item)) return null;
+					const remoteIds =
+						presence.itemSelection?.testRemoteSelection({ id: item.id }) ?? [];
+					if (!remoteIds.length) return null;
+					const isExpanded = expandedPresence.has(item.id);
+					const toggleExpanded = (e: React.MouseEvent) => {
+						e.stopPropagation();
+						setExpandedPresence((prev) => {
+							const next = new Set(prev);
+							if (next.has(item.id)) next.delete(item.id);
+							else next.add(item.id);
+							return next;
+						});
+					};
+					return (
+						<PresenceOverlay
+							key={`presence-${item.id}`}
+							item={item}
+							layout={layout}
+							presence={presence}
+							remoteIds={remoteIds}
+							zoom={zoom}
+							getInitials={getInitials}
+							getUserColor={getUserColor}
+							expanded={isExpanded}
+							onToggleExpanded={toggleExpanded}
+						/>
+					);
+				})}
+			</g>
+			{/* Comment indicators (zoom-invariant) */}
+			<g
+				key={`comments-${selKey}-${motionKey}-${layoutVersion}`}
+				transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}
+			>
+				{items.map((item) => {
+					if (!(item instanceof Item)) return null;
+					const isSelected =
+						presence.itemSelection?.testSelection({ id: item.id }) ?? false;
+					return (
+						<CommentOverlay
+							key={`comment-${item.id}`}
+							item={item}
+							layout={layout}
+							zoom={zoom}
+							commentPaneVisible={commentPaneVisible}
+							selected={isSelected}
+							presence={presence}
+						/>
+					);
+				})}
+			</g>
+			{/* Screen-space cursor overlay */}
+			{cursor.visible && (inkActive || eraserActive) && (
+				<g pointerEvents="none">
+					{(() => {
+						// For ink: radius is half of actual stroke width in screen space.
+						// stroke width rendered is zoom * inkWidth (but we clamp min visually earlier when drawing ephemeral lines)
+						const screenStrokeWidth = inkWidth * zoom;
+						const r = eraserActive ? 12 : Math.max(2, screenStrokeWidth / 2);
+						const stroke = eraserActive ? "#dc2626" : inkColor;
+						const fill = eraserActive ? "rgba(220,38,38,0.08)" : `${inkColor}22`; // light tint
 						return (
-							<SelectionOverlay
-								key={`ios-wrap-${item.id}`}
-								item={item}
-								layout={layout}
-								presence={presence}
-								zoom={zoom}
+							<circle
+								cx={cursor.x}
+								cy={cursor.y}
+								r={r}
+								fill={fill}
+								stroke={stroke}
+								strokeDasharray={eraserActive ? "4 3" : undefined}
+								strokeWidth={1}
 							/>
 						);
-					})}
+					})()}
 				</g>
-			</svg>
-		</>
+			)}
+		</svg>
 	);
 }
