@@ -29,7 +29,7 @@
 				}
 			}
 
-			/* Ensure toolbar buttons work on iOS */
+			/* Keep only essential iOS toolbar fixes */
 			.fui-Toolbar button,
 			[role="button"] {
 				touch-action: manipulation !important;
@@ -37,39 +37,14 @@
 				pointer-events: auto !important;
 			}
 
-			/* SVG overlay handles should have highest priority within canvas area */
-			#canvas g[transform] rect[cursor] {
-				pointer-events: auto !important;
-				cursor: inherit !important;
-				/* iOS touch specific properties */
-				touch-action: manipulation !important;
-				-webkit-touch-callout: none !important;
-				-webkit-user-select: none !important;
-				user-select: none !important;
-			}
-
+			/* Essential handle interaction for iOS */
 			[data-resize-handle],
 			[data-rotate-handle] {
 				touch-action: manipulation !important;
 				-webkit-touch-callout: none;
 				-webkit-user-select: none;
 				user-select: none;
-				/* Ensure handles capture all pointer events */
 				pointer-events: auto !important;
-			}
-			/* Ensure handles are properly sized for touch on iOS */
-			[data-resize-handle] {
-				min-width: 44px;
-				min-height: 44px;
-			}
-			[data-rotate-handle] {
-				min-width: 44px;
-				min-height: 44px;
-			}
-			/* Prevent any canvas interactions when touching handles */
-			[data-resize-handle] *,
-			[data-rotate-handle] * {
-				pointer-events: none;
 			}
 		</style>
 	</head>

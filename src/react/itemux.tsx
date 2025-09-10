@@ -848,13 +848,13 @@ export function RemoteSelectionIndicators({
 		return (
 			<div
 				className="absolute pointer-events-none"
-				style={{ top: 0, right: 0, zIndex: 1001 }}
+				style={{ top: 0, right: 0, zIndex: 1005 }}
 			>
 				<RemoteUserIndicator user={users[0]} index={0} />
 			</div>
 		);
 	return (
-		<div className="absolute" style={{ top: 0, right: 0, zIndex: 1001 }}>
+		<div className="absolute" style={{ top: 0, right: 0, zIndex: 1005 }}>
 			{expanded ? (
 				<div className="pointer-events-none relative">
 					{users.map((u, i) => (
@@ -875,7 +875,7 @@ export function RemoteSelectionIndicators({
 						style={{
 							top: -12,
 							right: -12 - users.length * 26,
-							zIndex: 1002,
+							zIndex: 1006,
 							transform: `scale(${expanded ? 1 : 0})`,
 							opacity: expanded ? 1 : 0,
 							transitionDelay: `${users.length * 50}ms`,
@@ -932,7 +932,7 @@ function UserCountBadge({
 				position: "absolute",
 				top: -12,
 				right: -12,
-				zIndex: 1001,
+				zIndex: 1005,
 			}}
 			title={tip}
 			onClick={(e) => {
@@ -964,7 +964,7 @@ function RemoteUserIndicator({
 				position: "absolute",
 				top: -12,
 				right: -12 - off,
-				zIndex: 1001,
+				zIndex: 1005,
 				fontSize: 10,
 				lineHeight: "1",
 			}}
