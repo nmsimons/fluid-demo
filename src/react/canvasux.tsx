@@ -475,8 +475,25 @@ export function Canvas(props: {
 			onClick={handleBackgroundClick}
 			onMouseDown={beginPanIfBackground}
 			onPointerDown={(e) => {
-				// allow right-click or touch single-finger pan when not in ink / eraser mode
-				if (!(inkActive || eraserActive)) beginPanIfBackground(e);
+				// Check if something is already being manipulated
+				if (document.documentElement.dataset.manipulating) {
+					handlePointerDown(e);
+					return;
+				}
+				
+				// For touch events, check if we're touching an item first
+				if (e.pointerType === "touch") {
+					const target = e.target as Element | null;
+					const isOnItem = target?.closest("[data-item-id]") || target?.closest("[data-svg-item-id]");
+					
+					// Only allow panning if not on an item and not in ink/eraser mode
+					if (!isOnItem && !(inkActive || eraserActive)) {
+						beginPanIfBackground(e);
+					}
+				} else {
+					// For non-touch (mouse), use original logic
+					if (!(inkActive || eraserActive)) beginPanIfBackground(e);
+				}
 				handlePointerDown(e);
 			}}
 			onPointerMove={handlePointerMove}

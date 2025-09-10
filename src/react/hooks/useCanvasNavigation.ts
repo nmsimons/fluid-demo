@@ -159,6 +159,7 @@ export function useCanvasNavigation(params: {
 			if (presence.drag.state.local || presence.resize.state?.local) return;
 			if (tgt?.closest("[data-svg-item-id]")) return;
 			if (tgt?.closest("[data-item-id]")) return;
+			
 			e.preventDefault();
 			setIsPanning(true);
 			lastPos.current = { x: e.clientX, y: e.clientY };
@@ -241,6 +242,11 @@ export function useCanvasNavigation(params: {
 		if (!svg) return;
 		const handlePointerDown = (e: PointerEvent) => {
 			if (e.pointerType !== "touch") return;
+			
+			// Skip if touching an item - let the item handle its own dragging
+			const target = e.target as Element | null;
+			if (target?.closest("[data-item-id]") || target?.closest("[data-svg-item-id]")) return;
+			
 			activeTouches.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
 			if (activeTouches.current.size === 2) {
 				// Initialize pinch
@@ -261,6 +267,11 @@ export function useCanvasNavigation(params: {
 		const handlePointerMove = (e: PointerEvent) => {
 			if (e.pointerType !== "touch") return;
 			if (!activeTouches.current.has(e.pointerId)) return;
+			
+			// Skip if touching an item - let the item handle its own dragging
+			const target = e.target as Element | null;
+			if (target?.closest("[data-item-id]") || target?.closest("[data-svg-item-id]")) return;
+			
 			activeTouches.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
 			if (pinchState.current && activeTouches.current.size === 2) {
 				const pts = Array.from(activeTouches.current.values());

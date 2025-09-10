@@ -255,10 +255,20 @@ export function ItemView(props: {
 	}
 	const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
 		if (e.button !== 0) return;
+		
+		// For touch events, only allow non-primary pointers (second finger in multi-touch)
+		// This prevents single-finger interference while allowing two-finger item drag
+		if (e.pointerType === "touch" && e.isPrimary) {
+			// Primary touch (first finger) - don't start item drag to prevent interference
+			// with content interaction, but allow canvas navigation to handle it
+			return;
+		}
+		
 		const targetEl = e.target as HTMLElement;
 		const interactive = !!targetEl.closest(
 			'textarea, input, select, button, [contenteditable="true"], .dropdown, .menu'
 		);
+		
 		// Only stop propagation for non-interactive regions so table/header buttons & dropdowns still fire.
 		if (!interactive) {
 			e.stopPropagation();
@@ -277,7 +287,10 @@ export function ItemView(props: {
 		const THRESHOLD_BASE = 4;
 		const docMove = (ev: PointerEvent) => {
 			const st = dragRef.current;
-			if (!st || st.pointerId !== e.pointerId) return;
+			if (!st || st.pointerId !== ev.pointerId) {
+				console.log(`docMove early return: st=${!!st}, storedPointerId=${st?.pointerId}, eventPointerId=${ev.pointerId}, pointerType=${ev.pointerType}`);
+				return;
+			}
 			const cur = coordsCanvas(ev);
 			// Absolute deltas in canvas (model) units. We don't accumulate over time;
 			// instead we compute from the original pointer-down each move. This
@@ -292,9 +305,12 @@ export function ItemView(props: {
 				const threshold = st.interactiveStart ? THRESHOLD_BASE * 2 : THRESHOLD_BASE; // more intent needed if started in input
 				if (Math.hypot(dx, dy) < threshold) return; // not yet a drag
 				st.started = true;
+				console.log(`Drag started: pointerType=${ev.pointerType}, interactive=${st.interactiveStart}`);
 				document.documentElement.dataset.manipulating = "1";
+				
 				// Prevent default now (stop text selection / scrolling while dragging)
 				ev.preventDefault();
+				
 				// Capture pointer only once drag has actually begun to not interfere with click activation
 				try {
 					(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
@@ -315,9 +331,10 @@ export function ItemView(props: {
 				});
 			}
 		};
-		const finish = () => {
+		const finish = (ev?: PointerEvent) => {
 			const st = dragRef.current;
-			if (!st || st.pointerId !== e.pointerId) return;
+			if (!st || (ev && st.pointerId !== ev.pointerId)) return;
+			console.log(`Drag finish called, started: ${st.started}, pointerType: ${ev?.pointerType || 'unknown'}, interactive: ${st.interactiveStart}`);
 			if (st.started) {
 				const cur = { x: st.startItemX, y: st.startItemY };
 				const dragState = presence.drag.state.local;
@@ -351,6 +368,7 @@ export function ItemView(props: {
 		document.addEventListener("pointermove", docMove);
 		document.addEventListener("pointerup", finish);
 		document.addEventListener("pointercancel", finish);
+		document.addEventListener("lostpointercapture", finish);
 	};
 	// No-op handlers required because we attach to document
 	const onPointerMove = () => {};
