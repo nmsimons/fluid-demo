@@ -2,8 +2,18 @@
 <html lang="en">
 	<head>
 		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover" />
 		<title>Fluid Framework Demo</title>
+		<style>
+			/* iOS touch optimizations */
+			* {
+				-webkit-tap-highlight-color: transparent;
+			}
+			[data-resize-handle], [data-rotate-handle] {
+				touch-action: manipulation;
+				-webkit-touch-callout: none;
+			}
+		</style>
 	</head>
 	<body>
 		<div id="root"></div>

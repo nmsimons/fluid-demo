@@ -256,18 +256,28 @@ export function ItemView(props: {
 	const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
 		if (e.button !== 0) return;
 
-		// For touch events, only allow non-primary pointers (second finger in multi-touch)
-		// This prevents single-finger interference while allowing two-finger item drag
-		if (e.pointerType === "touch" && e.isPrimary) {
-			// Primary touch (first finger) - don't start item drag to prevent interference
-			// with content interaction, but allow canvas navigation to handle it
-			return;
-		}
-
 		const targetEl = e.target as HTMLElement;
 		const interactive = !!targetEl.closest(
 			'textarea, input, select, button, [contenteditable="true"], .dropdown, .menu'
 		);
+		
+		// Check if this is a touch interaction with UI handles (resize/rotate)
+		const isUIHandle = !!targetEl.closest('[data-resize-handle], [data-rotate-handle]');
+
+		// For touch events, be selective about what we allow:
+		// - Always allow UI handles (resize/rotate) for single-finger interaction on iOS
+		// - Block primary touch on content areas to prevent interference
+		// - Allow non-primary touch (second finger) for item dragging
+		if (e.pointerType === "touch" && e.isPrimary && !isUIHandle) {
+			// Primary touch on non-handle elements - don't start item drag to prevent interference
+			// with content interaction, but allow canvas navigation to handle it
+			return;
+		}
+
+		// For iOS Safari, be more aggressive about preventing default on handles
+		if (e.pointerType === "touch" && isUIHandle) {
+			e.preventDefault();
+		}
 
 		// Only stop propagation for non-interactive regions so table/header buttons & dropdowns still fire.
 		if (!interactive) {
