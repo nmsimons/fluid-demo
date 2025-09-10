@@ -198,58 +198,68 @@ export function NewColumnButton(props: { table: FluidTable }): JSX.Element {
 
 		// Add a new column to the table
 		if (index % 5 === 1) {
-			table.insertColumn({
-				column: new FluidColumnSchema({
-					id: crypto.randomUUID(),
-					props: {
-						name,
-						hint: hintValues.string,
-					},
-				}),
+			table.insertColumns({
+				columns: [
+					new FluidColumnSchema({
+						id: crypto.randomUUID(),
+						props: {
+							name,
+							hint: hintValues.string,
+						},
+					}),
+				],
 				index: table.columns.length,
 			});
 		} else if (index % 5 === 2) {
-			table.insertColumn({
-				column: new FluidColumnSchema({
-					id: crypto.randomUUID(),
-					props: {
-						name,
-						hint: hintValues.number,
-					},
-				}),
+			table.insertColumns({
+				columns: [
+					new FluidColumnSchema({
+						id: crypto.randomUUID(),
+						props: {
+							name,
+							hint: hintValues.number,
+						},
+					}),
+				],
 				index: table.columns.length,
 			});
 		} else if (index % 5 === 3) {
-			table.insertColumn({
-				column: new FluidColumnSchema({
-					id: crypto.randomUUID(),
-					props: {
-						name,
-						hint: hintValues.boolean,
-					},
-				}),
+			table.insertColumns({
+				columns: [
+					new FluidColumnSchema({
+						id: crypto.randomUUID(),
+						props: {
+							name,
+							hint: hintValues.boolean,
+						},
+					}),
+				],
 				index: table.columns.length,
 			});
 		} else if (index % 5 === 4) {
-			table.insertColumn({
-				column: new FluidColumnSchema({
-					id: crypto.randomUUID(),
-					props: {
-						name,
-						hint: hintValues.vote,
-					},
-				}),
+			table.insertColumns({
+				columns: [
+					new FluidColumnSchema({
+						id: crypto.randomUUID(),
+						props: {
+							name,
+							hint: hintValues.vote,
+						},
+					}),
+				],
 				index: table.columns.length,
 			});
 		} else {
-			table.insertColumn({
-				column: new FluidColumnSchema({
-					id: crypto.randomUUID(),
-					props: {
-						name,
-						hint: hintValues.date,
-					},
-				}),
+			table.insertColumns({
+				columns: [
+					new FluidColumnSchema({
+						id: crypto.randomUUID(),
+						props: {
+							name,
+							hint: hintValues.date,
+						},
+					}),
+				],
 				index: table.columns.length,
 			});
 		}
@@ -312,7 +322,7 @@ export function MoveSelectedRowsButton(props: {
 
 					if (newIndex !== currentIndex) {
 						// Remove the row and re-insert it at the new position
-						table.removeRow(row);
+						table.removeRows([row]);
 						table.insertRows({ rows: [row], index: newIndex });
 					}
 				}
@@ -395,8 +405,8 @@ export function MoveSelectedColumnsButton(props: {
 
 					if (newIndex !== currentIndex) {
 						// Remove the column and re-insert it at the new position
-						table.removeColumn(column);
-						table.insertColumn({ column, index: newIndex });
+						table.removeColumns(currentIndex);
+						table.insertColumns({ columns: [column], index: newIndex });
 					}
 				}
 			}
@@ -554,7 +564,7 @@ export function DeleteAllRowsButton(props: { table: FluidTable }): JSX.Element {
 
 	const handleClick = (e: React.MouseEvent) => {
 		e.stopPropagation();
-		props.table.removeAllRows();
+		props.table.removeRows([...props.table.rows]);
 	};
 	return (
 		<TooltipButton
