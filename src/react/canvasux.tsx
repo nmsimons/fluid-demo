@@ -480,12 +480,13 @@ export function Canvas(props: {
 					handlePointerDown(e);
 					return;
 				}
-				
+
 				// For touch events, check if we're touching an item first
 				if (e.pointerType === "touch") {
 					const target = e.target as Element | null;
-					const isOnItem = target?.closest("[data-item-id]") || target?.closest("[data-svg-item-id]");
-					
+					const isOnItem =
+						target?.closest("[data-item-id]") || target?.closest("[data-svg-item-id]");
+
 					// Only allow panning if not on an item and not in ink/eraser mode
 					if (!isOnItem && !(inkActive || eraserActive)) {
 						beginPanIfBackground(e);
