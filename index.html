@@ -12,6 +12,25 @@
 			* {
 				-webkit-tap-highlight-color: transparent;
 			}
+
+			/* Ensure SVG canvas is above HTML content */
+			#canvas {
+				position: relative;
+				z-index: 1000 !important;
+				pointer-events: auto !important;
+			}
+
+			/* SVG overlay handles should have highest priority */
+			#canvas g[transform] rect[cursor] {
+				pointer-events: auto !important;
+				cursor: inherit !important;
+				/* iOS touch specific properties */
+				touch-action: manipulation !important;
+				-webkit-touch-callout: none !important;
+				-webkit-user-select: none !important;
+				user-select: none !important;
+			}
+
 			[data-resize-handle],
 			[data-rotate-handle] {
 				touch-action: manipulation !important;

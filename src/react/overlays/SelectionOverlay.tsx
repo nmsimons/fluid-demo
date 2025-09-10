@@ -129,6 +129,11 @@ export function SelectionOverlay(props: {
 									cancelable: true,
 									clientX: e.clientX,
 									clientY: e.clientY,
+									pointerType: e.pointerType,
+									pointerId: e.pointerId,
+									button: 0,
+									buttons: 1,
+									isPrimary: e.isPrimary,
 								});
 								target.dispatchEvent(evt);
 							}
@@ -191,6 +196,11 @@ export function SelectionOverlay(props: {
 											cancelable: true,
 											clientX: e.clientX,
 											clientY: e.clientY,
+											pointerType: e.pointerType,
+											pointerId: e.pointerId,
+											button: 0,
+											buttons: 1,
+											isPrimary: e.isPrimary,
 										});
 										handle.dispatchEvent(evt);
 									}
