@@ -263,20 +263,36 @@ export function ItemView(props: {
 
 		// Check if this is a touch interaction with UI handles (resize/rotate)
 		const isUIHandle = !!targetEl.closest("[data-resize-handle], [data-rotate-handle]");
+		
+		// Additional check for direct handle elements
+		const isDirectHandle = targetEl.hasAttribute('data-resize-handle') || 
+		                      targetEl.hasAttribute('data-rotate-handle') ||
+		                      targetEl.parentElement?.hasAttribute('data-resize-handle') ||
+		                      targetEl.parentElement?.hasAttribute('data-rotate-handle');
+
+		const isAnyHandle = isUIHandle || isDirectHandle;
 
 		// For touch events, be selective about what we allow:
 		// - Always allow UI handles (resize/rotate) for single-finger interaction on iOS
 		// - Block primary touch on content areas to prevent interference
 		// - Allow non-primary touch (second finger) for item dragging
-		if (e.pointerType === "touch" && e.isPrimary && !isUIHandle) {
+		if (e.pointerType === "touch" && e.isPrimary && !isAnyHandle) {
 			// Primary touch on non-handle elements - don't start item drag to prevent interference
 			// with content interaction, but allow canvas navigation to handle it
 			return;
 		}
 
 		// For iOS Safari, be more aggressive about preventing default on handles
-		if (e.pointerType === "touch" && isUIHandle) {
+		// and ensure touch events are properly handled
+		if (e.pointerType === "touch" && isAnyHandle) {
 			e.preventDefault();
+			e.stopPropagation();
+			// Ensure pointer capture works on iOS
+			try {
+				e.currentTarget.setPointerCapture(e.pointerId);
+			} catch {
+				/* ignore if not supported */
+			}
 		}
 
 		// Only stop propagation for non-interactive regions so table/header buttons & dropdowns still fire.
@@ -609,6 +625,7 @@ export function RotateHandle({ item }: { item: Item }) {
 		document.addEventListener("pointerup", up, { once: true });
 	};
 	const size = active ? 22 : 18;
+	const touchSize = 44; // Apple's recommended minimum touch target
 	return (
 		<div
 			className="absolute flex flex-row w-full justify-center items-center"
@@ -616,6 +633,18 @@ export function RotateHandle({ item }: { item: Item }) {
 			onPointerDown={onPointerDown}
 			data-rotate-handle
 		>
+			{/* Larger invisible touch area */}
+			<div
+				style={{
+					width: touchSize,
+					height: touchSize,
+					position: "absolute",
+					top: 80 - touchSize / 2,
+					left: "50%",
+					transform: "translateX(-50%)",
+					backgroundColor: "transparent",
+				}}
+			/>
 			{/* Visible knob */}
 			<div
 				className="bg-black shadow-lg z-50 cursor-grab"
@@ -627,6 +656,7 @@ export function RotateHandle({ item }: { item: Item }) {
 					top: 80 - size / 2,
 					left: "50%",
 					transform: "translateX(-50%)",
+					pointerEvents: "none", // Let the larger touch area handle events
 				}}
 			/>
 		</div>

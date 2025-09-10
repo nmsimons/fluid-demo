@@ -16,6 +16,17 @@
 			[data-rotate-handle] {
 				touch-action: manipulation;
 				-webkit-touch-callout: none;
+				-webkit-user-select: none;
+				user-select: none;
+			}
+			/* Ensure handles are properly sized for touch on iOS */
+			[data-resize-handle] {
+				min-width: 44px;
+				min-height: 44px;
+			}
+			[data-rotate-handle] {
+				min-width: 44px;
+				min-height: 44px;
 			}
 		</style>
 	</head>
