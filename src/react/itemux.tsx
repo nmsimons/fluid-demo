@@ -260,9 +260,9 @@ export function ItemView(props: {
 		const interactive = !!targetEl.closest(
 			'textarea, input, select, button, [contenteditable="true"], .dropdown, .menu'
 		);
-		
+
 		// Check if this is a touch interaction with UI handles (resize/rotate)
-		const isUIHandle = !!targetEl.closest('[data-resize-handle], [data-rotate-handle]');
+		const isUIHandle = !!targetEl.closest("[data-resize-handle], [data-rotate-handle]");
 
 		// For touch events, be selective about what we allow:
 		// - Always allow UI handles (resize/rotate) for single-finger interaction on iOS
