@@ -478,7 +478,8 @@ export function Canvas(props: {
 			style={{
 				touchAction: "none",
 				cursor: isPanning ? "grabbing" : undefined,
-				zIndex: 5000, // Ensure SVG overlay is above most content but below toolbar
+				zIndex: 1000, // Above content but below toolbar (z-9999)
+				pointerEvents: "auto", // Allow pointer events but don't force them
 			}}
 			onClick={handleBackgroundClick}
 			onMouseDown={beginPanIfBackground}

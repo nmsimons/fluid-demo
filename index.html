@@ -4,7 +4,7 @@
 		<meta charset="UTF-8" />
 		<meta
 			name="viewport"
-			content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover"
+			content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content"
 		/>
 		<title>Fluid Framework Demo</title>
 		<style>
@@ -13,14 +13,31 @@
 				-webkit-tap-highlight-color: transparent;
 			}
 
-			/* Ensure SVG canvas is above HTML content */
-			#canvas {
-				position: relative;
-				z-index: 1000 !important;
+			/* iOS Safari specific fixes */
+			@supports (-webkit-touch-callout: none) {
+				body {
+					-webkit-user-select: none;
+					user-select: none;
+				}
+
+				/* Allow text selection in specific areas */
+				input,
+				textarea,
+				[contenteditable] {
+					-webkit-user-select: auto;
+					user-select: auto;
+				}
+			}
+
+			/* Ensure toolbar buttons work on iOS */
+			.fui-Toolbar button,
+			[role="button"] {
+				touch-action: manipulation !important;
+				-webkit-touch-callout: none !important;
 				pointer-events: auto !important;
 			}
 
-			/* SVG overlay handles should have highest priority */
+			/* SVG overlay handles should have highest priority within canvas area */
 			#canvas g[transform] rect[cursor] {
 				pointer-events: auto !important;
 				cursor: inherit !important;
