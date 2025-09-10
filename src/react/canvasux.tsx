@@ -256,9 +256,16 @@ export function Canvas(props: {
 
 	// Begin inking on left button background press (not on items)
 	const handlePointerDown = (e: React.PointerEvent) => {
+		// Check if this is a handle interaction - if so, don't start ink/erase
+		const targetEl = e.target as Element | null;
+		const isHandle = targetEl?.closest("[data-resize-handle], [data-rotate-handle]");
+		if (isHandle) {
+			// Let the handle component deal with this event
+			return;
+		}
+
 		// Manage three mutually exclusive interactions: inking, erasing, panning(right mouse handled upstream).
 		if (inkActive || eraserActive) {
-			const targetEl = e.target as Element | null;
 			if (targetEl?.closest("[data-item-id], [data-svg-item-id]")) {
 				// Suppress cursor over items
 				setCursor((c) => ({ ...c, visible: false }));
@@ -481,9 +488,16 @@ export function Canvas(props: {
 					return;
 				}
 
+				// Check if this is a handle interaction - if so, don't interfere
+				const target = e.target as Element | null;
+				const isHandle = target?.closest("[data-resize-handle], [data-rotate-handle]");
+				if (isHandle) {
+					// Let the handle component deal with this event
+					return;
+				}
+
 				// For touch events, check if we're touching an item first
 				if (e.pointerType === "touch") {
-					const target = e.target as Element | null;
 					const isOnItem =
 						target?.closest("[data-item-id]") || target?.closest("[data-svg-item-id]");
 

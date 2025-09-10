@@ -263,12 +263,13 @@ export function ItemView(props: {
 
 		// Check if this is a touch interaction with UI handles (resize/rotate)
 		const isUIHandle = !!targetEl.closest("[data-resize-handle], [data-rotate-handle]");
-		
+
 		// Additional check for direct handle elements
-		const isDirectHandle = targetEl.hasAttribute('data-resize-handle') || 
-		                      targetEl.hasAttribute('data-rotate-handle') ||
-		                      targetEl.parentElement?.hasAttribute('data-resize-handle') ||
-		                      targetEl.parentElement?.hasAttribute('data-rotate-handle');
+		const isDirectHandle =
+			targetEl.hasAttribute("data-resize-handle") ||
+			targetEl.hasAttribute("data-rotate-handle") ||
+			targetEl.parentElement?.hasAttribute("data-resize-handle") ||
+			targetEl.parentElement?.hasAttribute("data-rotate-handle");
 
 		const isAnyHandle = isUIHandle || isDirectHandle;
 
@@ -647,7 +648,7 @@ export function RotateHandle({ item }: { item: Item }) {
 			/>
 			{/* Visible knob */}
 			<div
-				className="bg-black shadow-lg z-50 cursor-grab"
+				className="bg-black shadow-lg z-[9998] cursor-grab"
 				style={{
 					width: size,
 					height: size,
@@ -792,7 +793,7 @@ export function CornerResizeHandles({
 		return (
 			<div data-resize-handle style={wrapStyle} onPointerDown={onPointerDown}>
 				<div
-					className="absolute bg-black cursor-nw-resize hover:bg-black shadow-lg z-50"
+					className="absolute bg-black cursor-nw-resize hover:bg-black shadow-lg z-[9998]"
 					style={{
 						width: resizing ? 30 : 26,
 						height: resizing ? 30 : 26,

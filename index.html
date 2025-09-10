@@ -14,10 +14,12 @@
 			}
 			[data-resize-handle],
 			[data-rotate-handle] {
-				touch-action: manipulation;
+				touch-action: manipulation !important;
 				-webkit-touch-callout: none;
 				-webkit-user-select: none;
 				user-select: none;
+				/* Ensure handles capture all pointer events */
+				pointer-events: auto !important;
 			}
 			/* Ensure handles are properly sized for touch on iOS */
 			[data-resize-handle] {
@@ -27,6 +29,11 @@
 			[data-rotate-handle] {
 				min-width: 44px;
 				min-height: 44px;
+			}
+			/* Prevent any canvas interactions when touching handles */
+			[data-resize-handle] *,
+			[data-rotate-handle] * {
+				pointer-events: none;
 			}
 		</style>
 	</head>

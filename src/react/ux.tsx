@@ -273,7 +273,7 @@ export function Header(props: { saved: boolean; connectionState: string }): JSX.
 	const { saved, connectionState } = props;
 
 	return (
-		<div className="h-[48px] flex shrink-0 flex-row items-center justify-between bg-black text-base text-white z-40 w-full text-nowrap">
+		<div className="h-[48px] flex shrink-0 flex-row items-center justify-between bg-black text-base text-white z-[9999] w-full text-nowrap">
 			<div className="flex items-center">
 				<div className="flex ml-2 mr-8">
 					<Text weight="bold">Fluid Framework Demo</Text>
