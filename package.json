@@ -55,7 +55,7 @@
 		"@tanstack/react-table": "^8.20.6",
 		"@tanstack/react-virtual": "^3.13.0",
 		"@vitejs/plugin-react": "^4.3.4",
-		"axios": "^1.7.9",
+		"axios": "^1.11.0",
 		"cross-spawn": "^7.0.6",
 		"dotenv": "^16.4.7",
 		"events": "^3.3.0",
