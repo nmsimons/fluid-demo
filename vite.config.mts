@@ -20,7 +20,14 @@ export default defineConfig(({ mode }) => {
 			hot: true,
 		},
 		define: {
-			"process.env": env,
+			// Only expose specific environment variables that are actually needed
+			"process.env.FLUID_CLIENT": JSON.stringify(env.FLUID_CLIENT),
+			"process.env.AZURE_TENANT_ID": JSON.stringify(env.AZURE_TENANT_ID),
+			"process.env.AZURE_FUNCTION_TOKEN_PROVIDER_URL": JSON.stringify(env.AZURE_FUNCTION_TOKEN_PROVIDER_URL),
+			"process.env.AZURE_ORDERER": JSON.stringify(env.AZURE_ORDERER),
+			"process.env.AZURE_CLIENT_ID": JSON.stringify(env.AZURE_CLIENT_ID),
+			"process.env.AZURE_REDIRECT_URI": JSON.stringify(env.AZURE_REDIRECT_URI),
+			"process.env.NODE_ENV": JSON.stringify(env.NODE_ENV || mode),
 		},
 	};
 });
