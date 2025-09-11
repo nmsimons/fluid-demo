@@ -31,6 +31,7 @@ import { DragManager } from "../utils/presence/Interfaces/DragManager.js";
 import { ResizeManager } from "../utils/presence/Interfaces/ResizeManager.js";
 import { DragAndRotatePackage } from "../utils/presence/drag.js";
 import { ResizePackage } from "../utils/presence/Interfaces/ResizeManager.js";
+import { useSelectionSync, useMultiTypeSelectionSync } from "../utils/eventSubscriptions.js";
 import { TypedSelection } from "../utils/presence/selection.js";
 import { CommentPane, CommentPaneRef } from "./commentux.js";
 import { useTree } from "./hooks/useTree.js";
@@ -146,28 +147,23 @@ export function ReactApp(props: {
 		console.log("View Changed");
 	}, [view]);
 
-	useEffect(() => {
-		const unsubscribe = itemSelection.events.on("localUpdated", () => {
-			const selections = itemSelection.getLocalSelection();
+	// Use unified selection sync for item selection state management
+	useSelectionSync(
+		itemSelection,
+		(selections) => {
 			const selectedIds = selections.map((sel) => sel.id);
-
 			// Update both states for backwards compatibility
 			setSelectedItemIds(selectedIds);
 			setSelectedItemId(selectedIds.length > 0 ? selectedIds[0] : "");
-		});
-		return unsubscribe;
-	}, [view, itemSelection]);
+		},
+		[view]
+	);
 
-	useEffect(() => {
-		const unsubscribe = tableSelection.events.on("localUpdated", () => {
-			const selection = tableSelection.getLocalSelection();
-			const columnSelection = selection.find((sel) => sel.type === "column");
-			const rowSelection = selection.find((sel) => sel.type === "row");
-			setSelectedColumnId(columnSelection?.id ?? "");
-			setSelectedRowId(rowSelection?.id ?? "");
-		});
-		return unsubscribe;
-	}, [tableSelection]);
+	// Use multi-type selection sync for table selection state management
+	useMultiTypeSelectionSync(tableSelection, {
+		column: (selections) => setSelectedColumnId(selections[0]?.id ?? ""),
+		row: (selections) => setSelectedRowId(selections[0]?.id ?? ""),
+	});
 
 	// Keyboard shortcuts
 	const shortcuts = useAppKeyboardShortcuts({

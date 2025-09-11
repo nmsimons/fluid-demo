@@ -3,7 +3,7 @@
  * Licensed under the MIT License.
  */
 
-import React, { JSX, useEffect } from "react";
+import React, { JSX } from "react";
 import {
 	FluidColumn,
 	FluidRow,
@@ -28,6 +28,7 @@ import {
 	TableMoveRightFilled,
 } from "@fluentui/react-icons";
 import { Tree, TreeStatus } from "fluid-framework";
+import { useTableButtonState } from "../utils/eventSubscriptions.js";
 import { selectionType, TypedSelection } from "../utils/presence/selection.js";
 import { SelectionManager } from "../utils/presence/Interfaces/SelectionManager.js";
 import {
@@ -282,19 +283,10 @@ export function MoveSelectedRowsButton(props: {
 
 	useTree(table);
 
-	// Disable the button if there are no selected rows
-	const [disabled, setDisabled] = React.useState(getSelected(selection, "row").length === 0);
-	useEffect(() => {
-		const unsubscribe = selection.events.on("localUpdated", () => {
-			// If the selection is empty, we will disable the button
-			if (getSelected(selection, "row").length === 0) {
-				setDisabled(true);
-			} else {
-				setDisabled(false);
-			}
-		});
-		return unsubscribe;
-	}, []);
+	// Use the unified event subscription utility for button state management
+	const [disabled, setDisabled] = React.useState(true);
+	useTableButtonState(selection, ["row"], setDisabled);
+
 	const handleClick = (e: React.MouseEvent) => {
 		e.stopPropagation();
 		// Get the selected rows from the selection manager
@@ -349,26 +341,10 @@ export function MoveSelectedColumnsButton(props: {
 
 	useTree(table);
 
-	// Disable the button if there are no selected columns
-	// and no selected cells in the table
-	const [disabled, setDisabled] = React.useState(
-		getSelected(selection, "column").length === 0 && getSelected(selection, "cell").length === 0
-	);
+	// Use the unified event subscription utility for multi-type selection button state
+	const [disabled, setDisabled] = React.useState(true);
+	useTableButtonState(selection, ["column", "cell"], setDisabled);
 
-	useEffect(() => {
-		const unsubscribe = selection.events.on("localUpdated", () => {
-			// If the selection is empty, we will disable the button
-			if (
-				getSelected(selection, "column").length === 0 &&
-				getSelected(selection, "cell").length === 0
-			) {
-				setDisabled(true);
-			} else {
-				setDisabled(false);
-			}
-		});
-		return unsubscribe;
-	}, []);
 	const handleClick = (e: React.MouseEvent) => {
 		e.stopPropagation();
 		// Get the selected columns from the selection manager
@@ -431,20 +407,9 @@ export function DeleteSelectedRowsButton(props: {
 
 	useTree(table);
 
-	// Disable the button if there are no selected rows
-	const [disabled, setDisabled] = React.useState(getSelected(selection, "row").length === 0);
-
-	useEffect(() => {
-		const unsubscribe = selection.events.on("localUpdated", () => {
-			// If the selection is empty, we will disable the button
-			if (getSelected(selection, "row").length === 0) {
-				setDisabled(true);
-			} else {
-				setDisabled(false);
-			}
-		});
-		return unsubscribe;
-	}, []);
+	// Use the unified event subscription utility for button state management
+	const [disabled, setDisabled] = React.useState(true);
+	useTableButtonState(selection, ["row"], setDisabled);
 
 	const handleClick = (e: React.MouseEvent) => {
 		e.stopPropagation();
