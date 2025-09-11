@@ -41,7 +41,7 @@
 import React, { useContext, useEffect, useRef, useState } from "react";
 import { clampShapeSize } from "../constants/shape.js";
 import { Tree } from "fluid-framework";
-import { FluidTable, Item, Note, Shape } from "../schema/app_schema.js";
+import { FluidTable, Item, Note } from "../schema/app_schema.js";
 import { PresenceContext } from "./contexts/PresenceContext.js";
 import { useTree, objectIdNumber } from "./hooks/useTree.js";
 import { ShapeView } from "./shapeux.js";
@@ -53,6 +53,7 @@ import { DragAndRotatePackage } from "../utils/presence/drag.js";
 import { ResizePackage } from "../utils/presence/Interfaces/ResizeManager.js";
 import { LayoutContext } from "./hooks/useLayoutManger.js";
 import { ChevronLeft16Filled } from "@fluentui/react-icons";
+import { getContentHandler, getContentType, isShape } from "../utils/contentHandlers.js";
 
 // ============================================================================
 // Helpers
@@ -83,14 +84,7 @@ const initials = (n: string) => {
 	const p = n.trim().split(/\s+/);
 	return p.length === 1 ? p[0][0].toUpperCase() : (p[0][0] + p[p.length - 1][0]).toUpperCase();
 };
-const itemType = (item: Item) =>
-	Tree.is(item.content, Shape)
-		? "shape"
-		: Tree.is(item.content, Note)
-			? "note"
-			: Tree.is(item.content, FluidTable)
-				? "table"
-				: "unknown";
+const itemType = (item: Item) => getContentType(item);
 
 export const calculateCanvasMouseCoordinates = (
 	e: { clientX: number; clientY: number },
@@ -139,7 +133,9 @@ export function ContentElement({
 	shapeProps?: { sizeOverride?: number };
 }) {
 	useTree(item.content);
-	if (Tree.is(item.content, Shape))
+	const handler = getContentHandler(item, shapeProps?.sizeOverride);
+
+	if (handler.type === "shape" && isShape(item)) {
 		return (
 			<ShapeView
 				key={objectIdNumber(item.content)}
@@ -147,10 +143,13 @@ export function ContentElement({
 				sizeOverride={shapeProps?.sizeOverride}
 			/>
 		);
-	if (Tree.is(item.content, Note))
+	}
+	if (handler.type === "note" && Tree.is(item.content, Note)) {
 		return <NoteView key={objectIdNumber(item.content)} note={item.content} />;
-	if (Tree.is(item.content, FluidTable))
+	}
+	if (handler.type === "table" && Tree.is(item.content, FluidTable)) {
 		return <TableView key={objectIdNumber(item.content)} fluidTable={item.content} />;
+	}
 	return <></>;
 }
 
@@ -201,21 +200,18 @@ export function ItemView(props: {
 			...v,
 			left: d.x,
 			top: d.y,
-			transform: itemType(item) === "table" ? "rotate(0)" : `rotate(${d.rotation}deg)`,
+			transform: getContentHandler(item).getRotationTransform(d.rotation),
 		}));
-		const w =
-			intrinsic.current.w ||
-			(Tree.is(item.content, Shape) ? (shapeProps.sizeOverride ?? item.content.size) : 0);
-		const h =
-			intrinsic.current.h ||
-			(Tree.is(item.content, Shape) ? (shapeProps.sizeOverride ?? item.content.size) : 0);
+		const handler = getContentHandler(item, shapeProps.sizeOverride);
+		const w = intrinsic.current.w || handler.getSize();
+		const h = intrinsic.current.h || handler.getSize();
 		// Update the spatial index (layout) so hit-testing / selection overlays can
 		// track live motion. This uses either measured intrinsic size (for table /
 		// note) or shape size. Only performed if dimensions are known.
 		if (w && h) layout.set(item.id, { left: d.x, top: d.y, right: d.x + w, bottom: d.y + h });
 	};
 	const applyResize = (r: ResizePackage | null) => {
-		if (r && r.id === item.id && Tree.is(item.content, Shape)) {
+		if (r && r.id === item.id && getContentHandler(item).canResize()) {
 			// During a resize we shift the item's (x,y) so that scaling occurs around
 			// the geometric center, keeping the visual center stationary while edges
 			// expand / contract uniformly.
@@ -415,8 +411,9 @@ export function ItemView(props: {
 		const measure = () => {
 			let w = 0,
 				h = 0;
-			if (Tree.is(item.content, Shape)) {
-				const size = shapeProps.sizeOverride ?? item.content.size;
+			const handler = getContentHandler(item, shapeProps.sizeOverride);
+			if (handler.type === "shape") {
+				const size = handler.getSize();
 				w = size;
 				h = size;
 			} else {
@@ -676,7 +673,8 @@ export function CornerResizeHandles({
 	padding: number;
 	onResizeEnd?: () => void;
 }) {
-	if (!Tree.is(item.content, Shape)) return <></>;
+	const handler = getContentHandler(item);
+	if (!handler.canResize() || !isShape(item)) return <></>;
 	const shape = item.content;
 	useTree(shape);
 	const presence = useContext(PresenceContext);

@@ -10,6 +10,7 @@ import { useTree } from "./hooks/useTree.js";
 import { TooltipButton } from "./buttonux.js";
 import { PresenceContext } from "./contexts/PresenceContext.js";
 import { CommentPaneContext } from "./ux.js";
+import { getContentHandler } from "../utils/contentHandlers.js";
 import {
 	DismissFilled,
 	CircleRegular,
@@ -257,8 +258,9 @@ function centerLastItem(
 	if (!last) return;
 	let w = estW;
 	let h = estH;
-	if (last.content instanceof Shape) {
-		w = h = last.content.size;
+	const handler = getContentHandler(last);
+	if (handler.type === "shape") {
+		w = h = handler.getSize();
 	}
 	const vw = canvas.width / zoom;
 	const vh = canvas.height / zoom;

@@ -1,30 +1,21 @@
 // A pane that shows comments and allows users to interact with them
-import { Button } from "@fluentui/react-button";
-import { Textarea } from "@fluentui/react-textarea";
+import { Button, Textarea } from "@fluentui/react-components";
+import { CommentRegular } from "@fluentui/react-icons";
 import React, {
+	forwardRef,
 	ReactNode,
 	useContext,
 	useEffect,
-	useState,
-	useRef,
-	forwardRef,
 	useImperativeHandle,
+	useRef,
+	useState,
 } from "react";
+import { App, Comment, Comments, Group, Item } from "../schema/app_schema.js";
 import { Pane } from "./paneux.js";
-import { PresenceContext } from "./contexts/PresenceContext.js";
-import {
-	App,
-	Comment,
-	Comments,
-	FluidTable,
-	Group,
-	Item,
-	Note,
-	Shape,
-} from "../schema/app_schema.js";
 import { useTree } from "./hooks/useTree.js";
+import { getContentHandler } from "../utils/contentHandlers.js";
+import { PresenceContext } from "./contexts/PresenceContext.js";
 import { VoteButton } from "./appbuttonux.js";
-import { CommentRegular } from "@fluentui/react-icons";
 
 export interface CommentPaneRef {
 	focusInput: () => void;
@@ -56,16 +47,8 @@ export const CommentPane = forwardRef<
 		if (item instanceof Group) {
 			setTitle("Group Comments");
 		} else if (item instanceof Item) {
-			const content = item.content;
-			if (content instanceof Shape) {
-				setTitle(`Comments on ${content.type}`);
-			} else if (content instanceof Note) {
-				setTitle("Comments on Note");
-			} else if (content instanceof FluidTable) {
-				setTitle("Comments on Table");
-			} else {
-				setTitle("Comments on Item");
-			}
+			const handler = getContentHandler(item);
+			setTitle(`Comments on ${handler.getName()}`);
 		} else {
 			setTitle("General Comments");
 		}

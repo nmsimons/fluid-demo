@@ -5,8 +5,9 @@
 
 import React, { JSX } from "react";
 import { TreeView, Tree } from "fluid-framework";
-import { App, Shape, FluidTable } from "../schema/app_schema.js";
+import { App, Shape } from "../schema/app_schema.js";
 import { undoRedo } from "../utils/undo.js";
+import { isShape, isTable } from "../utils/contentHandlers.js";
 import {
 	NewCircleButton,
 	NewSquareButton,
@@ -254,7 +255,7 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 							const selectedShapes = selectedItems
 								.filter(
 									(item): item is NonNullable<typeof item> =>
-										item !== undefined && Tree.is(item.content, Shape)
+										item !== undefined && isShape(item)
 								)
 								.map((item) => item.content as Shape);
 
@@ -269,7 +270,7 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 								)
 							);
 						})()}
-						{singleSelectedItem && Tree.is(singleSelectedItem.content, FluidTable) && (
+						{singleSelectedItem && isTable(singleSelectedItem) && (
 							<div className="flex items-center h-full toolbar-slide-in-delayed">
 								<ToolbarDivider />
 								<ToolbarGroup>
