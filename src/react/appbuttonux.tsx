@@ -48,7 +48,6 @@ import {
 	MenuTrigger,
 	MenuPopover,
 	MenuList,
-	Slider,
 	ToolbarButton,
 	SwatchPicker,
 	renderSwatchPickerGrid,
@@ -550,7 +549,11 @@ export function InkColorPicker(props: {
 						label="Ink Color"
 					/>
 					<MenuDivider></MenuDivider>
-					<InkThicknessSlider inkWidth={inkWidth} onInkWidthChange={onInkWidthChange} />
+					<InkThicknessPalette
+						inkWidth={inkWidth}
+						inkColor={selected}
+						onInkWidthChange={onInkWidthChange}
+					/>
 				</MenuList>
 			</MenuPopover>
 		</Menu>
@@ -592,25 +595,62 @@ export function ColorPicker(props: {
 	);
 }
 
-export function InkThicknessSlider(props: {
+export function InkThicknessPalette(props: {
 	inkWidth: number;
+	inkColor: string | undefined;
 	onInkWidthChange: (arg: number) => void;
 }): JSX.Element {
-	const { inkWidth, onInkWidthChange } = props;
+	const { inkWidth, inkColor, onInkWidthChange } = props;
+
+	// Define the 5 thickness options
+	const thicknessOptions = [4, 8, 16, 24, 32];
+	const currentColor = inkColor || "#000000";
 
 	return (
 		<>
-			<Label>Thickness: {inkWidth}px</Label>
-			<Slider
-				min={4}
-				max={32}
-				value={Math.max(4, Math.min(32, inkWidth))}
-				aria-label="Ink thickness slider"
-				onChange={(e) => {
-					const v = parseInt(e.target.value, 10);
-					onInkWidthChange(Math.max(4, Math.min(32, v)));
+			<Label>Thickness</Label>
+			<div
+				style={{
+					display: "flex",
+					gap: "4px",
+					alignItems: "center",
+					padding: "8px 0",
+					flexWrap: "wrap",
 				}}
-			/>
+			>
+				{thicknessOptions.map((thickness) => (
+					<button
+						key={thickness}
+						onClick={() => onInkWidthChange(thickness)}
+						style={{
+							width: "36px",
+							height: "36px",
+							border:
+								inkWidth === thickness ? "3px solid #0078d4" : "2px solid #e1e1e1",
+							borderRadius: "50%",
+							backgroundColor: "white",
+							cursor: "pointer",
+							display: "flex",
+							alignItems: "center",
+							justifyContent: "center",
+							padding: "0",
+							transition: "border-color 0.2s ease",
+						}}
+						aria-label={`Set ink thickness to ${thickness}px`}
+						title={`${thickness}px thickness`}
+					>
+						<div
+							style={{
+								width: `${thickness}px`,
+								height: `${thickness}px`,
+								backgroundColor: currentColor,
+								borderRadius: "50%",
+								border: currentColor === "#FFFFFF" ? "1px solid #ccc" : "none",
+							}}
+						/>
+					</button>
+				))}
+			</div>
 		</>
 	);
 }
