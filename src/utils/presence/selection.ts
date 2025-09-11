@@ -35,28 +35,28 @@ import { Listenable } from "fluid-framework";
 import { SelectionManager, Selection } from "./Interfaces/SelectionManager.js";
 
 /**
- * Creates a new TypedSelectionManager instance with enhanced type support.
- * This manager supports selections with type information (row, column, cell, etc.)
- * which is useful for complex collaborative interfaces.
+ * Creates a new SelectionManager instance for managing collaborative selections.
+ * This manager handles multi-select operations and real-time state synchronization
+ * across all connected clients in the Fluid Framework workspace.
  *
  * @param props - Configuration object containing workspace and name
  * @param props.workspace - The states workspace for state synchronization
  * @param props.name - Unique name for this selection manager instance
- * @returns A configured TypedSelectionManager instance
+ * @returns A configured SelectionManager instance
  */
-export function createTypedSelectionManager(props: {
+export function createSelectionManager(props: {
 	workspace: StatesWorkspace<{}>;
 	name: string;
-}): SelectionManager<TypedSelection> {
+}): SelectionManager<Selection> {
 	const { workspace, name } = props;
 
 	/**
-	 * Concrete implementation of the SelectionManager interface with typed selection support.
+	 * Implementation of the SelectionManager interface.
 	 * Handles multi-select operations and real-time state synchronization.
 	 */
-	class SelectionManagerImpl implements SelectionManager<TypedSelection> {
+	class SelectionManagerImpl implements SelectionManager<Selection> {
 		/** Fluid Framework state object for real-time synchronization */
-		state: LatestRaw<TypedSelection[]>;
+		state: LatestRaw<Selection[]>;
 
 		/**
 		 * Initializes the selection manager with Fluid Framework state management.
@@ -67,7 +67,7 @@ export function createTypedSelectionManager(props: {
 		 */
 		constructor(name: string, workspace: StatesWorkspace<{}>) {
 			// Register this selection manager's state with the Fluid workspace
-			workspace.add(name, StateFactory.latest<TypedSelection[]>({ local: [] }));
+			workspace.add(name, StateFactory.latest<Selection[]>({ local: [] }));
 			this.state = workspace.states[name];
 		}
 
@@ -75,7 +75,7 @@ export function createTypedSelectionManager(props: {
 		 * Event emitter for selection state changes.
 		 * Components can subscribe to these events to update their UI when selections change.
 		 */
-		public get events(): Listenable<LatestRawEvents<TypedSelection[]>> {
+		public get events(): Listenable<LatestRawEvents<Selection[]>> {
 			return this.state.events;
 		}
 
@@ -93,7 +93,7 @@ export function createTypedSelectionManager(props: {
 		 * @param sel - The selection to test
 		 * @returns True if the selection is currently selected locally
 		 */
-		public testSelection(sel: TypedSelection) {
+		public testSelection(sel: Selection) {
 			return this._testForInclusion(sel, this.state.local);
 		}
 
@@ -104,7 +104,7 @@ export function createTypedSelectionManager(props: {
 		 * @param sel - The selection to test
 		 * @returns Array of attendee IDs who have selected this item
 		 */
-		public testRemoteSelection(sel: TypedSelection): string[] {
+		public testRemoteSelection(sel: Selection): string[] {
 			const remoteSelectedClients: string[] = [];
 			for (const cv of this.state.getRemotes()) {
 				if (cv.attendee.getConnectionStatus() === "Connected") {
@@ -132,7 +132,7 @@ export function createTypedSelectionManager(props: {
 		 * Note: This will overwrite the current local selection completely.
 		 * Use addToSelection() or toggleSelection() to maintain existing selections.
 		 */
-		public setSelection(sel: TypedSelection | TypedSelection[]) {
+		public setSelection(sel: Selection | Selection[]) {
 			if (Array.isArray(sel)) {
 				// If an array of selections is provided, set it directly
 				this.state.local = sel;
@@ -148,7 +148,7 @@ export function createTypedSelectionManager(props: {
 		 *
 		 * @param sel - The selection to toggle
 		 */
-		public toggleSelection(sel: TypedSelection) {
+		public toggleSelection(sel: Selection) {
 			if (this.testSelection(sel)) {
 				this.removeFromSelection(sel);
 			} else {
@@ -162,8 +162,8 @@ export function createTypedSelectionManager(props: {
 		 *
 		 * @param sel - The selection to add
 		 */
-		public addToSelection(sel: TypedSelection) {
-			const arr: TypedSelection[] = this.state.local.slice();
+		public addToSelection(sel: Selection) {
+			const arr: Selection[] = this.state.local.slice();
 			if (!this._testForInclusion(sel, arr)) {
 				arr.push(sel);
 			}
@@ -176,8 +176,8 @@ export function createTypedSelectionManager(props: {
 		 *
 		 * @param sel - The selection to remove
 		 */
-		public removeFromSelection(sel: TypedSelection) {
-			const arr: TypedSelection[] = this.state.local.filter((s) => s.id !== sel.id);
+		public removeFromSelection(sel: Selection) {
+			const arr: Selection[] = this.state.local.filter((s) => s.id !== sel.id);
 			this.state.local = arr;
 		}
 
@@ -187,7 +187,7 @@ export function createTypedSelectionManager(props: {
 		 *
 		 * @returns Read-only array of current local selections
 		 */
-		public getLocalSelection(): readonly TypedSelection[] {
+		public getLocalSelection(): readonly Selection[] {
 			return this.state.local;
 		}
 
@@ -198,8 +198,8 @@ export function createTypedSelectionManager(props: {
 		 *
 		 * @returns Map where keys are selections and values are arrays of attendee IDs
 		 */
-		public getRemoteSelected(): Map<TypedSelection, string[]> {
-			const remoteSelected = new Map<TypedSelection, string[]>();
+		public getRemoteSelected(): Map<Selection, string[]> {
+			const remoteSelected = new Map<Selection, string[]>();
 			for (const cv of this.state.getRemotes()) {
 				if (cv.attendee.getConnectionStatus() === "Connected") {
 					for (const sel of cv.value) {
@@ -222,10 +222,7 @@ export function createTypedSelectionManager(props: {
 		 * @param collection - The collection to search in
 		 * @returns True if the selection is found in the collection
 		 */
-		private _testForInclusion(
-			sel: TypedSelection,
-			collection: readonly TypedSelection[]
-		): boolean {
+		private _testForInclusion(sel: Selection, collection: readonly Selection[]): boolean {
 			return !!collection.find((s) => s.id === sel.id);
 		}
 	}
@@ -234,64 +231,47 @@ export function createTypedSelectionManager(props: {
 }
 
 /**
- * Creates a basic SelectionManager instance without type information.
- * This is a simpler version for use cases that don't need typed selections.
+ * Creates a typed selection manager with TypedSelection support.
+ * This implementation specifically handles selections with type information.
  *
  * @param props - Configuration object containing workspace and name
- * @param props.workspace - The states workspace for state synchronization
- * @param props.name - Unique name for this selection manager instance
- * @returns A configured basic SelectionManager instance
+ * @returns A configured SelectionManager for TypedSelection objects
  */
-export function createSelectionManager(props: {
+export function createTypedSelectionManager(props: {
 	workspace: StatesWorkspace<{}>;
 	name: string;
-}): SelectionManager {
+}): SelectionManager<TypedSelection> {
 	const { workspace, name } = props;
 
 	/**
-	 * Basic implementation of the SelectionManager interface.
-	 * Provides core selection functionality without type information.
+	 * Implementation of the SelectionManager interface for TypedSelection.
+	 * This is nearly identical to the basic SelectionManager but typed for TypedSelection.
 	 */
-	class SelectionManagerImpl implements SelectionManager {
-		/** Default initial state - empty selection array */
-		initialState: Selection[] = [];
-
+	class TypedSelectionManagerImpl implements SelectionManager<TypedSelection> {
 		/** Fluid Framework state object for real-time synchronization */
-		state: LatestRaw<Selection[]>;
+		state: LatestRaw<TypedSelection[]>;
 
 		/**
-		 * Initializes the basic selection manager with Fluid Framework state management.
-		 *
-		 * @param name - Unique identifier for this selection manager
-		 * @param workspace - Fluid workspace for state synchronization
+		 * Initializes the selection manager with Fluid Framework state management.
 		 */
 		constructor(name: string, workspace: StatesWorkspace<{}>) {
-			workspace.add(name, StateFactory.latest({ local: this.initialState }));
+			workspace.add(name, StateFactory.latest<TypedSelection[]>({ local: [] }));
 			this.state = workspace.states[name];
 		}
 
-		/**
-		 * Event emitter for selection state changes.
-		 */
-		public get events(): Listenable<LatestRawEvents<Selection[]>> {
+		public get events(): Listenable<LatestRawEvents<TypedSelection[]>> {
 			return this.state.events;
 		}
 
-		/**
-		 * Client management interface providing access to attendees and their information.
-		 * This allows the selection manager to know who is connected and get their details.
-		 */
 		public get attendees() {
 			return this.state.presence.attendees;
 		}
 
-		/** Tests if the given selection is currently selected by the local client */
-		public testSelection(sel: Selection) {
+		public testSelection(sel: TypedSelection) {
 			return this._testForInclusion(sel, this.state.local);
 		}
 
-		/** Tests if the given selection is selected by any remote client */
-		public testRemoteSelection(sel: Selection): string[] {
+		public testRemoteSelection(sel: TypedSelection): string[] {
 			const remoteSelectedClients: string[] = [];
 			for (const cv of this.state.getRemotes()) {
 				if (cv.attendee.getConnectionStatus() === "Connected") {
@@ -303,13 +283,11 @@ export function createSelectionManager(props: {
 			return remoteSelectedClients;
 		}
 
-		/** Clears all current selections for the local client */
 		public clearSelection() {
-			this.state.local = this.initialState;
+			this.state.local = [];
 		}
 
-		/** Sets the selection to the given item(s), replacing any existing selection */
-		public setSelection(sel: Selection | Selection[]) {
+		public setSelection(sel: TypedSelection | TypedSelection[]) {
 			if (Array.isArray(sel)) {
 				this.state.local = sel;
 			} else {
@@ -317,8 +295,7 @@ export function createSelectionManager(props: {
 			}
 		}
 
-		/** Toggles the selection state of the given item */
-		public toggleSelection(sel: Selection) {
+		public toggleSelection(sel: TypedSelection) {
 			if (this.testSelection(sel)) {
 				this.removeFromSelection(sel);
 			} else {
@@ -326,36 +303,25 @@ export function createSelectionManager(props: {
 			}
 		}
 
-		/** Adds the given selection to the current selection set */
-		public addToSelection(sel: Selection) {
-			const arr: Selection[] = this.state.local.slice();
+		public addToSelection(sel: TypedSelection) {
+			const arr: TypedSelection[] = this.state.local.slice();
 			if (!this._testForInclusion(sel, arr)) {
 				arr.push(sel);
 			}
 			this.state.local = arr;
 		}
 
-		/** Removes the given selection from the current selection set */
-		public removeFromSelection(sel: Selection) {
-			const arr: Selection[] = this.state.local.filter((s) => s.id !== sel.id);
+		public removeFromSelection(sel: TypedSelection) {
+			const arr: TypedSelection[] = this.state.local.filter((s) => s.id !== sel.id);
 			this.state.local = arr;
 		}
 
-		/**
-		 * Private helper method to test if a selection is included in a collection.
-		 */
-		private _testForInclusion(sel: Selection, collection: readonly Selection[]): boolean {
-			return !!collection.find((s) => s.id === sel.id);
-		}
-
-		/** Gets the current local selection array */
-		public getLocalSelection(): readonly Selection[] {
+		public getLocalSelection(): readonly TypedSelection[] {
 			return this.state.local;
 		}
 
-		/** Gets a map of all remote selections organized by selected item */
-		public getRemoteSelected(): Map<Selection, string[]> {
-			const remoteSelected = new Map<Selection, string[]>();
+		public getRemoteSelected(): Map<TypedSelection, string[]> {
+			const remoteSelected = new Map<TypedSelection, string[]>();
 			for (const cv of this.state.getRemotes()) {
 				if (cv.attendee.getConnectionStatus() === "Connected") {
 					for (const sel of cv.value) {
@@ -368,9 +334,16 @@ export function createSelectionManager(props: {
 			}
 			return remoteSelected;
 		}
+
+		private _testForInclusion(
+			sel: TypedSelection,
+			collection: readonly TypedSelection[]
+		): boolean {
+			return !!collection.find((s) => s.id === sel.id);
+		}
 	}
 
-	return new SelectionManagerImpl(name, workspace);
+	return new TypedSelectionManagerImpl(name, workspace);
 }
 
 /**
