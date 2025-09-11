@@ -3,18 +3,18 @@
  * Licensed under the MIT License.
  */
 
-import { TableSchema, SchemaFactoryAlpha, TreeViewConfigurationAlpha } from "@fluidframework/tree/alpha";
+import {
+	TableSchema,
+	SchemaFactoryAlpha,
+	TreeViewConfigurationAlpha,
+} from "@fluidframework/tree/alpha";
 import {
 	SHAPE_MIN_SIZE,
 	SHAPE_MAX_SIZE,
 	SHAPE_SPAWN_MIN_SIZE,
 	SHAPE_SPAWN_MAX_SIZE,
 } from "../constants/shape.js";
-import {
-	Tree,
-	TreeNodeFromImplicitAllowedTypes,
-	TreeStatus,
-} from "fluid-framework";
+import { Tree, TreeNodeFromImplicitAllowedTypes, TreeStatus } from "fluid-framework";
 
 export type HintValues = (typeof hintValues)[keyof typeof hintValues];
 export const hintValues = {
