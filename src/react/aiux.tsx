@@ -7,7 +7,7 @@ import { TreeViewAlpha } from "@fluidframework/tree/alpha";
 // import the function, not the type
 import { SharedTreeSemanticAgent, createSemanticAgent } from "@fluidframework/tree-agent/alpha";
 import { App } from "../schema/app_schema.js";
-import { ChatOpenAI } from "@langchain/openai";
+import { AzureChatOpenAI } from "@langchain/openai";
 
 export function TaskPane(props: {
 	hidden: boolean;
@@ -40,7 +40,7 @@ export function TaskPane(props: {
 	useEffect(() => {
 		if (branch !== undefined) {
 			setAgent(
-				createSemanticAgent(new ChatOpenAI({ model: "o4-mini" }), branch, {
+				createSemanticAgent(new AzureChatOpenAI({ model: "gpt-5" }), branch, {
 					log: (msg) => console.log(msg),
 					domainHints,
 				})

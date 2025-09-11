@@ -4,7 +4,8 @@
  */
 
 import React, { JSX } from "react";
-import { TreeView, Tree } from "fluid-framework";
+import { Tree } from "fluid-framework";
+import { TreeViewAlpha } from "@fluidframework/tree/alpha";
 import { App, Shape } from "../schema/app_schema.js";
 import { undoRedo } from "../utils/undo.js";
 import { isShape, isTable } from "../utils/contentHandlers.js";
@@ -37,6 +38,7 @@ import {
 	EraserToggleButton,
 	ClearAllButton,
 	CommentsPaneToggleButton,
+	AITaskPaneToggleButton,
 	SelectionCountBadge,
 	ZoomMenu,
 } from "./appbuttonux.js";
@@ -48,8 +50,8 @@ import type { SelectionManager } from "../utils/presence/Interfaces/SelectionMan
 import { TypedSelection } from "../utils/presence/selection.js";
 
 export interface AppToolbarProps {
-	view: TreeView<typeof App>;
-	tree: TreeView<typeof App>;
+	view: TreeViewAlpha<typeof App>;
+	tree: TreeViewAlpha<typeof App>;
 	canvasSize: { width: number; height: number };
 	pan?: { x: number; y: number };
 	selectedItemId: string;
@@ -58,6 +60,8 @@ export interface AppToolbarProps {
 	selectedRowId: string;
 	commentPaneHidden: boolean;
 	setCommentPaneHidden: (hidden: boolean) => void;
+	aiTaskPaneHidden: boolean;
+	setAiTaskPaneHidden: (hidden: boolean) => void;
 	undoRedo: undoRedo;
 	canUndo: boolean;
 	canRedo: boolean;
@@ -86,6 +90,8 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 		selectedRowId,
 		commentPaneHidden,
 		setCommentPaneHidden,
+		aiTaskPaneHidden,
+		setAiTaskPaneHidden,
 		undoRedo,
 		canUndo,
 		canRedo,
@@ -319,6 +325,10 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 				<CommentsPaneToggleButton
 					paneHidden={commentPaneHidden}
 					onToggle={(h) => setCommentPaneHidden(h)}
+				/>
+				<AITaskPaneToggleButton
+					paneHidden={aiTaskPaneHidden}
+					onToggle={(h) => setAiTaskPaneHidden(h)}
 				/>
 			</ToolbarGroup>
 			{/* Right side grouping (auto) */}

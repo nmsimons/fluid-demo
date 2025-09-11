@@ -3,7 +3,7 @@
  * Licensed under the MIT License.
  */
 
-import { TableSchema, SchemaFactoryAlpha } from "@fluidframework/tree/alpha";
+import { TableSchema, SchemaFactoryAlpha, TreeViewConfigurationAlpha } from "@fluidframework/tree/alpha";
 import {
 	SHAPE_MIN_SIZE,
 	SHAPE_MAX_SIZE,
@@ -11,7 +11,6 @@ import {
 	SHAPE_SPAWN_MAX_SIZE,
 } from "../constants/shape.js";
 import {
-	TreeViewConfiguration,
 	Tree,
 	TreeNodeFromImplicitAllowedTypes,
 	TreeStatus,
@@ -727,7 +726,7 @@ export type FluidColumn = InstanceType<typeof FluidColumnSchema>;
  * Export the tree config appropriate for this schema.
  * This is passed into the SharedTree when it is initialized.
  * */
-export const appTreeConfiguration = new TreeViewConfiguration(
+export const appTreeConfiguration = new TreeViewConfigurationAlpha(
 	// Schema for the root
 	{ schema: App }
 );

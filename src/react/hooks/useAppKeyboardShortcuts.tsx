@@ -3,7 +3,8 @@
  * (Clean header restored; adds viewport centering for new items.)
  */
 
-import { TreeView, Tree } from "fluid-framework";
+import { Tree } from "fluid-framework";
+import { TreeViewAlpha } from "@fluidframework/tree/alpha";
 import { App, FluidTable } from "../../schema/app_schema.js";
 import { KeyboardShortcut } from "./useKeyboardShortcuts.js";
 import { undoRedo } from "../../utils/undo.js";
@@ -16,7 +17,7 @@ import { SelectionManager } from "../../utils/presence/Interfaces/SelectionManag
  * Contains all the dependencies needed for keyboard shortcut operations.
  */
 export interface UseAppKeyboardShortcutsProps {
-	view: TreeView<typeof App>;
+	view: TreeViewAlpha<typeof App>;
 	canvasSize: { width: number; height: number };
 	pan?: { x: number; y: number };
 	selectedItemId: string;

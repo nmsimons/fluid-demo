@@ -6,7 +6,8 @@
 import React, { JSX, useContext, useEffect, useState, useRef } from "react";
 import { App } from "../schema/app_schema.js";
 import "../output.css";
-import { ConnectionState, IFluidContainer, TreeView } from "fluid-framework";
+import { ConnectionState, IFluidContainer } from "fluid-framework";
+import { TreeViewAlpha } from "@fluidframework/tree/alpha";
 import { Canvas } from "./canvasux.js";
 import type { SelectionManager } from "../utils/presence/Interfaces/SelectionManager.js";
 import { undoRedo } from "../utils/undo.js";
@@ -34,6 +35,7 @@ import { ResizePackage } from "../utils/presence/Interfaces/ResizeManager.js";
 import { useSelectionSync, useMultiTypeSelectionSync } from "../utils/eventSubscriptions.js";
 import { TypedSelection } from "../utils/presence/selection.js";
 import { CommentPane, CommentPaneRef } from "./commentux.js";
+import { TaskPane } from "./aiux.js";
 import { useTree } from "./hooks/useTree.js";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts.js";
 import { useAppKeyboardShortcuts } from "./hooks/useAppKeyboardShortcuts.js";
@@ -48,7 +50,7 @@ export const CommentPaneContext = React.createContext<{
 } | null>(null);
 
 export function ReactApp(props: {
-	tree: TreeView<typeof App>;
+	tree: TreeViewAlpha<typeof App>;
 	itemSelection: SelectionManager<TypedSelection>;
 	tableSelection: SelectionManager<TypedSelection>;
 	users: UsersManager;
@@ -80,10 +82,11 @@ export function ReactApp(props: {
 	const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
 	const [selectedColumnId, setSelectedColumnId] = useState<string>("");
 	const [selectedRowId, setSelectedRowId] = useState<string>("");
-	const [view] = useState<TreeView<typeof App>>(tree);
+	const [view, setView] = useState<TreeViewAlpha<typeof App>>(tree);
 	const [canUndo, setCanUndo] = useState(false);
 	const [canRedo, setCanRedo] = useState(false);
 	const commentPaneRef = useRef<CommentPaneRef>(null);
+	const [aiTaskPaneHidden, setAiTaskPaneHidden] = useState(true);
 
 	// Function to open comment pane and focus input
 	const openCommentPaneAndFocus = (itemId: string) => {
@@ -216,6 +219,8 @@ export function ReactApp(props: {
 						selectedRowId={selectedRowId}
 						commentPaneHidden={commentPaneHidden}
 						setCommentPaneHidden={setCommentPaneHidden}
+						aiTaskPaneHidden={aiTaskPaneHidden}
+						setAiTaskPaneHidden={setAiTaskPaneHidden}
 						undoRedo={undoRedo}
 						canUndo={canUndo}
 						canRedo={canRedo}
@@ -257,6 +262,12 @@ export function ReactApp(props: {
 							setHidden={setCommentPaneHidden}
 							itemId={selectedItemId}
 							app={view.root}
+						/>
+						<TaskPane
+							hidden={aiTaskPaneHidden}
+							setHidden={setAiTaskPaneHidden}
+							main={tree}
+							setRenderView={setView}
 						/>
 					</div>
 				</div>

@@ -10,6 +10,7 @@ import { IFluidContainer } from "fluid-framework";
 import { FluentProvider } from "@fluentui/react-provider";
 import { webLightTheme } from "@fluentui/react-theme";
 import { AuthContext } from "./react/contexts/AuthContext.js";
+import { asTreeViewAlpha } from "@fluidframework/tree/alpha";
 
 import { getPresence } from "@fluidframework/presence/beta";
 import { createTypedSelectionManager } from "./utils/presence/selection.js";
@@ -33,7 +34,8 @@ export async function loadApp(props: {
 	const { container } = await loadFluidData(containerId, containerSchema, client);
 
 	// Initialize the SharedTree DDSes
-	const appTree = container.initialObjects.appData.viewWith(appTreeConfiguration);
+	const regularTree = container.initialObjects.appData.viewWith(appTreeConfiguration);
+	const appTree = asTreeViewAlpha(regularTree);
 	if (appTree.compatibility.canInitialize) {
 		appTree.initialize(new App({ items: [], comments: [], inks: [] }));
 	}

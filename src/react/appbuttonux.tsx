@@ -42,6 +42,8 @@ import {
 	EraserToolFilled,
 	EraserToolRegular,
 	DeleteRegular,
+	BotRegular,
+	BotFilled,
 } from "@fluentui/react-icons";
 import {
 	Menu,
@@ -160,6 +162,22 @@ export function CommentsPaneToggleButton(props: {
 			icon={paneHidden ? <CommentRegular /> : <CommentFilled />}
 			tooltip={paneHidden ? "Show Comments" : "Hide Comments"}
 			keyboardShortcut="Ctrl+M"
+		/>
+	);
+}
+
+// AI task pane toggle (wraps ShowPaneButton semantics) --------------------
+export function AITaskPaneToggleButton(props: {
+	paneHidden: boolean;
+	onToggle: (hidden: boolean) => void;
+}): JSX.Element {
+	const { paneHidden, onToggle } = props;
+	return (
+		<TooltipButton
+			onClick={() => onToggle(!paneHidden)}
+			icon={paneHidden ? <BotRegular /> : <BotFilled />}
+			tooltip={paneHidden ? "Show AI Assistant" : "Hide AI Assistant"}
+			keyboardShortcut="Ctrl+I"
 		/>
 	);
 }
