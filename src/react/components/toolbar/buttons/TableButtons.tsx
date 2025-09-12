@@ -11,7 +11,7 @@ import {
 	FluidColumnSchema,
 	HintValues,
 	hintValues,
-} from "../schema/app_schema.js";
+} from "../../../../schema/app_schema.js";
 import {
 	DismissFilled,
 	ArrowUndoFilled,
@@ -28,9 +28,9 @@ import {
 	TableMoveRightFilled,
 } from "@fluentui/react-icons";
 import { Tree, TreeStatus } from "fluid-framework";
-import { useTableButtonState } from "../utils/eventSubscriptions.js";
-import { selectionType, TypedSelection } from "../utils/presence/selection.js";
-import { SelectionManager } from "../utils/presence/Interfaces/SelectionManager.js";
+import { useTableButtonState } from "../../../../utils/eventSubscriptions.js";
+import { selectionType, TypedSelection } from "../../../../utils/presence/selection.js";
+import { SelectionManager } from "../../../../utils/presence/Interfaces/SelectionManager.js";
 import {
 	Menu,
 	MenuItemRadio,
@@ -41,7 +41,7 @@ import {
 } from "@fluentui/react-menu";
 import { ToolbarButton } from "@fluentui/react-toolbar";
 import { Tooltip } from "@fluentui/react-tooltip";
-import { useTree } from "./hooks/useTree.js";
+import { useTree } from "../../../hooks/useTree.js";
 
 /**
  * Ensure that all selected rows are still in the document.

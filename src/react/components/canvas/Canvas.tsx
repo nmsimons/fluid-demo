@@ -43,20 +43,28 @@ import React, { JSX, useContext, useRef, useState, useEffect } from "react";
  * - Logical ink width is scaled by zoom for visual accuracy, but polyline uses vectorEffect="non-scaling-stroke" to retain crispness.
  * - Custom circle overlay drawn in screen space for ink / eraser feedback.
  */
-import { Items, Item, InkStroke, InkPoint, InkStyle, InkBBox, App } from "../schema/app_schema.js";
+import {
+	Items,
+	Item,
+	InkStroke,
+	InkPoint,
+	InkStyle,
+	InkBBox,
+	App,
+} from "../../../schema/app_schema.js";
 import { Tree } from "fluid-framework";
 import { IFluidContainer } from "fluid-framework";
-import { PresenceContext } from "./contexts/PresenceContext.js";
+import { PresenceContext } from "../../contexts/PresenceContext.js";
 // ItemView moved into ItemsHtmlLayer
-import { useTree } from "./hooks/useTree.js";
-import { LayoutContext } from "./hooks/useLayoutManger.js";
-import { SelectionOverlay } from "./overlays/SelectionOverlay.js";
-import { PresenceOverlay } from "./overlays/PresenceOverlay.js";
-import { CommentOverlay } from "./overlays/CommentOverlay.js";
-import { useCanvasNavigation } from "./hooks/useCanvasNavigation.js";
-import { useOverlayRerenders } from "./hooks/useOverlayRerenders.js";
+import { useTree } from "../../hooks/useTree.js";
+import { LayoutContext } from "../../hooks/useLayoutManger.js";
+import { SelectionOverlay } from "../../overlays/SelectionOverlay.js";
+import { PresenceOverlay } from "../../overlays/PresenceOverlay.js";
+import { CommentOverlay } from "../../overlays/CommentOverlay.js";
+import { useCanvasNavigation } from "../../hooks/useCanvasNavigation.js";
+import { useOverlayRerenders } from "../../hooks/useOverlayRerenders.js";
 import { ItemsHtmlLayer } from "./ItemsHtmlLayer.js";
-import { PaneContext } from "./contexts/PaneContext.js";
+import { PaneContext } from "../../contexts/PaneContext.js";
 
 export function Canvas(props: {
 	items: Items;

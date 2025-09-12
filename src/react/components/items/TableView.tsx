@@ -23,17 +23,17 @@ import {
 	FluidColumn,
 	typeDefinition,
 	hintValues,
-} from "../schema/app_schema.js";
+} from "../../../schema/app_schema.js";
 import { Tree, TreeStatus } from "fluid-framework";
 import { useVirtualizer, VirtualItem, Virtualizer } from "@tanstack/react-virtual";
-import { ColumnTypeDropdown, DeleteButton, IconButton } from "./tablebuttonux.js";
+import { ColumnTypeDropdown, DeleteButton, IconButton } from "../toolbar/buttons/TableButtons.js";
 import {
 	ArrowSortDownFilled,
 	ArrowSortFilled,
 	ArrowSortUpFilled,
 	ReOrderDotsVertical16Filled,
 } from "@fluentui/react-icons";
-import { selectionType } from "../utils/presence/selection.js";
+import { selectionType } from "../../../utils/presence/selection.js";
 import {
 	CellInputBoolean,
 	CellInputNumber,
@@ -41,11 +41,11 @@ import {
 	CellInputDate,
 	CellInputVote,
 	ColumnInput,
-} from "./inputux.js";
-import { PresenceContext } from "./contexts/PresenceContext.js";
-import { objectIdNumber, useTree } from "./hooks/useTree.js";
-import { usePresenceManager } from "./hooks/usePresenceManger.js";
-import { TableContext, useTable } from "./contexts/TableContext.js";
+} from "../forms/Input.js";
+import { PresenceContext } from "../../contexts/PresenceContext.js";
+import { objectIdNumber, useTree } from "../../hooks/useTree.js";
+import { usePresenceManager } from "../../hooks/usePresenceManger.js";
+import { TableContext, useTable } from "../../contexts/TableContext.js";
 
 const leftColumnWidth = "20px"; // Width of the index column
 const columnWidth = "200px"; // Width of the data columns
