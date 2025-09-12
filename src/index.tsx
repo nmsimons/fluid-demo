@@ -2,21 +2,23 @@
  * Copyright (c) Microsoft Corporation and contributors. All rights reserved.
  * Licensed under the MIT License.
  */
-import { azureStart } from "./start/azureStart.js";
-import { localStart } from "./start/localStart.js";
 
 async function start() {
 	const client = process.env.FLUID_CLIENT;
 
 	switch (client) {
-		case "local":
-			// Start the app in local mode (no authentication required)
+		case "local": {
+			// Dynamically load local start to reduce initial bundle
+			const { localStart } = await import("./start/localStart.js");
 			await localStart();
 			break;
-		default:
-			// Start the app in Azure mode
+		}
+		default: {
+			// Dynamically load Azure start to reduce initial bundle
+			const { azureStart } = await import("./start/azureStart.js");
 			await azureStart();
 			break;
+		}
 	}
 }
 

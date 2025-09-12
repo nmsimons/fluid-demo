@@ -1,7 +1,6 @@
 import { AzureClient } from "@fluidframework/azure-client";
-import React from "react";
+import React, { Suspense, lazy } from "react";
 import { createRoot } from "react-dom/client";
-import { ReactApp } from "./react/components/app/App.js";
 import { App, appTreeConfiguration } from "./schema/appSchema.js";
 import { createUndoRedoStacks } from "./utils/undo.js";
 import { containerSchema } from "./schema/containerSchema.js";
@@ -11,6 +10,34 @@ import { FluentProvider } from "@fluentui/react-provider";
 import { webLightTheme } from "@fluentui/react-theme";
 import { AuthContext } from "./react/contexts/AuthContext.js";
 import { showErrorMessage } from "./start/ErrorMessage.js";
+
+// Lazy load the main React app to reduce initial bundle size
+const ReactApp = lazy(() => import("./react/components/app/App.js").then(module => ({
+	default: module.ReactApp
+})));
+
+// Loading component - blank initially, then shows message after 5 seconds
+const AppLoadingSpinner = () => {
+	const [showMessage, setShowMessage] = React.useState(false);
+
+	React.useEffect(() => {
+		const timer = setTimeout(() => {
+			setShowMessage(true);
+		}, 5000); // Show message after 5 seconds
+
+		return () => clearTimeout(timer);
+	}, []);
+
+	return (
+		<div className="h-screen bg-white">
+			{showMessage && (
+				<div className="flex items-center justify-center h-full">
+					<p className="text-lg text-gray-600">Working on it...</p>
+				</div>
+			)}
+		</div>
+	);
+};
 
 import { getPresence } from "@fluidframework/presence/beta";
 import { createTypedSelectionManager } from "./utils/presence/selection.js";
@@ -102,17 +129,19 @@ export async function loadApp(props: {
 		root.render(
 			<FluentProvider theme={webLightTheme}>
 				<AuthContext.Provider value={{ msalInstance }}>
-					<ReactApp
-						tree={appTree}
-						itemSelection={itemSelection}
-						tableSelection={tableSelection}
-						drag={drag}
-						resize={resize}
-						ink={ink}
-						users={users}
-						container={container}
-						undoRedo={undoRedo}
-					/>
+					<Suspense fallback={<AppLoadingSpinner />}>
+						<ReactApp
+							tree={appTree}
+							itemSelection={itemSelection}
+							tableSelection={tableSelection}
+							drag={drag}
+							resize={resize}
+							ink={ink}
+							users={users}
+							container={container}
+							undoRedo={undoRedo}
+						/>
+					</Suspense>
 				</AuthContext.Provider>
 			</FluentProvider>
 		);
