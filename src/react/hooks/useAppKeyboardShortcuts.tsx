@@ -7,9 +7,9 @@ import { TreeView, Tree } from "fluid-framework";
 import { App, FluidTable } from "../../schema/app_schema.js";
 import { KeyboardShortcut } from "./useKeyboardShortcuts.js";
 import { undoRedo } from "../../utils/undo.js";
-import { UsersManager } from "../../utils/presence/Interfaces/UsersManager.js";
+import { UsersManager } from "../../utils/presence/interfaces/usersManager.js";
 import { SHAPE_COLORS } from "../components/toolbar/buttons/CreationButtons.js";
-import { SelectionManager } from "../../utils/presence/Interfaces/SelectionManager.js";
+import { SelectionManager } from "../../utils/presence/interfaces/selectionManager.js";
 
 /**
  * Props interface for the useAppKeyboardShortcuts hook.

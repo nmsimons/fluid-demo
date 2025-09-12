@@ -40,7 +40,7 @@ import { DeleteSelectedRowsButton } from "./buttons/TableButtons.js";
 // All toolbar button UIs now componentized; direct TooltipButton usage removed.
 import { MessageBar, MessageBarBody, MessageBarTitle } from "@fluentui/react-message-bar";
 import { Toolbar, ToolbarDivider, ToolbarGroup } from "@fluentui/react-toolbar";
-import type { SelectionManager } from "../../../utils/presence/Interfaces/SelectionManager.js";
+import type { SelectionManager } from "../../../utils/presence/interfaces/selectionManager.js";
 import { TypedSelection } from "../../../utils/presence/selection.js";
 
 export interface AppToolbarProps {

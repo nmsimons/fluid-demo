@@ -30,7 +30,7 @@ import {
 import { Tree, TreeStatus } from "fluid-framework";
 import { useTableButtonState } from "../../../../utils/eventSubscriptions.js";
 import { selectionType, TypedSelection } from "../../../../utils/presence/selection.js";
-import { SelectionManager } from "../../../../utils/presence/Interfaces/SelectionManager.js";
+import { SelectionManager } from "../../../../utils/presence/interfaces/selectionManager.js";
 import {
 	Menu,
 	MenuItemRadio,

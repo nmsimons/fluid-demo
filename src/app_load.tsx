@@ -15,7 +15,7 @@ import { showErrorMessage } from "./start/error_ux.js";
 import { getPresence } from "@fluidframework/presence/beta";
 import { createTypedSelectionManager } from "./utils/presence/selection.js";
 import { createUsersManager } from "./utils/presence/users.js";
-import { UserInfo } from "./utils/presence/Interfaces/UsersManager.js";
+import { UserInfo } from "./utils/presence/interfaces/usersManager.js";
 import { AccountInfo, PublicClientApplication } from "@azure/msal-browser";
 import { createDragManager } from "./utils/presence/drag.js";
 import { createResizeManager } from "./utils/presence/resize.js";

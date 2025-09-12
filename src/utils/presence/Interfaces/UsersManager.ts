@@ -15,7 +15,7 @@
  */
 
 import { Attendee } from "@fluidframework/presence/beta";
-import { PresenceManager } from "./PresenceManager.js";
+import { PresenceManager } from "./presenceManager.js";
 
 /**
  * UsersManager interface for managing user presence and information in the collaborative app.

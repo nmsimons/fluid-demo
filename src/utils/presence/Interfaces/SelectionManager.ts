@@ -1,4 +1,4 @@
-import { PresenceManager } from "./PresenceManager.js";
+import { PresenceManager } from "./presenceManager.js";
 
 /**
  * SelectionManager Interface

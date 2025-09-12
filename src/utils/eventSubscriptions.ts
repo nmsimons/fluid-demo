@@ -26,7 +26,7 @@
  */
 
 import { useEffect, useCallback, useRef } from "react";
-import { SelectionManager } from "./presence/Interfaces/SelectionManager.js";
+import { SelectionManager } from "./presence/interfaces/selectionManager.js";
 import { TypedSelection } from "./presence/selection.js";
 
 /**

@@ -20,14 +20,14 @@
  */
 
 import { createContext } from "react";
-import type { SelectionManager } from "../../utils/presence/Interfaces/SelectionManager.js";
-import { UsersManager } from "../../utils/presence/Interfaces/UsersManager.js";
-import { DragManager } from "../../utils/presence/Interfaces/DragManager.js";
-import { ResizeManager } from "../../utils/presence/Interfaces/ResizeManager.js";
+import type { SelectionManager } from "../../utils/presence/interfaces/selectionManager.js";
+import { UsersManager } from "../../utils/presence/interfaces/usersManager.js";
+import { DragManager } from "../../utils/presence/interfaces/dragManager.js";
+import { ResizeManager } from "../../utils/presence/interfaces/resizeManager.js";
 import { DragAndRotatePackage } from "../../utils/presence/drag.js";
-import { ResizePackage } from "../../utils/presence/Interfaces/ResizeManager.js";
+import { ResizePackage } from "../../utils/presence/interfaces/resizeManager.js";
 import { TypedSelection } from "../../utils/presence/selection.js";
-import { InkPresenceManager } from "../../utils/presence/Interfaces/InkManager.js";
+import { InkPresenceManager } from "../../utils/presence/interfaces/inkManager.js";
 
 /**
  * Type definition for the Presence Context.
