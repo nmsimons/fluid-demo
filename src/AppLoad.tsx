@@ -12,9 +12,11 @@ import { AuthContext } from "./react/contexts/AuthContext.js";
 import { showErrorMessage } from "./start/ErrorMessage.js";
 
 // Lazy load the main React app to reduce initial bundle size
-const ReactApp = lazy(() => import("./react/components/app/App.js").then(module => ({
-	default: module.ReactApp
-})));
+const ReactApp = lazy(() =>
+	import("./react/components/app/App.js").then((module) => ({
+		default: module.ReactApp,
+	}))
+);
 
 // Loading component - blank initially, then shows message after 5 seconds
 const AppLoadingSpinner = () => {

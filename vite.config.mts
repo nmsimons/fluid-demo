@@ -12,14 +12,14 @@ export default defineConfig(({ mode }) => {
 
 	return {
 		plugins: [
-			react(), 
+			react(),
 			tailwindcss(),
 			visualizer({
 				filename: "dist/bundle-analysis.html",
 				open: false,
 				gzipSize: true,
 				brotliSize: true,
-			})
+			}),
 		],
 		build: {
 			outDir: "dist",
@@ -28,42 +28,42 @@ export default defineConfig(({ mode }) => {
 				output: {
 					manualChunks: (id) => {
 						// Create separate chunks for major dependencies
-						if (id.includes('node_modules')) {
-							if (id.includes('@fluidframework')) {
-								return 'fluid-framework';
+						if (id.includes("node_modules")) {
+							if (id.includes("@fluidframework")) {
+								return "fluid-framework";
 							}
-							if (id.includes('react') || id.includes('react-dom')) {
-								return 'react-vendor';
+							if (id.includes("react") || id.includes("react-dom")) {
+								return "react-vendor";
 							}
-							if (id.includes('@fluentui')) {
-								return 'fluentui';
+							if (id.includes("@fluentui")) {
+								return "fluentui";
 							}
-							if (id.includes('@azure/msal')) {
-								return 'azure-auth';
+							if (id.includes("@azure/msal")) {
+								return "azure-auth";
 							}
-							if (id.includes('tailwindcss') || id.includes('@tailwindcss')) {
-								return 'tailwind';
+							if (id.includes("tailwindcss") || id.includes("@tailwindcss")) {
+								return "tailwind";
 							}
 							// Group other node_modules
-							return 'vendor';
+							return "vendor";
 						}
-						
+
 						// Split app code by feature
-						if (id.includes('/src/utils/')) {
-							return 'utils';
+						if (id.includes("/src/utils/")) {
+							return "utils";
 						}
-						if (id.includes('/src/react/components/')) {
-							return 'components';
+						if (id.includes("/src/react/components/")) {
+							return "components";
 						}
-						if (id.includes('/src/schema/')) {
-							return 'schema';
+						if (id.includes("/src/schema/")) {
+							return "schema";
 						}
-						if (id.includes('/src/infra/')) {
-							return 'infra';
+						if (id.includes("/src/infra/")) {
+							return "infra";
 						}
-					}
-				}
-			}
+					},
+				},
+			},
 		},
 		server: {
 			port: 8080,
