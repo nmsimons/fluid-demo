@@ -5,59 +5,50 @@
 
 import { test, expect } from "@playwright/test";
 
-test.describe("brainstorm", () => {
+test.describe("Smoke Tests", () => {
 	test.beforeEach(async ({ page }) => {
 		await page.goto("/", { waitUntil: "domcontentloaded" });
+
+		// Wait for the app to load (should work in local mode without auth)
+		await expect(page.locator("#canvas")).toBeVisible({ timeout: 10000 });
 	});
 
-	test("Load the container (smoke test)", async ({ page }) => {
-		// Navigate to the default URL - new Container case
-		await page.goto("/", { waitUntil: "domcontentloaded" });
-		expect(await page.title()).toBe("Brainstorm Demo");
-		const collaborationUrl = await page.url();
+	test("should load the container successfully", async ({ page }) => {
+		// Test that the main components are visible
+		await expect(page.locator("#main")).toBeVisible();
+		await expect(page.locator("#canvas")).toBeVisible();
 
-		// Navigate to the collaboration URL - load existing Container case
-		await page.goto(collaborationUrl, { waitUntil: "domcontentloaded" });
+		// Wait for the Fluid container to be ready by waiting for buttons to be enabled
+		// In local mode, buttons may be disabled initially while container is setting up
+		await expect(page.getByRole("button", { name: /Add a circle shape/i })).toBeEnabled({
+			timeout: 15000,
+		});
+
+		// Test that creation buttons are available and enabled
+		await expect(page.getByRole("button", { name: /Add a circle shape/i })).toBeVisible();
+		await expect(page.getByRole("button", { name: /Add a square shape/i })).toBeVisible();
+		await expect(page.getByRole("button", { name: /Add a data table/i })).toBeVisible();
+		await expect(page.getByRole("button", { name: /Add a sticky note/i })).toBeVisible();
 	});
 
-	test("Add group", async ({ page }) => {
-		let groups = await page.getByLabel("Note Group");
-		expect(groups).toHaveCount(0);
+	test("should create and interact with basic items", async ({ page }) => {
+		// Wait for buttons to be enabled before interacting
+		await expect(page.getByRole("button", { name: /Add a sticky note/i })).toBeEnabled({
+			timeout: 15000,
+		});
 
-		// Click the "Add Group" button
-		await page.getByText("Add Group").click();
+		// Create a note
+		await page.getByRole("button", { name: /Add a sticky note/i }).click();
+		await expect(page.locator("[data-item-id]")).toHaveCount(1);
+		await expect(page.getByRole("textbox", { name: /Type your note here/i })).toBeVisible();
 
-		// Verify that a group was added.
-		groups = await page.getByLabel("Note Group");
-		expect(groups).toHaveCount(1);
-	});
+		// Create a shape
+		await page.getByRole("button", { name: /Add a circle shape/i }).click();
+		await expect(page.locator("[data-item-id]")).toHaveCount(2); // Should have note + circle
 
-	test("Add note", async ({ page }) => {
-		let notes = await page.getByLabel("Note");
-		expect(notes).toHaveCount(0);
-
-		// Click the "Add Note" button
-		await page.getByText("Add Note").click();
-
-		// Verify that a note was added.
-		notes = await page.getByLabel("Note");
-		expect(notes).toHaveCount(1);
-	});
-
-	test("Delete note", async ({ page }) => {
-		// Click the "Add Note" button
-		await page.getByText("Add Note").click();
-
-		// Select the note.
-		await page.getByLabel("Note").click(); // Will time out if no note exists on the canvas.
-
-		let notes = await page.getByLabel("Note");
-		expect(notes).toHaveCount(1);
-
-		// Click the "Delete" button.
-		await page.getByText("Delete Note").click();
-
-		notes = await page.getByLabel("Note");
-		expect(notes).toHaveCount(0);
+		// Select and delete an item (select the second item - the circle)
+		await page.locator("[data-item-id]").nth(1).click();
+		await page.getByRole("button", { name: /Delete item/i }).click();
+		await expect(page.locator("[data-item-id]")).toHaveCount(1); // Should have only note left
 	});
 });

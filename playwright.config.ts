@@ -50,11 +50,11 @@ export default defineConfig({
 		{
 			command: "npm run start:server",
 			url: backEndUrl,
-			reuseExistingServer: !process.env,
+			reuseExistingServer: !process.env.CI,
 		},
-		// Run front-end dev server
+		// Run front-end dev server in LOCAL mode (no auth required for tests)
 		{
-			command: "npm run start",
+			command: "npm run dev:local",
 			url: frontEndUrl,
 			reuseExistingServer: !process.env.CI,
 		},
