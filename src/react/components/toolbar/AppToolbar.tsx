@@ -4,18 +4,10 @@
  */
 
 import React, { JSX } from "react";
-<<<<<<< HEAD:src/react/AppToolbar.tsx
 import { Tree } from "fluid-framework";
-import { TreeViewAlpha } from "@fluidframework/tree/alpha";
-import { App, Shape } from "../schema/app_schema.js";
-import { undoRedo } from "../utils/undo.js";
-import { isShape, isTable } from "../utils/contentHandlers.js";
-=======
-import { TreeView, Tree } from "fluid-framework";
 import { App, Shape } from "../../../schema/app_schema.js";
 import { undoRedo } from "../../../utils/undo.js";
 import { isShape, isTable } from "../../../utils/contentHandlers.js";
->>>>>>> 963e59f5c30253c65ec661fcfb2d47bb6431855c:src/react/components/toolbar/AppToolbar.tsx
 import {
 	NewCircleButton,
 	NewSquareButton,
@@ -39,32 +31,18 @@ import {
 	MoveItemBackwardButton,
 	BringItemToFrontButton,
 	SendItemToBackButton,
-<<<<<<< HEAD:src/react/AppToolbar.tsx
-	InkColorPicker,
-	UndoButton,
-	RedoButton,
-	InkToggleButton,
-	EraserToggleButton,
-	ClearAllButton,
-	CommentsPaneToggleButton,
-	AITaskPaneToggleButton,
-	SelectionCountBadge,
-	ZoomMenu,
-} from "./appbuttonux.js";
-import { DeleteSelectedRowsButton } from "./tablebuttonux.js";
-=======
 } from "./buttons/ZOrderButtons.js";
 import { InkColorPicker, InkToggleButton, EraserToggleButton } from "./buttons/InkButtons.js";
 import { UndoButton, RedoButton, ClearAllButton } from "./buttons/ActionButtons.js";
 import { CommentsPaneToggleButton } from "./buttons/PaneButtons.js";
 import { SelectionCountBadge, ZoomMenu } from "./buttons/ViewButtons.js";
 import { DeleteSelectedRowsButton } from "./buttons/TableButtons.js";
->>>>>>> 963e59f5c30253c65ec661fcfb2d47bb6431855c:src/react/components/toolbar/AppToolbar.tsx
 // All toolbar button UIs now componentized; direct TooltipButton usage removed.
 import { MessageBar, MessageBarBody, MessageBarTitle } from "@fluentui/react-message-bar";
 import { Toolbar, ToolbarDivider, ToolbarGroup } from "@fluentui/react-toolbar";
 import type { SelectionManager } from "../../../utils/presence/Interfaces/SelectionManager.js";
 import { TypedSelection } from "../../../utils/presence/selection.js";
+import { TreeViewAlpha } from "@fluidframework/tree/alpha";
 
 export interface AppToolbarProps {
 	view: TreeViewAlpha<typeof App>;
@@ -107,8 +85,6 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 		selectedRowId,
 		commentPaneHidden,
 		setCommentPaneHidden,
-		aiTaskPaneHidden,
-		setAiTaskPaneHidden,
 		undoRedo,
 		canUndo,
 		canRedo,
@@ -342,10 +318,6 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 				<CommentsPaneToggleButton
 					paneHidden={commentPaneHidden}
 					onToggle={(h) => setCommentPaneHidden(h)}
-				/>
-				<AITaskPaneToggleButton
-					paneHidden={aiTaskPaneHidden}
-					onToggle={(h) => setAiTaskPaneHidden(h)}
 				/>
 			</ToolbarGroup>
 			{/* Right side grouping (auto) */}

@@ -4,22 +4,12 @@
  */
 
 import React, { JSX, useContext, useEffect, useState, useRef } from "react";
-<<<<<<< HEAD:src/react/ux.tsx
-import { App } from "../schema/app_schema.js";
-import "../output.css";
-import { ConnectionState, IFluidContainer } from "fluid-framework";
-import { TreeViewAlpha } from "@fluidframework/tree/alpha";
-import { Canvas } from "./canvasux.js";
-import type { SelectionManager } from "../utils/presence/Interfaces/SelectionManager.js";
-import { undoRedo } from "../utils/undo.js";
-=======
 import { App } from "../../../schema/app_schema.js";
 import "../../../output.css";
-import { ConnectionState, IFluidContainer, TreeView } from "fluid-framework";
+import { ConnectionState, IFluidContainer } from "fluid-framework";
 import { Canvas } from "../canvas/Canvas.js";
 import type { SelectionManager } from "../../../utils/presence/Interfaces/SelectionManager.js";
 import { undoRedo } from "../../../utils/undo.js";
->>>>>>> 963e59f5c30253c65ec661fcfb2d47bb6431855c:src/react/components/app/App.tsx
 import {
 	Avatar,
 	AvatarGroup,
@@ -33,26 +23,6 @@ import { ToolbarDivider } from "@fluentui/react-toolbar";
 import { Tooltip } from "@fluentui/react-tooltip";
 import { Menu, MenuTrigger, MenuPopover, MenuList, MenuItem } from "@fluentui/react-menu";
 import { SignOut20Regular, PersonSwap20Regular } from "@fluentui/react-icons";
-<<<<<<< HEAD:src/react/ux.tsx
-import { User, UsersManager } from "../utils/presence/Interfaces/UsersManager.js";
-import { PresenceContext } from "./contexts/PresenceContext.js";
-import { AuthContext } from "./contexts/AuthContext.js";
-import { signOutHelper, switchAccountHelper } from "../infra/auth.js";
-import { DragManager } from "../utils/presence/Interfaces/DragManager.js";
-import { ResizeManager } from "../utils/presence/Interfaces/ResizeManager.js";
-import { DragAndRotatePackage } from "../utils/presence/drag.js";
-import { ResizePackage } from "../utils/presence/Interfaces/ResizeManager.js";
-import { useSelectionSync, useMultiTypeSelectionSync } from "../utils/eventSubscriptions.js";
-import { TypedSelection } from "../utils/presence/selection.js";
-import { CommentPane, CommentPaneRef } from "./commentux.js";
-import { TaskPane } from "./aiux.js";
-import { useTree } from "./hooks/useTree.js";
-import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts.js";
-import { useAppKeyboardShortcuts } from "./hooks/useAppKeyboardShortcuts.js";
-import { PaneContext } from "./contexts/PaneContext.js";
-import { AppToolbar } from "./AppToolbar.js";
-import { InkPresenceManager } from "../utils/presence/Interfaces/InkManager.js";
-=======
 import { User, UsersManager } from "../../../utils/presence/Interfaces/UsersManager.js";
 import { PresenceContext } from "../../contexts/PresenceContext.js";
 import { AuthContext } from "../../contexts/AuthContext.js";
@@ -70,7 +40,7 @@ import { useAppKeyboardShortcuts } from "../../hooks/useAppKeyboardShortcuts.js"
 import { PaneContext } from "../../contexts/PaneContext.js";
 import { AppToolbar } from "../toolbar/AppToolbar.js";
 import { InkPresenceManager } from "../../../utils/presence/Interfaces/InkManager.js";
->>>>>>> 963e59f5c30253c65ec661fcfb2d47bb6431855c:src/react/components/app/App.tsx
+import { TreeViewAlpha } from "@fluidframework/tree/alpha";
 // Removed circle ink creation; ink tool toggles freehand drawing.
 
 // Context for comment pane actions
@@ -291,12 +261,6 @@ export function ReactApp(props: {
 							setHidden={setCommentPaneHidden}
 							itemId={selectedItemId}
 							app={view.root}
-						/>
-						<TaskPane
-							hidden={aiTaskPaneHidden}
-							setHidden={setAiTaskPaneHidden}
-							main={tree}
-							setRenderView={setView}
 						/>
 					</div>
 				</div>
