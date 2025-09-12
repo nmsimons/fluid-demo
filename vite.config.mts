@@ -67,7 +67,9 @@ export default defineConfig(({ mode }) => {
 		},
 		server: {
 			port: 8080,
+			host: true, // Allow access from network
 			hot: true,
+			strictPort: true, // Fail if port is already in use
 		},
 		define: {
 			// Only expose specific environment variables that are actually needed
