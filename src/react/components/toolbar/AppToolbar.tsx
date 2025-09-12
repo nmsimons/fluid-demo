@@ -5,9 +5,9 @@
 
 import React, { JSX } from "react";
 import { TreeView, Tree } from "fluid-framework";
-import { App, Shape } from "../schema/app_schema.js";
-import { undoRedo } from "../utils/undo.js";
-import { isShape, isTable } from "../utils/contentHandlers.js";
+import { App, Shape } from "../../../schema/app_schema.js";
+import { undoRedo } from "../../../utils/undo.js";
+import { isShape, isTable } from "../../../utils/contentHandlers.js";
 import {
 	NewCircleButton,
 	NewSquareButton,
@@ -15,37 +15,33 @@ import {
 	NewStarButton,
 	NewNoteButton,
 	NewTableButton,
-	VoteButton,
-	DeleteButton,
-	DuplicateButton,
-	CommentButton,
-	ShapeColorPicker,
+} from "./buttons/CreationButtons.js";
+import { VoteButton, DeleteButton, DuplicateButton, CommentButton } from "./buttons/EditButtons.js";
+import { ShapeColorPicker } from "./buttons/ShapeButtons.js";
+import {
 	AddColumnButton,
 	AddRowButton,
 	MoveColumnLeftButton,
 	MoveColumnRightButton,
 	MoveRowUpButton,
 	MoveRowDownButton,
+} from "./buttons/SimpleTableButtons.js";
+import {
 	MoveItemForwardButton,
 	MoveItemBackwardButton,
 	BringItemToFrontButton,
 	SendItemToBackButton,
-	InkColorPicker,
-	UndoButton,
-	RedoButton,
-	InkToggleButton,
-	EraserToggleButton,
-	ClearAllButton,
-	CommentsPaneToggleButton,
-	SelectionCountBadge,
-	ZoomMenu,
-} from "./appbuttonux.js";
-import { DeleteSelectedRowsButton } from "./tablebuttonux.js";
+} from "./buttons/ZOrderButtons.js";
+import { InkColorPicker, InkToggleButton, EraserToggleButton } from "./buttons/InkButtons.js";
+import { UndoButton, RedoButton, ClearAllButton } from "./buttons/ActionButtons.js";
+import { CommentsPaneToggleButton } from "./buttons/PaneButtons.js";
+import { SelectionCountBadge, ZoomMenu } from "./buttons/ViewButtons.js";
+import { DeleteSelectedRowsButton } from "./buttons/TableButtons.js";
 // All toolbar button UIs now componentized; direct TooltipButton usage removed.
 import { MessageBar, MessageBarBody, MessageBarTitle } from "@fluentui/react-message-bar";
 import { Toolbar, ToolbarDivider, ToolbarGroup } from "@fluentui/react-toolbar";
-import type { SelectionManager } from "../utils/presence/Interfaces/SelectionManager.js";
-import { TypedSelection } from "../utils/presence/selection.js";
+import type { SelectionManager } from "../../../utils/presence/Interfaces/SelectionManager.js";
+import { TypedSelection } from "../../../utils/presence/selection.js";
 
 export interface AppToolbarProps {
 	view: TreeView<typeof App>;

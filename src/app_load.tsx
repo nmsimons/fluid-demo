@@ -1,7 +1,7 @@
 import { AzureClient } from "@fluidframework/azure-client";
 import React from "react";
 import { createRoot } from "react-dom/client";
-import { ReactApp } from "./react/ux.js";
+import { ReactApp } from "./react/components/app/App.js";
 import { App, appTreeConfiguration } from "./schema/app_schema.js";
 import { createUndoRedoStacks } from "./utils/undo.js";
 import { containerSchema } from "./schema/container_schema.js";

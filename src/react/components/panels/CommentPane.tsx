@@ -10,12 +10,12 @@ import React, {
 	useRef,
 	useState,
 } from "react";
-import { App, Comment, Comments, Group, Item } from "../schema/app_schema.js";
-import { Pane } from "./paneux.js";
-import { useTree } from "./hooks/useTree.js";
-import { getContentHandler } from "../utils/contentHandlers.js";
-import { PresenceContext } from "./contexts/PresenceContext.js";
-import { VoteButton } from "./appbuttonux.js";
+import { App, Comment, Comments, Group, Item } from "../../../schema/app_schema.js";
+import { Pane } from "./Pane.js";
+import { useTree } from "../../hooks/useTree.js";
+import { getContentHandler } from "../../../utils/contentHandlers.js";
+import { PresenceContext } from "../../contexts/PresenceContext.js";
+import { VoteButton } from "../toolbar/buttons/EditButtons.js";
 
 export interface CommentPaneRef {
 	focusInput: () => void;

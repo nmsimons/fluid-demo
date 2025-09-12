@@ -7,9 +7,9 @@ import React, { JSX, useContext } from "react";
 import { Item, Items, Shape, Vote, FluidTable } from "../schema/app_schema.js";
 import { Tree } from "fluid-framework";
 import { useTree } from "./hooks/useTree.js";
-import { TooltipButton } from "./buttonux.js";
+import { TooltipButton } from "./components/forms/Button.js";
 import { PresenceContext } from "./contexts/PresenceContext.js";
-import { CommentPaneContext } from "./ux.js";
+import { CommentPaneContext } from "./components/app/App.js";
 import { getContentHandler } from "../utils/contentHandlers.js";
 import {
 	DismissFilled,

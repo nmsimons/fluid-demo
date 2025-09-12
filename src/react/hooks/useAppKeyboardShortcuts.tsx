@@ -8,7 +8,7 @@ import { App, FluidTable } from "../../schema/app_schema.js";
 import { KeyboardShortcut } from "./useKeyboardShortcuts.js";
 import { undoRedo } from "../../utils/undo.js";
 import { UsersManager } from "../../utils/presence/Interfaces/UsersManager.js";
-import { SHAPE_COLORS } from "../appbuttonux.js";
+import { SHAPE_COLORS } from "../components/toolbar/buttons/CreationButtons.js";
 import { SelectionManager } from "../../utils/presence/Interfaces/SelectionManager.js";
 
 /**

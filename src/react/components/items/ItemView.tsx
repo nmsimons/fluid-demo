@@ -39,21 +39,21 @@
 // No functional logic is altered by the commentary added in this pass.
 // ============================================================================
 import React, { useContext, useEffect, useRef, useState } from "react";
-import { clampShapeSize } from "../constants/shape.js";
+import { clampShapeSize } from "../../../constants/shape.js";
 import { Tree } from "fluid-framework";
-import { FluidTable, Item, Note } from "../schema/app_schema.js";
-import { PresenceContext } from "./contexts/PresenceContext.js";
-import { useTree, objectIdNumber } from "./hooks/useTree.js";
-import { ShapeView } from "./shapeux.js";
-import { NoteView } from "./noteux.js";
-import { TableView } from "./tableux.js";
-import { usePresenceManager } from "./hooks/usePresenceManger.js";
-import { PresenceManager } from "../utils/presence/Interfaces/PresenceManager.js";
-import { DragAndRotatePackage } from "../utils/presence/drag.js";
-import { ResizePackage } from "../utils/presence/Interfaces/ResizeManager.js";
-import { LayoutContext } from "./hooks/useLayoutManger.js";
+import { FluidTable, Item, Note } from "../../../schema/app_schema.js";
+import { PresenceContext } from "../../contexts/PresenceContext.js";
+import { useTree, objectIdNumber } from "../../hooks/useTree.js";
+import { ShapeView } from "./ShapeView.js";
+import { NoteView } from "./NoteView.js";
+import { TableView } from "./TableView.js";
+import { usePresenceManager } from "../../hooks/usePresenceManger.js";
+import { PresenceManager } from "../../../utils/presence/Interfaces/PresenceManager.js";
+import { DragAndRotatePackage } from "../../../utils/presence/drag.js";
+import { ResizePackage } from "../../../utils/presence/Interfaces/ResizeManager.js";
+import { LayoutContext } from "../../hooks/useLayoutManger.js";
 import { ChevronLeft16Filled } from "@fluentui/react-icons";
-import { getContentHandler, getContentType, isShape } from "../utils/contentHandlers.js";
+import { getContentHandler, getContentType, isShape } from "../../../utils/contentHandlers.js";
 
 // ============================================================================
 // Helpers
