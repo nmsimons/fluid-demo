@@ -11,7 +11,7 @@ export function ItemsHtmlLayer(props: {
 	const { items, canvasPosition, pan, zoom } = props;
 	return (
 		<div
-			className="relative h-full w-full"
+			className="items-html-layer relative h-full w-full"
 			style={{
 				left: `${pan.x}px`,
 				top: `${pan.y}px`,

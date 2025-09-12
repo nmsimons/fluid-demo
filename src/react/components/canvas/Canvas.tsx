@@ -482,12 +482,11 @@ export function Canvas(props: {
 		<svg
 			id="canvas"
 			ref={svgRef}
-			className="relative flex h-full w-full bg-transparent"
+			className="canvas-svg relative flex h-full w-full bg-transparent"
 			style={{
 				touchAction: "none",
 				cursor: isPanning ? "grabbing" : undefined,
-				zIndex: 0, // Canvas background - keep original positioning
-				pointerEvents: "auto", // Allow pointer events but don't force them
+				pointerEvents: "auto",
 			}}
 			onClick={handleBackgroundClick}
 			onMouseDown={beginPanIfBackground}
@@ -651,7 +650,11 @@ export function Canvas(props: {
 						e.preventDefault();
 						e.dataTransfer.dropEffect = "move";
 					}}
-					style={{ userSelect: "none" }}
+					style={{
+						userSelect: "none",
+						zIndex: -10, // Force items below SVG overlays
+						position: "relative",
+					}}
 				>
 					<ItemsHtmlLayer
 						items={items}
@@ -665,6 +668,8 @@ export function Canvas(props: {
 			<g
 				key={`sel-${selKey}-${motionKey}-${layoutVersion}`}
 				transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}
+				style={{ pointerEvents: "auto", touchAction: "none" }}
+				data-layer="selection-overlays"
 			>
 				{items.map((item) => {
 					if (!(item instanceof Item)) return null;
@@ -685,6 +690,8 @@ export function Canvas(props: {
 			<g
 				key={`presence-${selKey}-${motionKey}-${layoutVersion}`}
 				transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}
+				style={{ pointerEvents: "auto", touchAction: "none" }}
+				data-layer="presence-overlays"
 			>
 				{items.map((item) => {
 					if (!(item instanceof Item)) return null;
@@ -721,6 +728,8 @@ export function Canvas(props: {
 			<g
 				key={`comments-${selKey}-${motionKey}-${layoutVersion}`}
 				transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}
+				style={{ pointerEvents: "auto", touchAction: "none" }}
+				data-layer="comment-overlays"
 			>
 				{items.map((item) => {
 					if (!(item instanceof Item)) return null;

@@ -101,7 +101,7 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 	// Zoom slider logic moved into ZoomMenu component.
 
 	return (
-		<Toolbar className="h-[48px] shadow-lg flex-nowrap overflow-x-auto overflow-y-hidden whitespace-nowrap min-h-[48px] max-h-[48px]">
+		<Toolbar className="app-toolbar h-[48px] shadow-lg flex-nowrap overflow-x-auto overflow-y-hidden whitespace-nowrap min-h-[48px] max-h-[48px]">
 			{/* Undo / Redo group (leftmost) */}
 			<ToolbarGroup>
 				<UndoButton onUndo={() => undoRedo.undo()} disabled={!canUndo} />

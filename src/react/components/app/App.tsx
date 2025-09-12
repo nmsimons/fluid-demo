@@ -6,6 +6,10 @@
 import React, { JSX, useContext, useEffect, useState, useRef } from "react";
 import { App } from "../../../schema/appSchema.js";
 import "../../../output.css";
+import "../../../styles/ios-minimal.css";
+// import "../../../styles/ios-fixes.css";
+// import "../../../styles/ios-safari-fixes.css";
+// import { fixIOSZIndexIssues } from "../../../utils/iosZIndexFix.js";
 import { ConnectionState, IFluidContainer, TreeView } from "fluid-framework";
 import { Canvas } from "../canvas/Canvas.js";
 import type { SelectionManager } from "../../../utils/presence/interfaces/selectionManager.js";
@@ -147,6 +151,12 @@ export function ReactApp(props: {
 		console.log("View Changed");
 	}, [view]);
 
+	// Initialize iOS Safari z-index fixes
+	useEffect(() => {
+		// Temporarily disabled to debug toolbar visibility
+		// fixIOSZIndexIssues();
+	}, []);
+
 	// Use unified selection sync for item selection state management
 	useSelectionSync(
 		itemSelection,
@@ -206,6 +216,7 @@ export function ReactApp(props: {
 					className="flex flex-col bg-transparent h-screen w-full overflow-hidden overscroll-none"
 				>
 					<Header saved={saved} connectionState={connectionState} />
+					{/* <div style={{ position: "relative", zIndex: 9999, isolation: "isolate" }}> */}
 					<AppToolbar
 						view={view}
 						tree={tree}
@@ -232,7 +243,8 @@ export function ReactApp(props: {
 						inkWidth={inkWidth}
 						onInkWidthChange={setInkWidth}
 					/>
-					<div className="flex h-[calc(100vh-96px)] w-full flex-row ">
+					{/* </div> */}
+					<div className="canvas-container flex h-[calc(100vh-96px)] w-full flex-row ">
 						<PaneContext.Provider
 							value={{
 								panes: [{ name: "comments", visible: !commentPaneHidden }],
