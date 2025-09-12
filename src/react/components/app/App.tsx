@@ -4,7 +4,7 @@
  */
 
 import React, { JSX, useContext, useEffect, useState, useRef } from "react";
-import { App } from "../../../schema/app_schema.js";
+import { App } from "../../../schema/appSchema.js";
 import "../../../output.css";
 import { ConnectionState, IFluidContainer, TreeView } from "fluid-framework";
 import { Canvas } from "../canvas/Canvas.js";

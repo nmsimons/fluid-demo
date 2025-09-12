@@ -1,11 +1,11 @@
 import { AzureClient } from "@fluidframework/azure-client";
-import { loadApp } from "../app_load.js";
+import { loadApp } from "../AppLoad.js";
 import { getClientProps } from "../infra/azure/azureClientProps.js";
 import { AttachState } from "fluid-framework";
 import { AccountInfo, PublicClientApplication } from "@azure/msal-browser";
 import { authHelper } from "../infra/auth.js";
 import { getGraphAccessToken, getUserProfilePicture } from "../utils/graphService.js";
-import { showErrorMessage } from "./error_ux.js";
+import { showErrorMessage } from "./ErrorMessage.js";
 
 export async function azureStart() {
 	try {

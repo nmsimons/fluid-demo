@@ -2,8 +2,8 @@
  * Copyright (c) Microsoft Corporation and contributors. All rights reserved.
  * Licensed under the MIT License.
  */
-import { azureStart } from "./start/azure_start.js";
-import { localStart } from "./start/local_start.js";
+import { azureStart } from "./start/azureStart.js";
+import { localStart } from "./start/localStart.js";
 
 async function start() {
 	const client = process.env.FLUID_CLIENT;

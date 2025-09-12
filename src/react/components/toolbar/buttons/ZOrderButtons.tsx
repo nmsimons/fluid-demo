@@ -12,7 +12,7 @@ import {
 } from "@fluentui/react-icons";
 import { TooltipButton } from "../../forms/Button.js";
 import { useTree } from "../../../hooks/useTree.js";
-import { Items } from "../../../../schema/app_schema.js";
+import { Items } from "../../../../schema/appSchema.js";
 
 // Z-order buttons
 export function MoveItemForwardButton(props: {

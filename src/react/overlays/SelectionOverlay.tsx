@@ -30,7 +30,7 @@
 //
 // ============================================================================
 import React from "react";
-import { FluidTable, Item, Shape } from "../../schema/app_schema.js";
+import { FluidTable, Item, Shape } from "../../schema/appSchema.js";
 import { Tree } from "fluid-framework";
 import { getActiveDragForItem } from "../utils/dragUtils.js";
 

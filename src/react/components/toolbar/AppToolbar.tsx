@@ -5,7 +5,7 @@
 
 import React, { JSX } from "react";
 import { TreeView, Tree } from "fluid-framework";
-import { App, Shape } from "../../../schema/app_schema.js";
+import { App, Shape } from "../../../schema/appSchema.js";
 import { undoRedo } from "../../../utils/undo.js";
 import { isShape, isTable } from "../../../utils/contentHandlers.js";
 import {

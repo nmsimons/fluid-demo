@@ -2,15 +2,15 @@ import { AzureClient } from "@fluidframework/azure-client";
 import React from "react";
 import { createRoot } from "react-dom/client";
 import { ReactApp } from "./react/components/app/App.js";
-import { App, appTreeConfiguration } from "./schema/app_schema.js";
+import { App, appTreeConfiguration } from "./schema/appSchema.js";
 import { createUndoRedoStacks } from "./utils/undo.js";
-import { containerSchema } from "./schema/container_schema.js";
+import { containerSchema } from "./schema/containerSchema.js";
 import { loadFluidData } from "./infra/fluid.js";
 import { IFluidContainer } from "fluid-framework";
 import { FluentProvider } from "@fluentui/react-provider";
 import { webLightTheme } from "@fluentui/react-theme";
 import { AuthContext } from "./react/contexts/AuthContext.js";
-import { showErrorMessage } from "./start/error_ux.js";
+import { showErrorMessage } from "./start/ErrorMessage.js";
 
 import { getPresence } from "@fluidframework/presence/beta";
 import { createTypedSelectionManager } from "./utils/presence/selection.js";

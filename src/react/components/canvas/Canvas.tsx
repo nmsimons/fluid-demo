@@ -51,7 +51,7 @@ import {
 	InkStyle,
 	InkBBox,
 	App,
-} from "../../../schema/app_schema.js";
+} from "../../../schema/appSchema.js";
 import { Tree } from "fluid-framework";
 import { IFluidContainer } from "fluid-framework";
 import { PresenceContext } from "../../contexts/PresenceContext.js";

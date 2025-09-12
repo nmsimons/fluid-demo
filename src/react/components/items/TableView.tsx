@@ -23,7 +23,7 @@ import {
 	FluidColumn,
 	typeDefinition,
 	hintValues,
-} from "../../../schema/app_schema.js";
+} from "../../../schema/appSchema.js";
 import { Tree, TreeStatus } from "fluid-framework";
 import { useVirtualizer, VirtualItem, Virtualizer } from "@tanstack/react-virtual";
 import { ColumnTypeDropdown, DeleteButton, IconButton } from "../toolbar/buttons/TableButtons.js";

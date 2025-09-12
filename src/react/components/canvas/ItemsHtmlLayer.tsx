@@ -1,5 +1,5 @@
 import React from "react";
-import { Items, Item } from "../../../schema/app_schema.js";
+import { Items, Item } from "../../../schema/appSchema.js";
 import { ItemView } from "../items/ItemView.js";
 
 export function ItemsHtmlLayer(props: {

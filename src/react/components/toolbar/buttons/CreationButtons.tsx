@@ -15,7 +15,7 @@ import {
 import { TooltipButton } from "../../forms/Button.js";
 import { useTree } from "../../../hooks/useTree.js";
 import { PresenceContext } from "../../../contexts/PresenceContext.js";
-import { Items } from "../../../../schema/app_schema.js";
+import { Items } from "../../../../schema/appSchema.js";
 import { getContentHandler } from "../../../../utils/contentHandlers.js";
 import { Tree } from "@fluidframework/tree";
 

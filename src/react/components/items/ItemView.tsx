@@ -41,7 +41,7 @@
 import React, { useContext, useEffect, useRef, useState } from "react";
 import { clampShapeSize } from "../../../constants/shape.js";
 import { Tree } from "fluid-framework";
-import { FluidTable, Item, Note } from "../../../schema/app_schema.js";
+import { FluidTable, Item, Note } from "../../../schema/appSchema.js";
 import { PresenceContext } from "../../contexts/PresenceContext.js";
 import { useTree, objectIdNumber } from "../../hooks/useTree.js";
 import { ShapeView } from "./ShapeView.js";

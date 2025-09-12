@@ -11,7 +11,7 @@ import {
 	FluidColumnSchema,
 	HintValues,
 	hintValues,
-} from "../../../../schema/app_schema.js";
+} from "../../../../schema/appSchema.js";
 import {
 	DismissFilled,
 	ArrowUndoFilled,

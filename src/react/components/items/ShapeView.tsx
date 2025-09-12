@@ -1,5 +1,5 @@
 import React, { JSX } from "react";
-import { Shape } from "../../../schema/app_schema.js";
+import { Shape } from "../../../schema/appSchema.js";
 import { useTree } from "../../hooks/useTree.js";
 
 const shadow = "drop-shadow(3px 3px 3px rgb(0 0 0 / 0.3))";

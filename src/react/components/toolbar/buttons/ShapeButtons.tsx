@@ -16,7 +16,7 @@ import {
 	renderSwatchPickerGrid,
 } from "@fluentui/react-components";
 import { useTree } from "../../../hooks/useTree.js";
-import { Shape } from "../../../../schema/app_schema.js";
+import { Shape } from "../../../../schema/appSchema.js";
 import { Tree } from "@fluidframework/tree";
 
 export const SHAPE_COLORS = [

@@ -4,7 +4,7 @@
  */
 
 import { TreeView, Tree } from "fluid-framework";
-import { App, FluidTable } from "../../schema/app_schema.js";
+import { App, FluidTable } from "../../schema/appSchema.js";
 import { KeyboardShortcut } from "./useKeyboardShortcuts.js";
 import { undoRedo } from "../../utils/undo.js";
 import { UsersManager } from "../../utils/presence/interfaces/usersManager.js";

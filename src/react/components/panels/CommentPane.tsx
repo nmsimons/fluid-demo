@@ -10,7 +10,7 @@ import React, {
 	useRef,
 	useState,
 } from "react";
-import { App, Comment, Comments, Group, Item } from "../../../schema/app_schema.js";
+import { App, Comment, Comments, Group, Item } from "../../../schema/appSchema.js";
 import { Pane } from "./Pane.js";
 import { useTree } from "../../hooks/useTree.js";
 import { getContentHandler } from "../../../utils/contentHandlers.js";
