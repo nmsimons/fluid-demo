@@ -5,7 +5,7 @@ import {
 	LatestRawEvents,
 } from "@fluidframework/presence/beta";
 import { Listenable } from "fluid-framework";
-import { InkPresenceManager, EphemeralInkStroke, EphemeralPoint } from "./Interfaces/index.js";
+import { InkPresenceManager, EphemeralInkStroke, EphemeralPoint } from "./Interfaces/InkManager.js";
 
 /* eslint-disable @typescript-eslint/no-empty-object-type */
 export function createInkPresenceManager(props: {
