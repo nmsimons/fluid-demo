@@ -27,7 +27,7 @@ export default defineConfig(({ mode }) => {
 			rollupOptions: {
 				output: {
 					manualChunks: (id) => {
-						// Create separate chunks for major dependencies
+						// Create separate chunks for major dependencies only
 						if (id.includes("node_modules")) {
 							if (id.includes("@fluidframework")) {
 								return "fluid-framework";
@@ -48,13 +48,13 @@ export default defineConfig(({ mode }) => {
 							return "vendor";
 						}
 
-						// Split app code by feature
-						if (id.includes("/src/utils/")) {
-							return "utils";
-						}
-						if (id.includes("/src/react/components/")) {
-							return "components";
-						}
+						// Don't split app code - keep it together to avoid chunking issues
+						// if (id.includes("/src/utils/")) {
+						// 	return "utils";
+						// }
+						// if (id.includes("/src/react/components/")) {
+						// 	return "components";
+						// }
 						if (id.includes("/src/schema/")) {
 							return "schema";
 						}
