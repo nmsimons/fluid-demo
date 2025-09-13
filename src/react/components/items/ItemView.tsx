@@ -249,82 +249,60 @@ export function ItemView(props: {
 		startCanvasY: number;
 		interactiveStart: boolean;
 	}
-	const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-		if (e.button !== 0) return;
 
+	// Shared logic for both mouse and touch
+	const handleItemInteraction = (
+		e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>,
+		isTouch: boolean
+	) => {
 		const targetEl = e.target as HTMLElement;
 		const interactive = !!targetEl.closest(
 			'textarea, input, select, button, [contenteditable="true"], .dropdown, .menu'
 		);
 
-		// Check if this is a touch interaction with UI handles (resize/rotate)
+		// Check if this is interaction with UI handles (resize/rotate)
 		const isUIHandle = !!targetEl.closest("[data-resize-handle], [data-rotate-handle]");
-
-		// Additional check for direct handle elements
 		const isDirectHandle =
 			targetEl.hasAttribute("data-resize-handle") ||
 			targetEl.hasAttribute("data-rotate-handle") ||
 			targetEl.parentElement?.hasAttribute("data-resize-handle") ||
 			targetEl.parentElement?.hasAttribute("data-rotate-handle");
-
 		const isAnyHandle = isUIHandle || isDirectHandle;
 
-		// For touch events, be selective about what we allow:
-		// - Always allow UI handles (resize/rotate) for single-finger interaction
-		// - For primary touch on input elements, allow natural iOS behavior for focus but still set selection
-		// - Allow non-primary touch (second finger) for item dragging
-		// Note: We want touch to behave like mouse for selection/dragging of items
-		const isDirectlyOnInput = targetEl.matches(
-			'textarea, input, button, select, [contenteditable="true"]'
-		);
-
-		// For iOS, we need to be permissive with input elements to allow native focus behavior
-		// but we still want selection to work like mouse clicks
-		const isTouch = e.pointerType === "touch";
-		const shouldAllowNativeInputFocus =
-			isTouch && e.isPrimary && !isAnyHandle && isDirectlyOnInput;
-
-		// For iOS Safari, be more aggressive about preventing default on handles
-		// and ensure touch events are properly handled
-		if (e.pointerType === "touch" && isAnyHandle) {
+		// For touch on handles, prevent default and stop propagation
+		if (isTouch && isAnyHandle) {
 			e.preventDefault();
 			e.stopPropagation();
-			// Ensure pointer capture works on iOS
-			try {
-				e.currentTarget.setPointerCapture(e.pointerId);
-			} catch {
-				/* ignore if not supported */
-			}
 		}
 
 		// Always stop propagation for item interactions to prevent Canvas interference
-		// Exception: don't stop propagation for dropdown/menu interactions so they still work
 		const isDropdownMenu = targetEl.closest(".dropdown, .menu");
 		if (!isDropdownMenu) {
 			e.stopPropagation();
 		}
 
-		// Always set selection unless we're interacting with specific UI controls that shouldn't trigger selection
+		// Set selection unless interacting with UI controls
 		const shouldSkipSelection = targetEl.closest("button, select, .dropdown, .menu");
 		if (!shouldSkipSelection) {
-			// Respect Ctrl/Meta for multi-select even in pointer down
+			// Respect Ctrl/Meta for multi-select
 			if (e.ctrlKey || e.metaKey) {
 				presence.itemSelection.toggleSelection({ id: item.id });
 			} else {
 				presence.itemSelection.setSelection({ id: item.id });
 			}
 		}
+
+		return { targetEl, interactive, isAnyHandle };
+	};
+
+	const onMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+		if (e.button !== 0) return;
+
+		const { interactive } = handleItemInteraction(e, false);
 		const start = coordsCanvas(e);
 
-		// For touch on input elements, set selection but don't set up dragging
-		// This allows iOS focus to work naturally while maintaining selection behavior
-		if (shouldAllowNativeInputFocus) {
-			// Selection was already set above, don't set up drag to avoid interfering with input focus
-			return;
-		}
-
 		dragRef.current = {
-			pointerId: e.pointerId,
+			pointerId: -1, // Use -1 for mouse to distinguish from touch
 			started: false,
 			startItemX: item.x,
 			startItemY: item.y,
@@ -332,42 +310,22 @@ export function ItemView(props: {
 			startCanvasY: start.y,
 			interactiveStart: interactive,
 		};
+
 		const THRESHOLD_BASE = 4;
-		const docMove = (ev: PointerEvent) => {
+		const docMove = (ev: MouseEvent) => {
 			const st = dragRef.current;
-			if (!st || st.pointerId !== ev.pointerId) {
-				return;
-			}
+			if (!st) return;
 			const cur = coordsCanvas(ev);
-			// Absolute deltas in canvas (model) units. We don't accumulate over time;
-			// instead we compute from the original pointer-down each move. This
-			// mitigates compounded floating error and neutralizes missed events.
 			const dx = cur.x - st.startCanvasX;
 			const dy = cur.y - st.startCanvasY;
 			if (!st.started) {
-				// Movement intent detection: we require a minimum radial distance from
-				// start before declaring a drag. If the pointer began inside an
-				// interactive descendant (input / textarea / button), we double the
-				// threshold to favor click & focus behaviors over unintended drags.
-				const threshold = st.interactiveStart ? THRESHOLD_BASE * 2 : THRESHOLD_BASE; // more intent needed if started in input
-				if (Math.hypot(dx, dy) < threshold) return; // not yet a drag
+				const threshold = st.interactiveStart ? THRESHOLD_BASE * 2 : THRESHOLD_BASE;
+				if (Math.hypot(dx, dy) < threshold) return;
 				st.started = true;
 				document.documentElement.dataset.manipulating = "1";
-
-				// Prevent default now (stop text selection / scrolling while dragging)
 				ev.preventDefault();
-
-				// Capture pointer only once drag has actually begun to not interfere with click activation
-				try {
-					(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-				} catch {
-					/* ignore */
-				}
 			}
 			if (st.started) {
-				// Apply absolute delta to the original item position. Using the start
-				// position avoids reliance on possibly stale view state and ensures
-				// perfect reversibility / determinism for remote clients.
 				presence.drag.setDragging({
 					id: item.id,
 					x: st.startItemX + dx,
@@ -377,9 +335,10 @@ export function ItemView(props: {
 				});
 			}
 		};
-		const finish = (ev?: PointerEvent) => {
+
+		const finish = () => {
 			const st = dragRef.current;
-			if (!st || (ev && st.pointerId !== ev.pointerId)) return;
+			if (!st) return;
 			if (st.started) {
 				const cur = { x: st.startItemX, y: st.startItemY };
 				const dragState = presence.drag.state.local;
@@ -387,8 +346,6 @@ export function ItemView(props: {
 					cur.x = dragState.x;
 					cur.y = dragState.y;
 				}
-				// Commit the final position atomically into the Fluid tree so all
-				// collaborators converge on the authoritative state.
 				Tree.runTransaction(item, () => {
 					item.x = cur.x;
 					item.y = cur.y;
@@ -396,7 +353,7 @@ export function ItemView(props: {
 				presence.drag.clearDragging();
 				delete document.documentElement.dataset.manipulating;
 			} else {
-				// Click (not drag). If note and not inside an input start we focus.
+				// Click - focus note if applicable
 				if (itemType(item) === "note" && !st.interactiveStart) {
 					const host = (e.currentTarget as HTMLElement).querySelector(
 						"textarea"
@@ -405,16 +362,99 @@ export function ItemView(props: {
 				}
 			}
 			dragRef.current = null;
-			document.removeEventListener("pointermove", docMove);
-			document.removeEventListener("pointerup", finish);
-			document.removeEventListener("pointercancel", finish);
-			document.removeEventListener("lostpointercapture", finish);
+			document.removeEventListener("mousemove", docMove);
+			document.removeEventListener("mouseup", finish);
 		};
-		document.addEventListener("pointermove", docMove);
-		document.addEventListener("pointerup", finish);
-		document.addEventListener("pointercancel", finish);
-		document.addEventListener("lostpointercapture", finish);
+
+		document.addEventListener("mousemove", docMove);
+		document.addEventListener("mouseup", finish);
 	};
+
+	const onTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+		// Only handle single touch for now
+		if (e.touches.length !== 1) return;
+
+		const touch = e.touches[0];
+		const { interactive } = handleItemInteraction(e, true);
+		const start = coordsCanvas(touch);
+
+		dragRef.current = {
+			pointerId: touch.identifier,
+			started: false,
+			startItemX: item.x,
+			startItemY: item.y,
+			startCanvasX: start.x,
+			startCanvasY: start.y,
+			interactiveStart: interactive,
+		};
+
+		const THRESHOLD_BASE = 4;
+		const docMove = (ev: TouchEvent) => {
+			const st = dragRef.current;
+			if (!st) return;
+
+			// Find our touch
+			const touch = Array.from(ev.touches).find((t) => t.identifier === st.pointerId);
+			if (!touch) return;
+
+			const cur = coordsCanvas(touch);
+			const dx = cur.x - st.startCanvasX;
+			const dy = cur.y - st.startCanvasY;
+			if (!st.started) {
+				// Use same threshold for touch to keep behavior consistent
+				const threshold = st.interactiveStart ? THRESHOLD_BASE * 2 : THRESHOLD_BASE;
+				if (Math.hypot(dx, dy) < threshold) return;
+				st.started = true;
+				document.documentElement.dataset.manipulating = "1";
+				ev.preventDefault();
+			}
+			if (st.started) {
+				presence.drag.setDragging({
+					id: item.id,
+					x: st.startItemX + dx,
+					y: st.startItemY + dy,
+					rotation: item.rotation,
+					branch: presence.branch,
+				});
+			}
+		};
+
+		const finish = () => {
+			const st = dragRef.current;
+			if (!st) return;
+			if (st.started) {
+				const cur = { x: st.startItemX, y: st.startItemY };
+				const dragState = presence.drag.state.local;
+				if (dragState && dragState.id === item.id) {
+					cur.x = dragState.x;
+					cur.y = dragState.y;
+				}
+				Tree.runTransaction(item, () => {
+					item.x = cur.x;
+					item.y = cur.y;
+				});
+				presence.drag.clearDragging();
+				delete document.documentElement.dataset.manipulating;
+			} else {
+				// Touch tap - focus note if applicable
+				if (itemType(item) === "note" && !st.interactiveStart) {
+					const host = (e.currentTarget as HTMLElement).querySelector(
+						"textarea"
+					) as HTMLTextAreaElement | null;
+					host?.focus();
+				}
+			}
+			dragRef.current = null;
+			document.removeEventListener("touchmove", docMove);
+			document.removeEventListener("touchend", finish);
+			document.removeEventListener("touchcancel", finish);
+		};
+
+		document.addEventListener("touchmove", docMove, { passive: false });
+		document.addEventListener("touchend", finish);
+		document.addEventListener("touchcancel", finish);
+	};
+
 	// No-op handlers required because we attach to document
 	const onPointerMove = () => {};
 	const onPointerUp = () => {};
@@ -478,7 +518,7 @@ export function ItemView(props: {
 		<div
 			ref={ref}
 			data-item-id={item.id}
-			onPointerDown={(e) => {
+			onMouseDown={(e) => {
 				// Suppress an immediate background clear after interacting with an item.
 				const svg = document.querySelector('svg[data-canvas-root="true"]') as
 					| (SVGSVGElement & { dataset: DOMStringMap })
@@ -487,7 +527,18 @@ export function ItemView(props: {
 					// 75ms is enough to cover click bubbling & selection updates without affecting real background clicks.
 					svg.dataset.suppressClearUntil = String(Date.now() + 75);
 				}
-				onPointerDown(e);
+				onMouseDown(e);
+			}}
+			onTouchStart={(e) => {
+				// Suppress an immediate background clear after interacting with an item.
+				const svg = document.querySelector('svg[data-canvas-root="true"]') as
+					| (SVGSVGElement & { dataset: DOMStringMap })
+					| null;
+				if (svg) {
+					// 75ms is enough to cover click bubbling & selection updates without affecting real background clicks.
+					svg.dataset.suppressClearUntil = String(Date.now() + 75);
+				}
+				onTouchStart(e);
 			}}
 			onPointerMove={onPointerMove}
 			onPointerUp={onPointerUp}
@@ -495,7 +546,7 @@ export function ItemView(props: {
 			style={style}
 			onClick={(e) => {
 				e.stopPropagation();
-				// Selection is now handled in onPointerDown to avoid conflicts with drag system
+				// Selection is now handled in onMouseDown/onTouchStart to avoid conflicts with drag system
 			}}
 		>
 			<SelectionBox

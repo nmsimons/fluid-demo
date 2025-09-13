@@ -264,65 +264,6 @@ export function Canvas(props: {
 	};
 
 	// Begin inking on left button background press (not on items)
-	const handlePointerDown = (e: React.PointerEvent) => {
-		// Check if this is a handle interaction - if so, don't start ink/erase
-		const targetEl = e.target as Element | null;
-		const isHandle = targetEl?.closest("[data-resize-handle], [data-rotate-handle]");
-		if (isHandle) {
-			// Let the handle component deal with this event
-			return;
-		}
-
-		// Manage three mutually exclusive interactions: inking, erasing, panning(right mouse handled upstream).
-		if (inkActive || eraserActive) {
-			if (targetEl?.closest("[data-item-id], [data-svg-item-id]")) {
-				// Suppress cursor over items
-				setCursor((c) => ({ ...c, visible: false }));
-			} else {
-				const rect = svgRef.current?.getBoundingClientRect();
-				if (rect)
-					setCursor({ x: e.clientX - rect.left, y: e.clientY - rect.top, visible: true });
-			}
-		}
-		pointerTypeRef.current = e.pointerType;
-		// Eraser mode: on pointer down start erase interaction instead of drawing
-		if (eraserActive) {
-			if (e.button !== 0) return;
-			// Clear selection when starting to erase (same as mouse click behavior)
-			presence.itemSelection?.clearSelection();
-			pointerIdRef.current = e.pointerId; // track drag for scrubbing
-			performErase(toLogical(e.clientX, e.clientY));
-			return; // don't start ink
-		}
-		if (!inkActive) return; // only when ink tool active
-		if (e.button !== 0) return; // left only
-		// Ignore if clicked on an item or existing selectable element
-		const target = e.target as Element | null;
-		if (target?.closest("[data-item-id]")) return;
-		if (target?.closest("[data-svg-item-id]")) return;
-
-		// Clear selection when starting to ink on background (same as mouse click behavior)
-		presence.itemSelection?.clearSelection();
-
-		// Start inking
-		const p = toLogical(e.clientX, e.clientY);
-		pointerIdRef.current = e.pointerId;
-		setInking(true);
-		tempPointsRef.current = [new InkPoint({ x: p.x, y: p.y, t: Date.now() })];
-		lastPointRef.current = p;
-		strokeIdRef.current = crypto.randomUUID();
-		// Broadcast initial presence stroke (ephemeral only, not yet committed)
-		presence.ink?.setStroke({
-			id: strokeIdRef.current,
-			points: tempPointsRef.current.map((pt) => ({ x: pt.x, y: pt.y, t: pt.t })),
-			color: inkColor,
-			width: inkWidth,
-			opacity: 1,
-			startTime: Date.now(),
-		});
-		e.preventDefault();
-	};
-
 	const handlePointerMove = (e: React.PointerEvent) => {
 		// Update cursor visibility + optionally perform erase scrubbing.
 		if (!(inkActive || eraserActive)) {
@@ -525,11 +466,9 @@ export function Canvas(props: {
 					}
 					handlePointerUp(e);
 				}}
-				onMouseDown={beginPanIfBackground}
 				onPointerDown={(e) => {
 					// Check if something is already being manipulated
 					if (document.documentElement.dataset.manipulating) {
-						handlePointerDown(e);
 						return;
 					}
 
@@ -555,7 +494,61 @@ export function Canvas(props: {
 						// For non-touch (mouse), use original logic
 						if (!(inkActive || eraserActive)) beginPanIfBackground(e);
 					}
-					handlePointerDown(e);
+
+					// Manage three mutually exclusive interactions: inking, erasing, panning(right mouse handled upstream).
+					if (inkActive || eraserActive) {
+						if (target?.closest("[data-item-id], [data-svg-item-id]")) {
+							// Suppress cursor over items
+							setCursor((c) => ({ ...c, visible: false }));
+						} else {
+							const rect = svgRef.current?.getBoundingClientRect();
+							if (rect)
+								setCursor({
+									x: e.clientX - rect.left,
+									y: e.clientY - rect.top,
+									visible: true,
+								});
+						}
+					}
+					pointerTypeRef.current = e.pointerType;
+
+					// Eraser mode: on pointer down start erase interaction instead of drawing
+					if (eraserActive) {
+						if (e.button !== 0) return;
+						// Clear selection when starting to erase (same as mouse click behavior)
+						presence.itemSelection?.clearSelection();
+						pointerIdRef.current = e.pointerId; // track drag for scrubbing
+						performErase(toLogical(e.clientX, e.clientY));
+						return; // don't start ink
+					}
+
+					if (!inkActive) return; // only when ink tool active
+					if (e.button !== 0) return; // left only
+
+					// Ignore if clicked on an item or existing selectable element
+					if (target?.closest("[data-item-id]")) return;
+					if (target?.closest("[data-svg-item-id]")) return;
+
+					// Clear selection when starting to ink on background (same as mouse click behavior)
+					presence.itemSelection?.clearSelection();
+
+					// Start inking
+					const p = toLogical(e.clientX, e.clientY);
+					pointerIdRef.current = e.pointerId;
+					setInking(true);
+					tempPointsRef.current = [new InkPoint({ x: p.x, y: p.y, t: Date.now() })];
+					lastPointRef.current = p;
+					strokeIdRef.current = crypto.randomUUID();
+					// Broadcast initial presence stroke (ephemeral only, not yet committed)
+					presence.ink?.setStroke({
+						id: strokeIdRef.current,
+						points: tempPointsRef.current.map((pt) => ({ x: pt.x, y: pt.y, t: pt.t })),
+						color: inkColor,
+						width: inkWidth,
+						opacity: 1,
+						startTime: Date.now(),
+					});
+					e.preventDefault();
 				}}
 				onPointerMove={handlePointerMove}
 				onPointerLeave={handlePointerLeave}
