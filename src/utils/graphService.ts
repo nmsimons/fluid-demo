@@ -60,20 +60,17 @@ function createGraphClient(accessToken: string): Client {
  */
 export async function getUserProfilePicture(accessToken: string): Promise<string | null> {
 	try {
-		console.log("Attempting to fetch user profile picture...");
 		const graphClient = createGraphClient(accessToken);
 
 		// Try to get the user's profile photo metadata first to check if it exists
 		try {
 			const photoMetadata = await graphClient.api("/me/photo").get();
-			console.log("Profile photo metadata:", photoMetadata);
 
 			// If we have metadata, try to get the actual photo
 			if (photoMetadata && photoMetadata["@odata.mediaContentType"]) {
 				const photoBlob = await graphClient.api("/me/photo/$value").get();
 
 				if (photoBlob) {
-					console.log("Profile picture fetched successfully");
 					// Convert blob to base64
 					const arrayBuffer = await photoBlob.arrayBuffer();
 					const bytes = new Uint8Array(arrayBuffer);
@@ -86,9 +83,7 @@ export async function getUserProfilePicture(accessToken: string): Promise<string
 					return `data:${contentType};base64,${base64}`;
 				}
 			}
-		} catch (photoError) {
-			console.log("Profile photo not available or accessible:", photoError);
-
+		} catch {
 			// Try alternative approaches for different account types
 			try {
 				// For some Azure AD accounts, try getting user info to generate an avatar
@@ -96,20 +91,17 @@ export async function getUserProfilePicture(accessToken: string): Promise<string
 					.api("/me")
 					.select("displayName,userPrincipalName,id")
 					.get();
-				console.log("User info retrieved for avatar generation:", userInfo);
 
 				// Generate a deterministic avatar using user info
 				const avatarUrl = await generateUserAvatar(userInfo);
 				if (avatarUrl) {
-					console.log("Generated avatar for user");
 					return avatarUrl;
 				}
-			} catch (userInfoError) {
-				console.log("Could not retrieve user info for avatar:", userInfoError);
+			} catch {
+				// User info unavailable
 			}
 		}
 
-		console.log("No profile picture found, will use fallback");
 		return null;
 	} catch (error) {
 		console.warn("Failed to fetch user profile picture:", error);
@@ -138,8 +130,6 @@ async function generateUserAvatar(userInfo: GraphUserInfo): Promise<string | nul
 
 		// Build the DiceBear API URL
 		const avatarUrl = `https://api.dicebear.com/7.x/${avatarStyle}/svg?seed=${encodeURIComponent(seed)}&backgroundColor=0d7bd6,a855f7,e11d48,f59e0b,10b981&radius=50&size=96`;
-
-		console.log(`Generating avatar for user: ${name}`);
 
 		// Fetch the SVG avatar from DiceBear API
 		const response = await fetch(avatarUrl);
@@ -173,8 +163,6 @@ export async function generateFallbackAvatar(account: AccountInfo): Promise<stri
 			return null;
 		}
 
-		console.log(`Generating fallback avatar for: ${name}`);
-
 		// Generate a consistent avatar based on account information
 		const seed = userId || name;
 		const avatarStyle = "initials"; // Use initials style for professional look
@@ -207,7 +195,6 @@ export async function getGraphAccessToken(
 	msalInstance: PublicClientApplication
 ): Promise<string | null> {
 	try {
-		console.log("Attempting to get Graph access token...");
 		const account = msalInstance.getActiveAccount();
 		if (!account) {
 			console.warn("No active account found");
@@ -223,11 +210,8 @@ export async function getGraphAccessToken(
 		try {
 			// Try with minimal scopes first
 			const response = await msalInstance.acquireTokenSilent(minimalRequest);
-			console.log("Successfully acquired access token with minimal scopes");
 			return response.accessToken;
 		} catch (silentError: unknown) {
-			console.log("Silent token acquisition failed:", silentError);
-
 			// Check if this is an interaction required error
 			const error = silentError as { errorCode?: string; name?: string }; // Type assertion for error checking
 			if (
@@ -236,8 +220,6 @@ export async function getGraphAccessToken(
 				error.errorCode === "consent_required" ||
 				error.errorCode === "interaction_required"
 			) {
-				console.log("Interactive consent required, attempting popup authentication...");
-
 				// Show user-friendly message about consent
 				console.log(
 					"🔐 Microsoft Graph access requires additional permissions. A popup window will open for consent."
@@ -251,7 +233,6 @@ export async function getGraphAccessToken(
 						prompt: "consent",
 					});
 
-					console.log("✅ Successfully acquired access token via interactive consent");
 					return interactiveResponse.accessToken;
 				} catch (popupError: unknown) {
 					console.warn("Popup authentication failed:", popupError);
@@ -282,7 +263,6 @@ export async function clearGraphTokenCache(msalInstance: PublicClientApplication
 		if (account) {
 			// Remove cached tokens for Graph scopes
 			await msalInstance.clearCache();
-			console.log("Graph token cache cleared successfully");
 		}
 	} catch (error) {
 		console.warn("Failed to clear Graph token cache:", error);

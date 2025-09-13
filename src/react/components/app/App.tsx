@@ -149,7 +149,7 @@ export function ReactApp(props: {
 	}, [tree.events, undoRedo]);
 
 	useEffect(() => {
-		console.log("View Changed");
+		// View changed
 	}, [view]);
 
 	// Initialize iOS Safari z-index fixes
@@ -344,15 +344,6 @@ export const CurrentUser = (): JSX.Element => {
 
 	// Get the user's email from MSAL account
 	const userEmail = msalInstance?.getActiveAccount()?.username || currentUser.name;
-
-	// Debug logging
-	console.log("CurrentUser component - user data:", {
-		name: currentUser.name,
-		id: currentUser.id,
-		email: userEmail,
-		hasImage: !!currentUser.image,
-		imageLength: currentUser.image?.length,
-	});
 
 	const handleSignOut = async () => {
 		if (msalInstance) {

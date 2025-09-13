@@ -75,7 +75,7 @@ export function TableView(props: { fluidTable: FluidTable }): JSX.Element {
 
 	useEffect(() => {
 		if (Tree.status(fluidTable) === TreeStatus.InDocument) {
-			console.log("Columns changed");
+			// Columns changed
 			setColumns(updateColumnData(fluidTable.columns.map((column) => column)));
 		} else {
 			console.error("Fluid table not in document");

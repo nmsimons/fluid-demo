@@ -11,8 +11,6 @@ function isIOSSafari() {
 function fixIOSZIndexIssues() {
 	if (!isIOSSafari()) return;
 
-	console.log("iOS Safari detected - applying z-index fixes");
-
 	// Function to apply fixes with retries
 	function applyFixes() {
 		// Fix toolbar z-index
@@ -24,7 +22,6 @@ function fixIOSZIndexIssues() {
 			toolbar.style.transform = "translateZ(0)";
 			toolbar.style.setProperty("-webkit-transform", "translateZ(0)");
 			toolbar.style.backgroundColor = "white";
-			console.log("Toolbar z-index fixed");
 		}
 
 		// Fix canvas SVG
@@ -36,7 +33,6 @@ function fixIOSZIndexIssues() {
 			canvasSvg.style.setProperty("-webkit-transform", "translateZ(0)");
 			canvasSvg.style.pointerEvents = "auto";
 			canvasSvg.style.touchAction = "none";
-			console.log("Canvas SVG z-index fixed");
 		}
 
 		// Fix items layer
@@ -46,7 +42,6 @@ function fixIOSZIndexIssues() {
 			itemsLayer.style.zIndex = "50";
 			itemsLayer.style.transform = "translateZ(0)";
 			itemsLayer.style.setProperty("-webkit-transform", "translateZ(0)");
-			console.log("Items layer z-index fixed");
 		}
 
 		// Fix canvas container
@@ -55,7 +50,6 @@ function fixIOSZIndexIssues() {
 			canvasContainer.style.position = "relative";
 			canvasContainer.style.zIndex = "1";
 			canvasContainer.style.isolation = "isolate";
-			console.log("Canvas container z-index fixed");
 		}
 
 		// Fix SVG overlay groups specifically
@@ -68,7 +62,6 @@ function fixIOSZIndexIssues() {
 			htmlGroup.style.touchAction = "none";
 			htmlGroup.style.setProperty("-webkit-touch-callout", "none");
 			htmlGroup.style.setProperty("-webkit-user-select", "none");
-			console.log(`Fixed overlay group: ${htmlGroup.dataset.layer}`);
 		});
 
 		// Force foreignObject to be below overlays
@@ -77,7 +70,6 @@ function fixIOSZIndexIssues() {
 			const svgObj = obj as SVGForeignObjectElement;
 			svgObj.style.zIndex = "-10";
 			svgObj.style.position = "relative";
-			console.log("Fixed foreignObject z-index");
 		});
 	}
 

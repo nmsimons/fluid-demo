@@ -29,15 +29,15 @@ const mockAccount = {
 
 // Mock MSAL instance for local development
 const mockMsalInstance = {
-	loginRedirect: () => console.log("Local mode: No authentication required"),
-	logout: () => console.log("Local mode: Logout not required"),
+	loginRedirect: () => {}, // Local mode: No authentication required
+	logout: () => {}, // Local mode: Logout not required
 	getAllAccounts: () => [mockAccount],
 	getActiveAccount: () => mockAccount,
 };
 
 export async function localStart() {
-	console.log("Starting Fluid Framework Demo in LOCAL mode");
-	console.log("No authentication required for local development");
+	// Starting Fluid Framework Demo in LOCAL mode
+	// No authentication required for local development
 
 	try {
 		// Create Azure client with local configuration

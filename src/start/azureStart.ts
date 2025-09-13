@@ -86,7 +86,6 @@ async function showAccountSelector(
 
 		if (!choice) {
 			// User cancelled - use the first account as fallback
-			console.log("Account selection cancelled, using first available account");
 			signedInAzureStart(msalInstance, accounts[0]);
 			resolve();
 			return;
@@ -97,18 +96,15 @@ async function showAccountSelector(
 		if (choiceNum >= 1 && choiceNum <= accounts.length) {
 			// User selected an existing account
 			const selectedAccount = accounts[choiceNum - 1];
-			console.log(`Selected account: ${selectedAccount.name || selectedAccount.username}`);
 			signedInAzureStart(msalInstance, selectedAccount);
 		} else if (choiceNum === accounts.length + 1) {
 			// User wants to use a different account
-			console.log("User chose to sign in with a different account");
 			msalInstance.loginRedirect({
 				prompt: "login",
 				scopes: ["openid", "profile", "email"],
 			});
 		} else {
 			// Invalid choice or cancel - use the first account as fallback
-			console.log("Invalid choice, using first available account");
 			signedInAzureStart(msalInstance, accounts[0]);
 		}
 
@@ -125,10 +121,8 @@ async function signedInAzureStart(msalInstance: PublicClientApplication, account
 		let profilePicture = null;
 
 		// Try to get access token and fetch profile picture from Microsoft Graph
-		console.log("Requesting Microsoft Graph access...");
 		const accessToken = await getGraphAccessToken(msalInstance);
 		if (accessToken) {
-			console.log("Microsoft Graph access granted");
 			profilePicture = await getUserProfilePicture(accessToken);
 		}
 
