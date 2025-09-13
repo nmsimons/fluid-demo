@@ -68,6 +68,8 @@ export interface AppToolbarProps {
 	onInkColorChange: (c: string) => void;
 	inkWidth: number;
 	onInkWidthChange: (w: number) => void;
+	shapeColor: string;
+	onShapeColorChange: (c: string) => void;
 }
 
 export function AppToolbar(props: AppToolbarProps): JSX.Element {
@@ -96,6 +98,8 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 		onInkColorChange,
 		inkWidth,
 		onInkWidthChange,
+		shapeColor,
+		onShapeColorChange,
 	} = props;
 
 	// Zoom slider logic moved into ZoomMenu component.
@@ -131,31 +135,60 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 				/>
 			</ToolbarGroup>
 			<ToolbarDivider />
+			{/* Shape creation buttons */}
 			<ToolbarGroup>
 				<NewCircleButton
 					items={view.root.items}
 					canvasSize={canvasSize}
 					pan={pan}
 					zoom={zoom}
+					shapeColor={shapeColor}
 				/>
 				<NewSquareButton
 					items={view.root.items}
 					canvasSize={canvasSize}
 					pan={pan}
 					zoom={zoom}
+					shapeColor={shapeColor}
 				/>
 				<NewTriangleButton
 					items={view.root.items}
 					canvasSize={canvasSize}
 					pan={pan}
 					zoom={zoom}
+					shapeColor={shapeColor}
 				/>
 				<NewStarButton
 					items={view.root.items}
 					canvasSize={canvasSize}
 					pan={pan}
 					zoom={zoom}
+					shapeColor={shapeColor}
 				/>
+				{(() => {
+					// Get selected items and filter for shapes
+					const selectedItems = selectedItemIds
+						.map((id) => view.root.items.find((item) => item.id === id))
+						.filter(Boolean);
+					const selectedShapes = selectedItems
+						.filter(
+							(item): item is NonNullable<typeof item> =>
+								item !== undefined && isShape(item)
+						)
+						.map((item) => item.content as Shape);
+
+					return (
+						<ShapeColorPicker
+							color={shapeColor}
+							onColorChange={onShapeColorChange}
+							selectedShapes={selectedShapes}
+						/>
+					);
+				})()}
+			</ToolbarGroup>
+			<ToolbarDivider />
+			{/* Note and Table creation buttons */}
+			<ToolbarGroup>
 				<NewNoteButton
 					items={view.root.items}
 					canvasSize={canvasSize}
@@ -246,26 +279,6 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 								selectedItemId={selectedItemId}
 							/>
 						</ToolbarGroup>
-						{/* Shape color picker: show when any shapes are selected */}
-						{(() => {
-							const selectedShapes = selectedItems
-								.filter(
-									(item): item is NonNullable<typeof item> =>
-										item !== undefined && isShape(item)
-								)
-								.map((item) => item.content as Shape);
-
-							return (
-								selectedShapes.length > 0 && (
-									<div className="flex items-center h-full toolbar-slide-in-delayed">
-										<ToolbarDivider />
-										<ToolbarGroup>
-											<ShapeColorPicker shapes={selectedShapes} />
-										</ToolbarGroup>
-									</div>
-								)
-							);
-						})()}
 						{singleSelectedItem && isTable(singleSelectedItem) && (
 							<div className="flex items-center h-full toolbar-slide-in-delayed">
 								<ToolbarDivider />

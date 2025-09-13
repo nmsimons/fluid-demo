@@ -75,6 +75,7 @@ export function ReactApp(props: {
 	const [eraserActive, setEraserActive] = useState(false);
 	const [inkColor, setInkColor] = useState<string>("#2563eb");
 	const [inkWidth, setInkWidth] = useState<number>(4);
+	const [shapeColor, setShapeColor] = useState<string>("#FF0000"); // Default to red
 
 	// Keep linter satisfied until pan is surfaced elsewhere
 	useEffect(() => {
@@ -242,6 +243,8 @@ export function ReactApp(props: {
 						onInkColorChange={setInkColor}
 						inkWidth={inkWidth}
 						onInkWidthChange={setInkWidth}
+						shapeColor={shapeColor}
+						onShapeColorChange={setShapeColor}
 					/>
 					{/* </div> */}
 					<div className="canvas-container flex h-[calc(100vh-96px)] w-full flex-row ">
