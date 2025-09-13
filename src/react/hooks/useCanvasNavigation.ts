@@ -48,7 +48,9 @@ export function useCanvasNavigation(params: {
 	const clampZoom = (z: number) =>
 		Math.min(ZOOM_STEPS[ZOOM_STEPS.length - 1], Math.max(ZOOM_STEPS[0], z));
 
-	// Wheel zoom (non-passive) with cursor anchoring and discrete steps
+	// Wheel zoom with cursor anchoring and discrete steps
+	// Note: Non-passive listener is required to preventDefault() and implement custom zoom behavior
+	// This prevents browser's default zoom/scroll and allows precise control over canvas zoom
 	useEffect(() => {
 		const el = svgRef.current;
 		if (!el) return;
@@ -57,6 +59,7 @@ export function useCanvasNavigation(params: {
 		const accumRef = { current: 0 } as { current: number };
 		const STEP_TRIGGER = 40; // wheel delta accumulation threshold
 		const onWheel = (e: WheelEvent) => {
+			// Prevent default browser zoom/scroll to implement custom zoom behavior
 			e.preventDefault();
 			accumRef.current += e.deltaY;
 			if (Math.abs(accumRef.current) < STEP_TRIGGER) return; // wait until threshold reached
@@ -97,6 +100,7 @@ export function useCanvasNavigation(params: {
 		};
 		updateRefs();
 		const raf = requestAnimationFrame(updateRefs);
+		// passive: false is required to call preventDefault() and override browser zoom behavior
 		el.addEventListener("wheel", onWheel, { passive: false });
 		return () => {
 			cancelAnimationFrame(raf);
