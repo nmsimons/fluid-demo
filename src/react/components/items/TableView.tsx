@@ -26,14 +26,14 @@ import {
 } from "../../../schema/appSchema.js";
 import { Tree, TreeStatus } from "fluid-framework";
 import { useVirtualizer, VirtualItem, Virtualizer } from "@tanstack/react-virtual";
-import { ColumnTypeDropdown, DeleteButton, IconButton } from "../toolbar/buttons/TableButtons.js";
+import { ColumnTypeDropdown, DeleteButton, IconButton } from "../toolbar/buttons/index.js";
 import {
 	ArrowSortDownFilled,
 	ArrowSortFilled,
 	ArrowSortUpFilled,
 	ReOrderDotsVertical16Filled,
 } from "@fluentui/react-icons";
-import { selectionType } from "../../../utils/presence/selection.js";
+import { selectionType } from "../../../utils/index.js";
 import {
 	CellInputBoolean,
 	CellInputNumber,

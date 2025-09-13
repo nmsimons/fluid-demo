@@ -6,9 +6,9 @@
 import { TreeView, Tree } from "fluid-framework";
 import { App, FluidTable } from "../../schema/appSchema.js";
 import { KeyboardShortcut } from "./useKeyboardShortcuts.js";
-import { undoRedo } from "../../utils/undo.js";
+import { undoRedo } from "../../utils/index.js";
 import { UsersManager } from "../../utils/presence/interfaces/usersManager.js";
-import { SHAPE_COLORS } from "../components/toolbar/buttons/CreationButtons.js";
+import { SHAPE_COLORS } from "../components/toolbar/buttons/index.js";
 import { SelectionManager } from "../../utils/presence/interfaces/selectionManager.js";
 
 /**

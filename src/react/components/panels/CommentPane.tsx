@@ -13,9 +13,9 @@ import React, {
 import { App, Comment, Comments, Group, Item } from "../../../schema/appSchema.js";
 import { Pane } from "./Pane.js";
 import { useTree } from "../../hooks/useTree.js";
-import { getContentHandler } from "../../../utils/contentHandlers.js";
+import { getContentHandler } from "../../../utils/index.js";
 import { PresenceContext } from "../../contexts/PresenceContext.js";
-import { VoteButton } from "../toolbar/buttons/EditButtons.js";
+import { VoteButton } from "../toolbar/buttons/index.js";
 
 export interface CommentPaneRef {
 	focusInput: () => void;

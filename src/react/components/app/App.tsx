@@ -13,7 +13,7 @@ import "../../../styles/ios-minimal.css";
 import { ConnectionState, IFluidContainer, TreeView } from "fluid-framework";
 import { Canvas } from "../canvas/Canvas.js";
 import type { SelectionManager } from "../../../utils/presence/interfaces/selectionManager.js";
-import { undoRedo } from "../../../utils/undo.js";
+import { undoRedo, useSelectionSync, useMultiTypeSelectionSync, DragAndRotatePackage, TypedSelection } from "../../../utils/index.js";
 import {
 	Avatar,
 	AvatarGroup,
@@ -33,10 +33,7 @@ import { AuthContext } from "../../contexts/AuthContext.js";
 import { signOutHelper, switchAccountHelper } from "../../../infra/auth.js";
 import { DragManager } from "../../../utils/presence/interfaces/dragManager.js";
 import { ResizeManager } from "../../../utils/presence/interfaces/resizeManager.js";
-import { DragAndRotatePackage } from "../../../utils/presence/drag.js";
 import { ResizePackage } from "../../../utils/presence/interfaces/resizeManager.js";
-import { useSelectionSync, useMultiTypeSelectionSync } from "../../../utils/eventSubscriptions.js";
-import { TypedSelection } from "../../../utils/presence/selection.js";
 import { CommentPane, CommentPaneRef } from "../panels/CommentPane.js";
 import { useTree } from "../../hooks/useTree.js";
 import { useKeyboardShortcuts } from "../../hooks/useKeyboardShortcuts.js";

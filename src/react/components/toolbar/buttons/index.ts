@@ -54,6 +54,14 @@ export { ShapeColorPicker } from "./ShapeButtons.js";
 
 // Table buttons
 export * from "./TableButtons.js";
+export {
+	AddColumnButton,
+	AddRowButton,
+	MoveColumnLeftButton,
+	MoveColumnRightButton,
+	MoveRowUpButton,
+	MoveRowDownButton,
+} from "./SimpleTableButtons.js";
 
 // View buttons
 export { SelectionCountBadge, ZoomMenu } from "./ViewButtons.js";
