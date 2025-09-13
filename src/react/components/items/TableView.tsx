@@ -26,7 +26,8 @@ import {
 } from "../../../schema/appSchema.js";
 import { Tree, TreeStatus } from "fluid-framework";
 import { useVirtualizer, VirtualItem, Virtualizer } from "@tanstack/react-virtual";
-import { ColumnTypeDropdown, DeleteButton, IconButton } from "../toolbar/buttons/index.js";
+import { ColumnTypeDropdown, IconButton } from "../toolbar/buttons/TableButtons.js";
+import { DeleteButton } from "../toolbar/buttons/EditButtons.js";
 import {
 	ArrowSortDownFilled,
 	ArrowSortFilled,

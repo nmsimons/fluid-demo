@@ -15,7 +15,7 @@ import { Pane } from "./Pane.js";
 import { useTree } from "../../hooks/useTree.js";
 import { getContentHandler } from "../../../utils/index.js";
 import { PresenceContext } from "../../contexts/PresenceContext.js";
-import { VoteButton } from "../toolbar/buttons/index.js";
+import { VoteButton } from "../toolbar/buttons/EditButtons.js";
 
 export interface CommentPaneRef {
 	focusInput: () => void;
