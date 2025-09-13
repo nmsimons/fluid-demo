@@ -270,12 +270,12 @@ export function ItemView(props: {
 		const isAnyHandle = isUIHandle || isDirectHandle;
 
 		// For touch events, be selective about what we allow:
-		// - Always allow UI handles (resize/rotate) for single-finger interaction on iOS
-		// - Block primary touch on content areas to prevent interference
+		// - Always allow UI handles (resize/rotate) for single-finger interaction
+		// - Allow primary touch for selection on non-interactive content
+		// - Block primary touch only on truly interactive elements (inputs, buttons, etc.)
 		// - Allow non-primary touch (second finger) for item dragging
-		if (e.pointerType === "touch" && e.isPrimary && !isAnyHandle) {
-			// Primary touch on non-handle elements - don't start item drag to prevent interference
-			// with content interaction, but allow canvas navigation to handle it
+		if (e.pointerType === "touch" && e.isPrimary && !isAnyHandle && interactive) {
+			// Primary touch on interactive elements - don't interfere with content interaction
 			return;
 		}
 
