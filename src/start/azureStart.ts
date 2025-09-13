@@ -139,11 +139,12 @@ async function signedInAzureStart(msalInstance: PublicClientApplication, account
 		let containerId = urlParams.get("id") ?? "";
 
 		// Initialize Devtools logger if in development mode
-		let logger = undefined;
-		if (process.env.NODE_ENV === "development") {
-			const { createDevtoolsLogger } = await import("@fluidframework/devtools/beta");
-			logger = createDevtoolsLogger();
-		}
+		const logger = undefined;
+		// Commented out to suppress FluidDevToolsLogger console messages
+		// if (process.env.NODE_ENV === "development") {
+		// 	const { createDevtoolsLogger } = await import("@fluidframework/devtools/beta");
+		// 	logger = createDevtoolsLogger();
+		// }
 
 		// Initialize the Azure client
 		const clientProps = getClientProps(user, logger);
