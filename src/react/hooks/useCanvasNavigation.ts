@@ -127,14 +127,21 @@ export function useCanvasNavigation(params: {
 		return () => window.removeEventListener("resize", handleResize);
 	}, []);
 
-	// Background click clears selection (unless suppressed)
-	const handleBackgroundClick = () => {
+	// Background click clears selection (unless suppressed or click originated within an item)
+	const handleBackgroundClick = (e?: MouseEvent | React.MouseEvent) => {
 		const svg = svgRef.current as (SVGSVGElement & { dataset: DOMStringMap }) | null;
-		const until = svg?.dataset?.suppressClearUntil
+		if (!svg) return;
+
+		// If the click target (or composed path) contains an item, skip clearing
+		const target = (e?.target as Element | undefined) ?? undefined;
+		if (target && (target.closest("[data-item-id]") || target.closest("[data-svg-item-id]"))) {
+			return;
+		}
+		const until = svg.dataset?.suppressClearUntil
 			? parseInt(svg.dataset.suppressClearUntil)
 			: 0;
 		if (until && Date.now() < until) {
-			if (svg) delete svg.dataset.suppressClearUntil;
+			delete svg.dataset.suppressClearUntil;
 			return;
 		}
 		presence.itemSelection?.clearSelection();

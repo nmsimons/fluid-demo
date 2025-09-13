@@ -15,7 +15,6 @@ import {
 	SwatchPicker,
 	renderSwatchPickerGrid,
 } from "@fluentui/react-components";
-import { useTree } from "../../../hooks/useTree.js";
 import { Shape } from "../../../../schema/appSchema.js";
 import { Tree } from "@fluidframework/tree";
 
@@ -39,11 +38,6 @@ export function ShapeColorPicker(props: {
 	selectedShapes?: Shape[];
 }): JSX.Element {
 	const { color, onColorChange, selectedShapes = [] } = props;
-
-	// If shapes are selected, make sure to hook into Tree for reactivity
-	if (selectedShapes.length > 0) {
-		useTree(selectedShapes[0]);
-	}
 
 	const handleColorChange = (newColor: string) => {
 		// First, update the global shape color for future shapes

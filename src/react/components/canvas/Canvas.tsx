@@ -481,6 +481,7 @@ export function Canvas(props: {
 	return (
 		<svg
 			id="canvas"
+			data-canvas-root="true"
 			ref={svgRef}
 			className="canvas-svg relative flex h-full w-full bg-transparent"
 			style={{
@@ -488,7 +489,7 @@ export function Canvas(props: {
 				cursor: isPanning ? "grabbing" : undefined,
 				pointerEvents: "auto",
 			}}
-			onClick={handleBackgroundClick}
+			onClick={(e) => handleBackgroundClick(e)}
 			onMouseDown={beginPanIfBackground}
 			onPointerDown={(e) => {
 				// Check if something is already being manipulated

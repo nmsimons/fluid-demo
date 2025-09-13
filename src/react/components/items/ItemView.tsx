@@ -295,7 +295,12 @@ export function ItemView(props: {
 		// Only stop propagation for non-interactive regions so table/header buttons & dropdowns still fire.
 		if (!interactive) {
 			e.stopPropagation();
-			presence.itemSelection.setSelection({ id: item.id });
+			// Respect Ctrl/Meta for multi-select even in pointer down
+			if (e.ctrlKey || e.metaKey) {
+				presence.itemSelection.toggleSelection({ id: item.id });
+			} else {
+				presence.itemSelection.setSelection({ id: item.id });
+			}
 		}
 		const start = coordsCanvas(e);
 		dragRef.current = {
@@ -311,9 +316,6 @@ export function ItemView(props: {
 		const docMove = (ev: PointerEvent) => {
 			const st = dragRef.current;
 			if (!st || st.pointerId !== ev.pointerId) {
-				console.log(
-					`docMove early return: st=${!!st}, storedPointerId=${st?.pointerId}, eventPointerId=${ev.pointerId}, pointerType=${ev.pointerType}`
-				);
 				return;
 			}
 			const cur = coordsCanvas(ev);
@@ -330,9 +332,6 @@ export function ItemView(props: {
 				const threshold = st.interactiveStart ? THRESHOLD_BASE * 2 : THRESHOLD_BASE; // more intent needed if started in input
 				if (Math.hypot(dx, dy) < threshold) return; // not yet a drag
 				st.started = true;
-				console.log(
-					`Drag started: pointerType=${ev.pointerType}, interactive=${st.interactiveStart}`
-				);
 				document.documentElement.dataset.manipulating = "1";
 
 				// Prevent default now (stop text selection / scrolling while dragging)
@@ -361,9 +360,6 @@ export function ItemView(props: {
 		const finish = (ev?: PointerEvent) => {
 			const st = dragRef.current;
 			if (!st || (ev && st.pointerId !== ev.pointerId)) return;
-			console.log(
-				`Drag finish called, started: ${st.started}, pointerType: ${ev?.pointerType || "unknown"}, interactive: ${st.interactiveStart}`
-			);
 			if (st.started) {
 				const cur = { x: st.startItemX, y: st.startItemY };
 				const dragState = presence.drag.state.local;
@@ -462,18 +458,24 @@ export function ItemView(props: {
 		<div
 			ref={ref}
 			data-item-id={item.id}
-			onPointerDown={onPointerDown}
+			onPointerDown={(e) => {
+				// Suppress an immediate background clear after interacting with an item.
+				const svg = document.querySelector('svg[data-canvas-root="true"]') as
+					| (SVGSVGElement & { dataset: DOMStringMap })
+					| null;
+				if (svg) {
+					// 75ms is enough to cover click bubbling & selection updates without affecting real background clicks.
+					svg.dataset.suppressClearUntil = String(Date.now() + 75);
+				}
+				onPointerDown(e);
+			}}
 			onPointerMove={onPointerMove}
 			onPointerUp={onPointerUp}
 			className="absolute"
 			style={style}
 			onClick={(e) => {
 				e.stopPropagation();
-				if (presence.itemSelection) {
-					if (e.ctrlKey || e.metaKey)
-						presence.itemSelection.toggleSelection({ id: item.id });
-					else presence.itemSelection.setSelection({ id: item.id });
-				}
+				// Selection is now handled in onPointerDown to avoid conflicts with drag system
 			}}
 		>
 			<SelectionBox
