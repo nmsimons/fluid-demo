@@ -13,7 +13,7 @@ import React, {
 import { App, Comment, Comments, Group, Item } from "../../../schema/appSchema.js";
 import { Pane } from "./Pane.js";
 import { useTree } from "../../hooks/useTree.js";
-import { getContentHandler } from "../../../utils/index.js";
+import { getContentHandler } from "../../../utils/contentHandlers.js";
 import { PresenceContext } from "../../contexts/PresenceContext.js";
 import { VoteButton } from "../toolbar/buttons/EditButtons.js";
 

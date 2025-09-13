@@ -26,7 +26,7 @@ import {
 	LatestRawEvents,
 } from "@fluidframework/presence/beta";
 import { Listenable } from "fluid-framework";
-import { ResizeManager, ResizePackage } from "./interfaces/index.js";
+import { ResizeManager, ResizePackage } from "./interfaces/resizeManager.js";
 
 /**
  * Creates a new ResizeManager instance with the given workspace configuration.
