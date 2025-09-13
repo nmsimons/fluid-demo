@@ -6,9 +6,7 @@
 import React, { JSX } from "react";
 import { TreeView, Tree } from "fluid-framework";
 import { App, Shape } from "../../../schema/appSchema.js";
-import { undoRedo } from "../../../utils/undo.js";
-import { isShape, isTable } from "../../../utils/contentHandlers.js";
-import { TypedSelection } from "../../../utils/presence/selection.js";
+import { undoRedo, isShape, isTable, TypedSelection } from "../../../utils/index.js";
 import {
 	NewCircleButton,
 	NewSquareButton,

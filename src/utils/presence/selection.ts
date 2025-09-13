@@ -32,7 +32,7 @@ import {
 	LatestRaw,
 } from "@fluidframework/presence/beta";
 import { Listenable } from "fluid-framework";
-import { SelectionManager, Selection } from "./interfaces/selectionManager.js";
+import { SelectionManager, Selection } from "./interfaces/index.js";
 
 /**
  * Creates a new SelectionManager instance for managing collaborative selections.
