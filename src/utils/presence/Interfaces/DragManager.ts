@@ -12,7 +12,7 @@
  * - Clean up of drag states when operations complete
  */
 
-import { PresenceManager } from "./presenceManager.js";
+import { PresenceManager } from "./PresenceManager.js";
 
 /**
  * DragManager interface for managing drag and drop functionality in the collaborative app.

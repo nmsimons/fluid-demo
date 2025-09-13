@@ -1,19 +1,8 @@
-// Presence interfaces exports// Presence interfaces exports
+// Presence interfaces exports
 
-export * from "./dragManager.js";
-export * from "./dragManager.js";
-
-export * from "./inkManager.js";
-export * from "./inkManager.js";
-
-export * from "./presenceManager.js";
-export * from "./presenceManager.js";
-
-export * from "./resizeManager.js";
-export * from "./resizeManager.js";
-
-export * from "./selectionManager.js";
-export * from "./selectionManager.js";
-
-export * from "./usersManager.js";
-export * from "./usersManager.js";
+export * from "./DragManager.js";
+export * from "./InkManager.js";
+export * from "./PresenceManager.js";
+export * from "./ResizeManager.js";
+export * from "./SelectionManager.js";
+export * from "./UsersManager.js";

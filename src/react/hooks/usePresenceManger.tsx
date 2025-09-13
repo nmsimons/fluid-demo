@@ -23,7 +23,7 @@
  */
 
 import { useEffect } from "react";
-import { PresenceManager } from "../../utils/presence/interfaces/presenceManager.js";
+import { PresenceManager } from "../../utils/presence/Interfaces/PresenceManager.js";
 import { Attendee } from "@fluidframework/presence/alpha";
 
 /**

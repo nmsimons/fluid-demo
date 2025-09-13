@@ -14,7 +14,7 @@
  * - Clean up of resize states when operations complete
  */
 
-import { PresenceManager } from "./presenceManager.js";
+import { PresenceManager } from "./PresenceManager.js";
 
 /**
  * ResizeManager interface for managing resize functionality for shapes in the app.

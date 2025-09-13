@@ -25,7 +25,7 @@ import {
 	LatestRawEvents,
 } from "@fluidframework/presence/beta";
 import { Listenable } from "fluid-framework";
-import { DragManager, DragPackage } from "./interfaces/index.js";
+import { DragManager, DragPackage } from "./Interfaces/index.js";
 
 /**
  * Creates a new DragManager instance with the given presence and workspace.
