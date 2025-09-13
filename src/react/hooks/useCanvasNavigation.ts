@@ -138,8 +138,30 @@ export function useCanvasNavigation(params: {
 
 		// If the click target (or composed path) contains an item, skip clearing
 		const target = (e?.target as Element | undefined) ?? undefined;
-		if (target && (target.closest("[data-item-id]") || target.closest("[data-svg-item-id]"))) {
-			return;
+		if (target) {
+			// Check if the target or any parent is within an item
+			if (target.closest("[data-item-id]") || target.closest("[data-svg-item-id]")) {
+				return;
+			}
+			// Also check if the active element (focused element) is within an item
+			const activeElement = document.activeElement;
+			if (
+				activeElement &&
+				(activeElement.closest("[data-item-id]") ||
+					activeElement.closest("[data-svg-item-id]"))
+			) {
+				return;
+			}
+			// Check if this is a focus-related event by examining if the target is the SVG itself
+			// but there's a recently focused element within an item
+			if (target.tagName === "svg" && activeElement) {
+				const focusedItemContainer =
+					activeElement.closest("[data-item-id]") ||
+					activeElement.closest("[data-svg-item-id]");
+				if (focusedItemContainer) {
+					return;
+				}
+			}
 		}
 		const until = svg.dataset?.suppressClearUntil
 			? parseInt(svg.dataset.suppressClearUntil)

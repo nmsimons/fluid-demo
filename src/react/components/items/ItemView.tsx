@@ -271,13 +271,18 @@ export function ItemView(props: {
 
 		// For touch events, be selective about what we allow:
 		// - Always allow UI handles (resize/rotate) for single-finger interaction
-		// - Allow primary touch for selection on non-interactive content
-		// - Block primary touch only on truly interactive elements (inputs, buttons, etc.)
+		// - For primary touch on input elements, allow natural iOS behavior for focus but still set selection
 		// - Allow non-primary touch (second finger) for item dragging
-		if (e.pointerType === "touch" && e.isPrimary && !isAnyHandle && interactive) {
-			// Primary touch on interactive elements - don't interfere with content interaction
-			return;
-		}
+		// Note: We want touch to behave like mouse for selection/dragging of items
+		const isDirectlyOnInput = targetEl.matches(
+			'textarea, input, button, select, [contenteditable="true"]'
+		);
+
+		// For iOS, we need to be permissive with input elements to allow native focus behavior
+		// but we still want selection to work like mouse clicks
+		const isTouch = e.pointerType === "touch";
+		const shouldAllowNativeInputFocus =
+			isTouch && e.isPrimary && !isAnyHandle && isDirectlyOnInput;
 
 		// For iOS Safari, be more aggressive about preventing default on handles
 		// and ensure touch events are properly handled
@@ -292,9 +297,16 @@ export function ItemView(props: {
 			}
 		}
 
-		// Only stop propagation for non-interactive regions so table/header buttons & dropdowns still fire.
-		if (!interactive) {
+		// Always stop propagation for item interactions to prevent Canvas interference
+		// Exception: don't stop propagation for dropdown/menu interactions so they still work
+		const isDropdownMenu = targetEl.closest(".dropdown, .menu");
+		if (!isDropdownMenu) {
 			e.stopPropagation();
+		}
+
+		// Always set selection unless we're interacting with specific UI controls that shouldn't trigger selection
+		const shouldSkipSelection = targetEl.closest("button, select, .dropdown, .menu");
+		if (!shouldSkipSelection) {
 			// Respect Ctrl/Meta for multi-select even in pointer down
 			if (e.ctrlKey || e.metaKey) {
 				presence.itemSelection.toggleSelection({ id: item.id });
@@ -303,6 +315,14 @@ export function ItemView(props: {
 			}
 		}
 		const start = coordsCanvas(e);
+
+		// For touch on input elements, set selection but don't set up dragging
+		// This allows iOS focus to work naturally while maintaining selection behavior
+		if (shouldAllowNativeInputFocus) {
+			// Selection was already set above, don't set up drag to avoid interfering with input focus
+			return;
+		}
+
 		dragRef.current = {
 			pointerId: e.pointerId,
 			started: false,

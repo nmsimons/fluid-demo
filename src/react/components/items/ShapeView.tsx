@@ -2,8 +2,6 @@ import React, { JSX } from "react";
 import { Shape } from "../../../schema/appSchema.js";
 import { useTree } from "../../hooks/useTree.js";
 
-const shadow = "drop-shadow(3px 3px 3px rgb(0 0 0 / 0.3))";
-
 export function ShapeView(props: {
 	shape: Shape;
 	sizeOverride?: number;
@@ -41,7 +39,6 @@ export function Circle(props: { size: number; backgroundColor: string }): JSX.El
 				height: size,
 				backgroundColor,
 				borderRadius: "50%",
-				filter: shadow,
 			}}
 		></div>
 	);
@@ -59,7 +56,6 @@ export function Square(props: { size: number; backgroundColor: string }): JSX.El
 				width: size,
 				height: size,
 				backgroundColor,
-				filter: shadow,
 			}}
 		></div>
 	);
@@ -76,7 +72,6 @@ export function Triangle(props: { size: number; backgroundColor: string }): JSX.
 				borderLeft: `${size / 2}px solid transparent`,
 				borderRight: `${size / 2}px solid transparent`,
 				borderBottom: `${size}px solid ${backgroundColor}`,
-				filter: shadow,
 			}}
 		></div>
 	);
@@ -86,7 +81,7 @@ export function Star(props: { size: number; backgroundColor: string }): JSX.Elem
 	const { size, backgroundColor } = props;
 	// Render a star shape using svg and rotation
 	return (
-		<svg style={{ filter: shadow }} width={size} height={size} viewBox="2 2 20 20">
+		<svg width={size} height={size} viewBox="2 2 20 20">
 			<polygon
 				points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"
 				fill={backgroundColor}
