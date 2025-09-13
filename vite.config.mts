@@ -24,46 +24,7 @@ export default defineConfig(({ mode }) => {
 		build: {
 			outDir: "dist",
 			sourcemap: true,
-			rollupOptions: {
-				output: {
-					manualChunks: (id) => {
-						// Create separate chunks for major dependencies only
-						if (id.includes("node_modules")) {
-							if (id.includes("@fluidframework")) {
-								return "fluid-framework";
-							}
-							if (id.includes("react") || id.includes("react-dom")) {
-								return "react-vendor";
-							}
-							if (id.includes("@fluentui")) {
-								return "fluentui";
-							}
-							if (id.includes("@azure/msal")) {
-								return "azure-auth";
-							}
-							if (id.includes("tailwindcss") || id.includes("@tailwindcss")) {
-								return "tailwind";
-							}
-							// Group other node_modules
-							return "vendor";
-						}
-
-						// Don't split app code - keep it together to avoid chunking issues
-						// if (id.includes("/src/utils/")) {
-						// 	return "utils";
-						// }
-						// if (id.includes("/src/react/components/")) {
-						// 	return "components";
-						// }
-						if (id.includes("/src/schema/")) {
-							return "schema";
-						}
-						if (id.includes("/src/infra/")) {
-							return "infra";
-						}
-					},
-				},
-			},
+			// Let Vite handle chunking automatically - no manual chunking
 		},
 		server: {
 			port: 8080,
