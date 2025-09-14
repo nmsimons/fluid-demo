@@ -16,7 +16,6 @@ import { TooltipButton } from "../../forms/Button.js";
 import { useTree } from "../../../hooks/useTree.js";
 import { PresenceContext } from "../../../contexts/PresenceContext.js";
 import { Items } from "../../../../schema/appSchema.js";
-import { isItem } from "../../../../utils/itemsHelpers.js";
 import { getContentHandler } from "../../../../utils/contentHandlers.js";
 import { Tree } from "@fluidframework/tree";
 
@@ -43,7 +42,7 @@ function centerLastItem(
 ) {
 	if (!pan || !zoom || items.length === 0) return;
 	const last = items[items.length - 1];
-	if (!last || !isItem(last)) return;
+	if (!last) return;
 	let w = estW;
 	let h = estH;
 	const handler = getContentHandler(last);

@@ -69,29 +69,12 @@ The application uses a comprehensive SharedTree schema defined in the `src/schem
     - `Note`: Text-based sticky notes with authorship
     - `FluidTable`: Collaborative tables with multiple column types
     - `Item`: Canvas items that can contain shapes, notes, or tables
-    - `Items`: **Recursive array structure** that can contain both `Item` objects and nested `Items` arrays, enabling future support for item grouping and hierarchical organization
+    - `Items`: Simple array containing Item objects for canvas elements
     - `Vote`: Voting system for comments and items
     - `Comment`: Threaded comments with user attribution
     - `InkStroke`: Freehand drawing strokes with points and styling
     - `DateTime`: Date/time values for timestamps
 - **`containerSchema.ts`**: Fluid container configuration
-
-### Recursive Items Structure
-
-The `Items` class uses Fluid Framework's `sf.arrayRecursive()` to create a self-referencing array structure:
-
-```typescript
-export class Items extends sf.arrayRecursive("Items", [Item, () => Items]) {
-	// Methods for creating and manipulating items...
-}
-```
-
-This recursive design allows the Items array to contain:
-
-- **Item objects**: Individual canvas elements (shapes, notes, tables)
-- **Nested Items arrays**: Sub-groups of items for future organizational features
-
-The recursive structure is validated at compile-time using `ValidateRecursiveSchema` to ensure type safety and prevent circular reference issues. Helper functions in `src/utils/itemsHelpers.ts` provide utilities for working with this nested structure, including flattening operations and safe item lookups that handle both individual items and nested groups.
 
 The schema supports rich data types including strings, numbers, booleans, dates, ink strokes, and custom voting objects. All schema changes are automatically synchronized across all connected clients.
 
