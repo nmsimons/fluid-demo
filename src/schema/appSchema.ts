@@ -400,9 +400,6 @@ export class Item extends sf.object("Item", {
 }
 export class Group extends sf.object("Group", {
 	id: sf.string,
-	x: sf.number,
-	y: sf.number,
-	comments: Comments,
 	content: sf.array([Item]),
 }) {}
 
