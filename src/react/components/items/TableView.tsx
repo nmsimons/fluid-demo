@@ -53,7 +53,7 @@ const columnWidth = "200px"; // Width of the data columns
 
 export function TableView(props: { fluidTable: FluidTable }): JSX.Element {
 	const { fluidTable } = props;
-	
+
 	// Register for tree changes - monitor the entire table for changes
 	const invalTable = useTree(fluidTable, true);
 
@@ -65,10 +65,7 @@ export function TableView(props: { fluidTable: FluidTable }): JSX.Element {
 
 	// Use Fluid data directly with memoization based on table changes
 	const data = useMemo(() => Array.from(fluidTable.rows), [invalTable]);
-	const columns = useMemo(
-		() => updateColumnData(Array.from(fluidTable.columns)),
-		[invalTable]
-	);
+	const columns = useMemo(() => updateColumnData(Array.from(fluidTable.columns)), [invalTable]);
 
 	// The virtualizer will need a reference to the scrollable container element
 	const tableContainerRef = React.useRef<HTMLDivElement>(null);
@@ -138,7 +135,7 @@ export function IndexHeaderView(): JSX.Element {
 export function TableHeaderView(props: { header: Header<FluidRow, unknown> }): JSX.Element {
 	const { header } = props;
 	const fluidTable = useTable(); // Get the fluid table from context
-	
+
 	// Get the fluid column with proper error handling
 	const fluidColumn = useMemo(() => {
 		try {
@@ -206,7 +203,7 @@ export function TableHeaderView(props: { header: Header<FluidRow, unknown> }): J
 
 export function SortButton(props: { column: Column<FluidRow> }): JSX.Element {
 	const { column } = props;
-	
+
 	// Use column.getIsSorted() directly instead of local state
 	const sorted = column.getIsSorted();
 
@@ -521,7 +518,7 @@ export function PresenceIndicator(props: {
 	// Use a single state object to reduce complexity
 	const [selectionState, setSelectionState] = useState(() => ({
 		isSelected: selection.testSelection(selectedItem),
-		remoteSelected: selection.testRemoteSelection(selectedItem)
+		remoteSelected: selection.testRemoteSelection(selectedItem),
 	}));
 
 	// Single presence manager hook with consolidated state updates
@@ -529,23 +526,23 @@ export function PresenceIndicator(props: {
 		selection,
 		() => {
 			// Remote update
-			setSelectionState(prev => ({
+			setSelectionState((prev) => ({
 				...prev,
-				remoteSelected: selection.testRemoteSelection(selectedItem)
+				remoteSelected: selection.testRemoteSelection(selectedItem),
 			}));
 		},
 		() => {
 			// Local update
-			setSelectionState(prev => ({
+			setSelectionState((prev) => ({
 				...prev,
-				isSelected: selection.testSelection(selectedItem)
+				isSelected: selection.testSelection(selectedItem),
 			}));
 		},
 		() => {
 			// Disconnect - refresh both states
 			setSelectionState({
 				isSelected: selection.testSelection(selectedItem),
-				remoteSelected: selection.testRemoteSelection(selectedItem)
+				remoteSelected: selection.testRemoteSelection(selectedItem),
 			});
 		}
 	);
@@ -554,7 +551,11 @@ export function PresenceIndicator(props: {
 
 	return (
 		<>
-			<PresenceBox color="outline-blue-600" hidden={!selectionState.isSelected} isRow={isRow} />
+			<PresenceBox
+				color="outline-blue-600"
+				hidden={!selectionState.isSelected}
+				isRow={isRow}
+			/>
 			<PresenceBox
 				color="outline-red-800"
 				hidden={selectionState.remoteSelected.length === 0}
