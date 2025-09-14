@@ -49,7 +49,6 @@ export function Square(props: { size: number; backgroundColor: string }): JSX.El
 
 	// Render a div with the absolute position of the item
 	// that is a square with the x and y coordinates of the item
-	// and is red
 	return (
 		<div
 			style={{
@@ -63,7 +62,7 @@ export function Square(props: { size: number; backgroundColor: string }): JSX.El
 
 export function Triangle(props: { size: number; backgroundColor: string }): JSX.Element {
 	const { size, backgroundColor } = props;
-	// render a div with an equilateral triangle using CSS borders with a shadow
+	// render a div with an equilateral triangle using CSS borders
 	return (
 		<div
 			style={{
@@ -79,7 +78,7 @@ export function Triangle(props: { size: number; backgroundColor: string }): JSX.
 
 export function Star(props: { size: number; backgroundColor: string }): JSX.Element {
 	const { size, backgroundColor } = props;
-	// Render a star shape using svg and rotation
+	// Render a star shape using svg
 	return (
 		<svg width={size} height={size} viewBox="2 2 20 20">
 			<polygon

@@ -1,5 +1,5 @@
 // ============================================================================
-// itemux.tsx
+// ItemView.tsx
 //
 // Centralized view & interaction layer for all "items" rendered on the canvas.
 // Items include Shapes, Notes, and Tables. This file coordinates:

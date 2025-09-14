@@ -25,7 +25,7 @@
 //
 // Event plumbing:
 //   * Rotation & resize actions are delegated to the underlying HTML elements
-//     (in itemux.tsx) by synthesizing a pointerdown on the existing handles.
+//     (in ItemView.tsx) by synthesizing a pointerdown on the existing handles.
 //     This avoids duplicating business logic; overlay is a visual proxy only.
 //
 // ============================================================================
