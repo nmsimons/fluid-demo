@@ -36,7 +36,7 @@ import {
 import { InkColorPicker, InkToggleButton, EraserToggleButton } from "./buttons/InkButtons.js";
 import { UndoButton, RedoButton, ClearAllButton } from "./buttons/ActionButtons.js";
 import { CommentsPaneToggleButton } from "./buttons/PaneButtons.js";
-import { SelectionCountBadge, ZoomMenu } from "./buttons/ViewButtons.js";
+import { ZoomMenu } from "./buttons/ViewButtons.js";
 import { DeleteSelectedRowsButton } from "./buttons/TableButtons.js";
 // All toolbar button UIs now componentized; direct TooltipButton usage removed.
 import { MessageBar, MessageBarBody, MessageBarTitle } from "@fluentui/react-message-bar";
@@ -215,73 +215,77 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 				}
 
 				return (
-					<div className="flex items-center h-full toolbar-slide-in">
-						<ToolbarDivider />
-						{/* Multi-selection indicator (componentized) */}
-						{selectedItems.length > 1 && (
+					<>
+						<div className="flex items-center h-full toolbar-slide-in bg-blue-100 border-l-2 border-blue-500 pl-4 pr-4 ml-4">
+							{/* Selection context using Fluent design principles */}
+							<div className="px-1 py-1 text-xs font-semibold text-blue-700 rounded mr-1">
+								{selectedItems.length === 1
+									? "Selected"
+									: `${selectedItems.length} Selected`}
+							</div>
 							<ToolbarGroup>
-								<SelectionCountBadge count={selectedItems.length} />
-							</ToolbarGroup>
-						)}
-						<ToolbarGroup>
-							{/* Single-item actions: only show when exactly one item is selected */}
-							{singleSelectedItem && (
-								<>
-									<VoteButton vote={singleSelectedItem.votes} />
-									<CommentButton item={singleSelectedItem} />
-								</>
-							)}
-							{/* Multi-item actions: show when any items are selected */}
-							{hasSelectedItems && (
-								<>
-									<DuplicateButton
-										count={selectedItems.length}
-										duplicate={() => {
-											Tree.runTransaction(view.root.items, () => {
-												selectedItems.forEach((item) => {
-													if (item) {
-														view.root.items.duplicateItem(
-															item,
-															canvasSize
-														);
-													}
+								{/* Single-item actions: only show when exactly one item is selected */}
+								{singleSelectedItem && (
+									<>
+										<VoteButton vote={singleSelectedItem.votes} />
+										<CommentButton item={singleSelectedItem} />
+									</>
+								)}
+								{/* Multi-item actions: show when any items are selected */}
+								{hasSelectedItems && (
+									<>
+										<DuplicateButton
+											count={selectedItems.length}
+											duplicate={() => {
+												Tree.runTransaction(view.root.items, () => {
+													selectedItems.forEach((item) => {
+														if (item) {
+															view.root.items.duplicateItem(
+																item,
+																canvasSize
+															);
+														}
+													});
 												});
-											});
-										}}
-									/>
-									<DeleteButton
-										delete={() => {
-											Tree.runTransaction(view.root.items, () => {
-												selectedItems.forEach((item) => item?.delete());
-											});
-										}}
-										count={selectedItems.length}
-									/>
-								</>
-							)}
-						</ToolbarGroup>
-						<ToolbarDivider />
-						<ToolbarGroup>
-							<SendItemToBackButton
-								items={view.root.items}
-								selectedItemId={selectedItemId}
-							/>
-							<MoveItemBackwardButton
-								items={view.root.items}
-								selectedItemId={selectedItemId}
-							/>
-							<MoveItemForwardButton
-								items={view.root.items}
-								selectedItemId={selectedItemId}
-							/>
-							<BringItemToFrontButton
-								items={view.root.items}
-								selectedItemId={selectedItemId}
-							/>
-						</ToolbarGroup>
+											}}
+										/>
+										<DeleteButton
+											delete={() => {
+												Tree.runTransaction(view.root.items, () => {
+													selectedItems.forEach((item) => item?.delete());
+												});
+											}}
+											count={selectedItems.length}
+										/>
+									</>
+								)}
+							</ToolbarGroup>
+							<ToolbarDivider />
+							<ToolbarGroup>
+								<SendItemToBackButton
+									items={view.root.items}
+									selectedItemId={selectedItemId}
+								/>
+								<MoveItemBackwardButton
+									items={view.root.items}
+									selectedItemId={selectedItemId}
+								/>
+								<MoveItemForwardButton
+									items={view.root.items}
+									selectedItemId={selectedItemId}
+								/>
+								<BringItemToFrontButton
+									items={view.root.items}
+									selectedItemId={selectedItemId}
+								/>
+							</ToolbarGroup>
+						</div>
 						{singleSelectedItem && isTable(singleSelectedItem) && (
-							<div className="flex items-center h-full toolbar-slide-in-delayed">
-								<ToolbarDivider />
+							<div className="flex items-center h-full toolbar-slide-in-delayed bg-green-100 border-l-2 border-green-500 pl-4 pr-4 ml-4">
+								{/* Table-specific controls with distinct visual styling */}
+								<div className="px-1 py-1 text-xs font-semibold text-green-700 rounded mr-1">
+									Table
+								</div>
 								<ToolbarGroup>
 									<AddColumnButton table={singleSelectedItem.content} />
 									<AddRowButton table={singleSelectedItem.content} />
@@ -308,7 +312,7 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 								</ToolbarGroup>
 							</div>
 						)}
-					</div>
+					</>
 				);
 			})()}
 			<ToolbarDivider />
