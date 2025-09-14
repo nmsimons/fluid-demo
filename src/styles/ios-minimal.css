@@ -1,79 +1,49 @@
-/* Minimal iOS Safari fixes - only what's needed */
+/* iOS Safari fixes - only webkit-specific properties that Tailwind can't handle */
 
-/* Better touch targets for iOS Safari */
 @supports (-webkit-touch-callout: none) {
-	/* Remove tap highlight for cleaner interaction */
+	/* Remove tap highlight for cleaner SVG interaction on iOS */
 	svg rect,
 	svg circle,
 	svg path {
 		-webkit-tap-highlight-color: transparent;
 	}
 
-	/* Fix z-index stacking order on iOS Safari */
-	/* Items should be above ink and dots but below overlays */
+	/* Fix z-index stacking for SVG foreignObject elements on iOS Safari */
+	/* These elements don't use Tailwind classes, so CSS targeting is appropriate */
 	foreignObject {
-		z-index: -1 !important;
-		position: relative !important;
+		z-index: -1;
+		position: relative;
 	}
 
-	/* Override the inline style on the foreignObject div and force stacking context */
 	foreignObject > div[style*="zIndex"] {
-		z-index: -1 !important;
-		position: relative !important;
+		z-index: -1;
+		position: relative;
 	}
 
-	/* Ensure overlays are interactive and stay on top */
+	/* Canvas/SVG layer positioning - these elements don't use Tailwind */
 	[data-layer="selection-overlays"],
 	[data-layer="presence-overlays"],
 	[data-layer="comment-overlays"] {
-		pointer-events: auto !important;
-		touch-action: none !important;
-		z-index: 10000 !important; /* Much higher to ensure they're on top */
-		position: relative !important;
+		pointer-events: auto;
+		touch-action: none;
+		z-index: 100;
+		position: relative;
 	}
 
-	/* Fix SVG coordinate system issues on iOS */
-	.canvas-svg {
+	[data-layer="ink"] {
+		z-index: -100;
 		position: relative;
+	}
+
+	/* Dot grid pattern positioning */
+	rect[fill*="dot-grid-pattern"] {
+		z-index: -200;
+		position: relative;
+	}
+
+	/* iOS Safari SVG coordinate system fixes */
+	.canvas-svg {
 		-webkit-transform: translateZ(0);
 		transform: translateZ(0);
-	}
-
-	/* Put ink and dots at even lower negative z-index */
-	[data-layer="ink"] {
-		z-index: -100 !important;
-		position: relative;
-	}
-
-	rect[fill*="dot-grid-pattern"] {
-		z-index: -200 !important;
-		position: relative;
-	}
-
-	/* Force toolbar to stay on top of everything */
-	[class*="h-[48px]"],
-	[class*="z-[9999]"] {
-		z-index: 10000 !important;
-		position: relative !important;
-	}
-
-	/* Force all toolbar child elements to inherit high z-index */
-	[class*="h-[48px]"] *,
-	[class*="z-[9999]"] * {
-		z-index: inherit !important;
-		position: relative !important;
-	}
-
-	/* Force all toolbar child elements to inherit high z-index */
-	[class*="h-[48px]"] *,
-	[class*="z-[9999]"] * {
-		z-index: inherit !important;
-		position: relative !important;
-	}
-
-	/* Force items to stack properly */
-	foreignObject > div {
-		z-index: inherit !important;
-		position: relative !important;
 	}
 }
