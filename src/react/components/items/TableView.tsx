@@ -14,7 +14,7 @@ import {
 	Column,
 	SortingFn,
 } from "@tanstack/react-table";
-import React, { JSX, useState, useEffect, useContext } from "react";
+import React, { JSX, useState, useContext, useMemo } from "react";
 import {
 	DateTime,
 	Vote,
@@ -53,36 +53,22 @@ const columnWidth = "200px"; // Width of the data columns
 
 export function TableView(props: { fluidTable: FluidTable }): JSX.Element {
 	const { fluidTable } = props;
-	const invalTable = useTree(fluidTable); // Register for tree deltas when the component mounts
-	const invalColumns = useTree(fluidTable.columns, true); // Register for tree deltas when the component mounts
-	const invalRows = useTree(fluidTable.rows, true); // Register for tree deltas when the component mounts
+	
+	// Register for tree changes - monitor the entire table for changes
+	const invalTable = useTree(fluidTable, true);
 
-	const [data, setData] = useState<FluidRow[]>(fluidTable.rows.map((row) => row));
-	const [columns, setColumns] = useState<ColumnDef<FluidRow, cellValue>[]>(
-		updateColumnData(fluidTable.columns.map((column) => column)) // Create a column helper based on the columns in the table
+	// Validate table status
+	if (Tree.status(fluidTable) !== TreeStatus.InDocument) {
+		console.error("Fluid table not in document");
+		return <div className="p-4 text-red-600">Table not available</div>;
+	}
+
+	// Use Fluid data directly with memoization based on table changes
+	const data = useMemo(() => Array.from(fluidTable.rows), [invalTable]);
+	const columns = useMemo(
+		() => updateColumnData(Array.from(fluidTable.columns)),
+		[invalTable]
 	);
-
-	// Register for tree deltas when the component mounts. Any time the rows change, the app will update.
-	useEffect(() => {
-		if (Tree.status(fluidTable) === TreeStatus.InDocument) {
-			setData(fluidTable.rows.map((row) => row));
-		} else {
-			console.error("Fluid table not in document");
-			// Do not return a JSX element here; just return undefined
-			return;
-		}
-	}, [invalRows, invalTable]);
-
-	useEffect(() => {
-		if (Tree.status(fluidTable) === TreeStatus.InDocument) {
-			// Columns changed
-			setColumns(updateColumnData(fluidTable.columns.map((column) => column)));
-		} else {
-			console.error("Fluid table not in document");
-			// Do not return a JSX element here; just return undefined
-			return;
-		}
-	}, [invalColumns, invalTable]);
 
 	// The virtualizer will need a reference to the scrollable container element
 	const tableContainerRef = React.useRef<HTMLDivElement>(null);
@@ -152,21 +138,36 @@ export function IndexHeaderView(): JSX.Element {
 export function TableHeaderView(props: { header: Header<FluidRow, unknown> }): JSX.Element {
 	const { header } = props;
 	const fluidTable = useTable(); // Get the fluid table from context
-	const fluidColumn: FluidColumn | undefined = (() => {
+	
+	// Get the fluid column with proper error handling
+	const fluidColumn = useMemo(() => {
 		try {
-			return fluidTable.getColumn(header.id); // Get the column from the table
+			return fluidTable.getColumn(header.id);
 		} catch (e) {
 			console.error("Fluid column not found", header.id);
-			return undefined;
+			return null;
 		}
-	})();
+	}, [fluidTable, header.id]);
 
-	if (fluidColumn === undefined) {
-		return <></>;
+	// Early return with error state if column not found
+	if (!fluidColumn) {
+		return (
+			<th
+				style={{
+					display: "flex",
+					minWidth: columnWidth,
+					width: columnWidth,
+					maxWidth: columnWidth,
+				}}
+				className="relative p-1 border-r-1 border-gray-100 bg-red-100"
+			>
+				<div className="text-red-600 text-xs">Column Error</div>
+			</th>
+		);
 	}
 
 	useTree(fluidColumn);
-	const selection = useContext(PresenceContext).tableSelection; // Get the selection manager from context
+	const selection = useContext(PresenceContext).tableSelection;
 
 	// handle a focus event in the header
 	const handleFocus = () => {
@@ -205,11 +206,9 @@ export function TableHeaderView(props: { header: Header<FluidRow, unknown> }): J
 
 export function SortButton(props: { column: Column<FluidRow> }): JSX.Element {
 	const { column } = props;
-	const [sorted, setSorted] = useState(column.getIsSorted());
-
-	useEffect(() => {
-		setSorted(column.getIsSorted());
-	}, [column.getIsSorted()]);
+	
+	// Use column.getIsSorted() directly instead of local state
+	const sorted = column.getIsSorted();
 
 	const handleClick = (e: React.MouseEvent) => {
 		const sortingFn = column.getToggleSortingHandler();
@@ -283,17 +282,38 @@ export function TableRowView(props: {
 	virtualRow: VirtualItem;
 	rowVirtualizer: Virtualizer<HTMLDivElement, HTMLTableRowElement>;
 }): JSX.Element {
-	const { row, virtualRow, rowVirtualizer } = props;
-	const fluidTable = useTable(); // Get the fluid table from context
+	const { row, virtualRow } = props;
+	const fluidTable = useTable();
 
 	const style = { transform: `translateY(${virtualRow.start}px)` };
 
-	// Get the fluid row from the row
-	const fluidRow = fluidTable.getRow(row.id);
-	if (fluidRow === undefined) {
-		console.error("Fluid row not found", row.id);
-		return <></>;
+	// Get the fluid row - use useMemo for better performance
+	const fluidRow = useMemo(() => {
+		const foundRow = fluidTable.getRow(row.id);
+		if (!foundRow) {
+			console.error("Fluid row not found", row.id);
+		}
+		return foundRow;
+	}, [fluidTable, row.id]);
+
+	// Early return with error state if row not found
+	if (!fluidRow) {
+		return (
+			<tr
+				style={{
+					...style,
+					display: "flex",
+					position: "absolute",
+					width: "100%",
+					height: `${virtualRow.size}px`,
+				}}
+				className="bg-red-100"
+			>
+				<td className="p-2 text-red-600">Row Error: {row.id}</td>
+			</tr>
+		);
 	}
+
 	useTree(fluidRow);
 
 	return (
@@ -397,26 +417,29 @@ export function TableCellView(props: { cell: Cell<FluidRow, cellValue> }): JSX.E
 
 export function TableCellViewContent(props: { cell: Cell<FluidRow, cellValue> }): JSX.Element {
 	const { cell } = props;
+	const fluidTable = useTable();
 
-	const fluidTable = useTable(); // Get the fluid table from context
+	// Get fluid row and column with proper error handling
+	const fluidRow = useMemo(() => {
+		const row = fluidTable.getRow(cell.row.id);
+		if (!row) {
+			console.error("Fluid row not found", cell.row.id);
+		}
+		return row;
+	}, [fluidTable, cell.row.id]);
 
-	const fluidRow = fluidTable.getRow(cell.row.id);
-	if (fluidRow === undefined) {
-		console.error("Fluid row not found", cell.row.id);
-		return <></>;
-	}
-	const fluidColumn = (() => {
+	const fluidColumn = useMemo(() => {
 		try {
-			return fluidTable.getColumn(cell.column.id); // Get the column from the table
+			return fluidTable.getColumn(cell.column.id);
 		} catch (e) {
 			console.error("Fluid column not found", cell.column.id);
-			return undefined;
+			return null;
 		}
-	})();
+	}, [fluidTable, cell.column.id]);
 
-	if (!fluidColumn) {
-		console.error("Fluid column not found", cell.column.id);
-		return <></>;
+	// Early return for missing data
+	if (!fluidRow || !fluidColumn) {
+		return <div className="text-red-500 text-xs p-1">Cell Error</div>;
 	}
 
 	const value = fluidRow.getCell(fluidColumn);
@@ -492,25 +515,38 @@ export function PresenceIndicator(props: {
 	type: selectionType;
 }): JSX.Element {
 	const { item, type } = props;
-	const selectedItem = { id: item.id, type } as const; // Default to cell for Cell and Row types, Header will override it
-
+	const selectedItem = { id: item.id, type } as const;
 	const selection = useContext(PresenceContext).tableSelection;
 
-	const [selected, setSelected] = useState(selection.testSelection(selectedItem));
-	const [remoteSelected, setRemoteSelected] = useState(
-		selection.testRemoteSelection(selectedItem)
-	);
+	// Use a single state object to reduce complexity
+	const [selectionState, setSelectionState] = useState(() => ({
+		isSelected: selection.testSelection(selectedItem),
+		remoteSelected: selection.testRemoteSelection(selectedItem)
+	}));
 
+	// Single presence manager hook with consolidated state updates
 	usePresenceManager(
 		selection,
 		() => {
-			setRemoteSelected(selection.testRemoteSelection(selectedItem));
+			// Remote update
+			setSelectionState(prev => ({
+				...prev,
+				remoteSelected: selection.testRemoteSelection(selectedItem)
+			}));
 		},
 		() => {
-			setSelected(selection.testSelection(selectedItem));
+			// Local update
+			setSelectionState(prev => ({
+				...prev,
+				isSelected: selection.testSelection(selectedItem)
+			}));
 		},
 		() => {
-			setRemoteSelected(selection.testRemoteSelection(selectedItem));
+			// Disconnect - refresh both states
+			setSelectionState({
+				isSelected: selection.testSelection(selectedItem),
+				remoteSelected: selection.testRemoteSelection(selectedItem)
+			});
 		}
 	);
 
@@ -518,10 +554,10 @@ export function PresenceIndicator(props: {
 
 	return (
 		<>
-			<PresenceBox color="outline-blue-600" hidden={!selected} isRow={isRow} />
+			<PresenceBox color="outline-blue-600" hidden={!selectionState.isSelected} isRow={isRow} />
 			<PresenceBox
 				color="outline-red-800"
-				hidden={remoteSelected.length === 0}
+				hidden={selectionState.remoteSelected.length === 0}
 				isRow={isRow}
 			/>
 		</>
