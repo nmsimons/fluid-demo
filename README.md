@@ -444,7 +444,7 @@ src/
 ### Key Files
 
 - **`index.tsx`**: Application entry point
-- **`appLoad.tsx`**: Application loader and initialization
+- **`AppLoad.tsx`**: Application loader and initialization
 - **`App.tsx`**: Main UI component and application shell
 - **`Canvas.tsx`**: Canvas component with SVG rendering and item interactions
 - **`ItemView.tsx`**: Canvas item rendering and interactions (includes presence indicators)
