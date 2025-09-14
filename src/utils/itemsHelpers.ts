@@ -31,7 +31,7 @@ export function isItems(element: Item | Items): element is Items {
  */
 export function flattenItems(items: Items): Item[] {
 	const result: Item[] = [];
-	
+
 	for (const element of items) {
 		if (isItem(element)) {
 			result.push(element);
@@ -40,7 +40,7 @@ export function flattenItems(items: Items): Item[] {
 			result.push(...flattenItems(element));
 		}
 	}
-	
+
 	return result;
 }
 
@@ -83,6 +83,6 @@ export function getAllItems(items: Items): Item[] {
  */
 export function findItemsByIds(items: Items, ids: string[]): Item[] {
 	return ids
-		.map(id => findItemById(items, id))
+		.map((id) => findItemById(items, id))
 		.filter((item): item is Item => item !== undefined);
 }
