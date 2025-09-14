@@ -1,7 +1,7 @@
 import { AzureClient } from "@fluidframework/azure-client";
 import React, { Suspense, lazy } from "react";
 import { createRoot } from "react-dom/client";
-import { App, appTreeConfiguration } from "./schema/appSchema.js";
+import { App, Items, appTreeConfiguration } from "./schema/appSchema.js";
 import { createUndoRedoStacks } from "./undo/undo.js";
 import { containerSchema } from "./schema/containerSchema.js";
 import { loadFluidData } from "./infra/fluid.js";
@@ -66,7 +66,7 @@ export async function loadApp(props: {
 		// Initialize the SharedTree DDSes
 		const appTree = container.initialObjects.appData.viewWith(appTreeConfiguration);
 		if (appTree.compatibility.canInitialize) {
-			appTree.initialize(new App({ items: [], comments: [], inks: [] }));
+			appTree.initialize(new App({ items: [] as unknown as Items, comments: [], inks: [] }));
 		}
 
 		// Get the Presence data object from the container

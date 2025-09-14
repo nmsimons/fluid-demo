@@ -15,6 +15,7 @@ import {
 	Tree,
 	TreeNodeFromImplicitAllowedTypes,
 	TreeStatus,
+	ValidateRecursiveSchema,
 } from "fluid-framework";
 
 export type HintValues = (typeof hintValues)[keyof typeof hintValues];
@@ -397,8 +398,12 @@ export class Item extends sf.object("Item", {
 	}
 }
 
+// Validate the recursive schema for Items
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+type _validateItems = ValidateRecursiveSchema<typeof Items>;
+
 // TODO: Support nested items
-export class Items extends sf.array("Items", [Item]) {
+export class Items extends sf.arrayRecursive("Items", [Item, () => Items]) {
 	/**
 	 * Create a new shape item and add it to the items collection
 	 */

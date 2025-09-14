@@ -11,6 +11,7 @@ import React, {
 	useState,
 } from "react";
 import { App, Comment, Comments, Item } from "../../../schema/appSchema.js";
+import { findItemById } from "../../../utils/itemsHelpers.js";
 import { Pane } from "./Pane.js";
 import { useTree } from "../../hooks/useTree.js";
 import { getContentHandler } from "../../../utils/contentHandlers.js";
@@ -42,7 +43,7 @@ export const CommentPane = forwardRef<
 	}));
 
 	useTree(app);
-	const item = app.items.find((item) => item.id === props.itemId) ?? app;
+	const item = findItemById(app.items, props.itemId) ?? app;
 	useEffect(() => {
 		if (item instanceof Item) {
 			const handler = getContentHandler(item);

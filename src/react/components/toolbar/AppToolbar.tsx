@@ -8,6 +8,7 @@ import { TreeView, Tree } from "fluid-framework";
 import { App, Shape } from "../../../schema/appSchema.js";
 import { undoRedo } from "../../../undo/undo.js";
 import { isShape, isTable } from "../../../utils/contentHandlers.js";
+import { findItemsByIds } from "../../../utils/itemsHelpers.js";
 import { TypedSelection } from "../../../presence/selection.js";
 import {
 	NewCircleButton,
@@ -167,14 +168,9 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 				/>
 				{(() => {
 					// Get selected items and filter for shapes
-					const selectedItems = selectedItemIds
-						.map((id) => view.root.items.find((item) => item.id === id))
-						.filter(Boolean);
+					const selectedItems = findItemsByIds(view.root.items, selectedItemIds);
 					const selectedShapes = selectedItems
-						.filter(
-							(item): item is NonNullable<typeof item> =>
-								item !== undefined && isShape(item)
-						)
+						.filter((item) => isShape(item))
 						.map((item) => item.content as Shape);
 
 					return (
@@ -203,9 +199,7 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 				/>
 			</ToolbarGroup>
 			{(() => {
-				const selectedItems = selectedItemIds
-					.map((id) => view.root.items.find((item) => item.id === id))
-					.filter(Boolean);
+				const selectedItems = findItemsByIds(view.root.items, selectedItemIds);
 				const hasSelectedItems = selectedItems.length > 0;
 				const singleSelectedItem = selectedItems.length === 1 ? selectedItems[0] : null;
 

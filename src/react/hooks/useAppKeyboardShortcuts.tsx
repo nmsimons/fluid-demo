@@ -10,6 +10,7 @@ import { undoRedo } from "../../undo/undo.js";
 import { UsersManager } from "../../presence/Interfaces/UsersManager.js";
 import { SelectionManager } from "../../presence/Interfaces/SelectionManager.js";
 import { SHAPE_COLORS } from "../components/toolbar/buttons/CreationButtons.js";
+import { findItemById, findItemsByIds, getAllItems } from "../../utils/itemsHelpers.js";
 
 /**
  * Props interface for the useAppKeyboardShortcuts hook.
@@ -61,7 +62,6 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 	const {
 		view,
 		canvasSize,
-		selectedItemId,
 		selectedItemIds,
 		selectedColumnId,
 		selectedRowId,
@@ -81,8 +81,9 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 		if (!pan) return;
 		const zoom = 1; // keyboard path currently lacks zoom context; assume 1 for now
 		const items = view.root.items;
-		if (items.length === 0) return;
-		const last = items[items.length - 1];
+		const allItems = getAllItems(items);
+		if (allItems.length === 0) return;
+		const last = allItems[allItems.length - 1];
 		const vw = props.canvasSize.width / zoom;
 		const vh = props.canvasSize.height / zoom;
 		const vx = -pan.x / zoom;
@@ -176,7 +177,7 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 				// Delete all selected items in a transaction
 				Tree.runTransaction(view.root.items, () => {
 					selectedItemIds.forEach((itemId) => {
-						const selectedItem = view.root.items.find((item) => item.id === itemId);
+						const selectedItem = findItemById(view.root.items, itemId);
 						if (selectedItem) {
 							selectedItem.delete();
 						}
@@ -192,9 +193,7 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 				// Duplicate all selected items in a transaction
 				Tree.runTransaction(view.root.items, () => {
 					// First collect all the items to duplicate to avoid issues with array modification during iteration
-					const itemsToDuplicate = selectedItemIds
-						.map((itemId) => view.root.items.find((item) => item.id === itemId))
-						.filter((item) => item !== undefined);
+					const itemsToDuplicate = findItemsByIds(view.root.items, selectedItemIds);
 
 					// Then duplicate each item
 					itemsToDuplicate.forEach((selectedItem) => {
@@ -211,7 +210,7 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 				// Move all selected items backward in a transaction
 				Tree.runTransaction(view.root.items, () => {
 					selectedItemIds.forEach((itemId) => {
-						const selectedItem = view.root.items.find((item) => item.id === itemId);
+						const selectedItem = findItemById(view.root.items, itemId);
 						if (selectedItem) {
 							view.root.items.moveItemBackward(selectedItem);
 						}
@@ -226,7 +225,7 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 				// Move all selected items forward in a transaction
 				Tree.runTransaction(view.root.items, () => {
 					selectedItemIds.forEach((itemId) => {
-						const selectedItem = view.root.items.find((item) => item.id === itemId);
+						const selectedItem = findItemById(view.root.items, itemId);
 						if (selectedItem) {
 							view.root.items.moveItemForward(selectedItem);
 						}
@@ -242,7 +241,7 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 				// Send all selected items to back in a transaction
 				Tree.runTransaction(view.root.items, () => {
 					selectedItemIds.forEach((itemId) => {
-						const selectedItem = view.root.items.find((item) => item.id === itemId);
+						const selectedItem = findItemById(view.root.items, itemId);
 						if (selectedItem) {
 							view.root.items.sendItemToBack(selectedItem);
 						}
@@ -258,7 +257,7 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 				// Bring all selected items to front in a transaction
 				Tree.runTransaction(view.root.items, () => {
 					selectedItemIds.forEach((itemId) => {
-						const selectedItem = view.root.items.find((item) => item.id === itemId);
+						const selectedItem = findItemById(view.root.items, itemId);
 						if (selectedItem) {
 							view.root.items.bringItemToFront(selectedItem);
 						}
@@ -280,7 +279,7 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 			key: "a",
 			ctrlKey: true,
 			action: () => {
-				const allSelections = view.root.items.map((item) => ({ id: item.id }));
+				const allSelections = getAllItems(view.root.items).map((item) => ({ id: item.id }));
 				selectionManager.setSelection(allSelections);
 			},
 			disabled: view.root.items.length === 0,
@@ -307,7 +306,7 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 				// Vote on all selected items in a transaction
 				Tree.runTransaction(view.root, () => {
 					selectedItemIds.forEach((itemId) => {
-						const selectedItem = view.root.items.find((item) => item.id === itemId);
+						const selectedItem = findItemById(view.root.items, itemId);
 						if (selectedItem) {
 							selectedItem.votes.toggleVote(userId);
 						}
@@ -323,9 +322,7 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 			action: () => {
 				// Comment on the first selected item
 				if (selectedItemIds.length > 0) {
-					const selectedItem = view.root.items.find(
-						(item) => item.id === selectedItemIds[0]
-					);
+					const selectedItem = findItemById(view.root.items, selectedItemIds[0]);
 					if (selectedItem) {
 						openCommentPaneAndFocus(selectedItem.id);
 					}
@@ -339,14 +336,14 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 			ctrlKey: true,
 			shiftKey: true,
 			action: () => {
-				const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
+				const selectedItem = findItemById(view.root.items, selectedItemIds[0]);
 				if (selectedItem && Tree.is(selectedItem.content, FluidTable)) {
 					const table = selectedItem.content as FluidTable;
 					table.addColumn();
 				}
 			},
 			disabled: (() => {
-				const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
+				const selectedItem = findItemById(view.root.items, selectedItemIds[0]);
 				return !selectedItem || !Tree.is(selectedItem.content, FluidTable);
 			})(),
 		},
@@ -355,14 +352,14 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 			ctrlKey: true,
 			shiftKey: true,
 			action: () => {
-				const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
+				const selectedItem = findItemById(view.root.items, selectedItemIds[0]);
 				if (selectedItem && Tree.is(selectedItem.content, FluidTable)) {
 					const table = selectedItem.content as FluidTable;
 					table.addRow();
 				}
 			},
 			disabled: (() => {
-				const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
+				const selectedItem = findItemById(view.root.items, selectedItemIds[0]);
 				return !selectedItem || !Tree.is(selectedItem.content, FluidTable);
 			})(),
 		},
@@ -371,7 +368,7 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 			ctrlKey: true,
 			shiftKey: true,
 			action: () => {
-				const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
+				const selectedItem = findItemById(view.root.items, selectedItemIds[0]);
 				if (selectedItem && Tree.is(selectedItem.content, FluidTable) && selectedColumnId) {
 					const table = selectedItem.content as FluidTable;
 					const selectedColumn = table.columns.find((col) => col.id === selectedColumnId);
@@ -381,7 +378,7 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 				}
 			},
 			disabled: (() => {
-				const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
+				const selectedItem = findItemById(view.root.items, selectedItemIds[0]);
 				if (
 					!(selectedItem && Tree.is(selectedItem.content, FluidTable) && selectedColumnId)
 				) {
@@ -399,7 +396,7 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 			ctrlKey: true,
 			shiftKey: true,
 			action: () => {
-				const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
+				const selectedItem = findItemById(view.root.items, selectedItemIds[0]);
 				if (selectedItem && Tree.is(selectedItem.content, FluidTable) && selectedColumnId) {
 					const table = selectedItem.content as FluidTable;
 					const selectedColumn = table.columns.find((col) => col.id === selectedColumnId);
@@ -409,7 +406,7 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 				}
 			},
 			disabled: (() => {
-				const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
+				const selectedItem = findItemById(view.root.items, selectedItemIds[0]);
 				if (
 					!(selectedItem && Tree.is(selectedItem.content, FluidTable) && selectedColumnId)
 				) {
@@ -427,7 +424,7 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 			ctrlKey: true,
 			shiftKey: true,
 			action: () => {
-				const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
+				const selectedItem = findItemById(view.root.items, selectedItemIds[0]);
 				if (selectedItem && Tree.is(selectedItem.content, FluidTable) && selectedRowId) {
 					const table = selectedItem.content as FluidTable;
 					const selectedRow = table.rows.find((row) => row.id === selectedRowId);
@@ -437,7 +434,7 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 				}
 			},
 			disabled: (() => {
-				const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
+				const selectedItem = findItemById(view.root.items, selectedItemIds[0]);
 				if (!(selectedItem && Tree.is(selectedItem.content, FluidTable) && selectedRowId)) {
 					return true;
 				}
@@ -453,7 +450,7 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 			ctrlKey: true,
 			shiftKey: true,
 			action: () => {
-				const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
+				const selectedItem = findItemById(view.root.items, selectedItemIds[0]);
 				if (selectedItem && Tree.is(selectedItem.content, FluidTable) && selectedRowId) {
 					const table = selectedItem.content as FluidTable;
 					const selectedRow = table.rows.find((row) => row.id === selectedRowId);
@@ -463,7 +460,7 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 				}
 			},
 			disabled: (() => {
-				const selectedItem = view.root.items.find((item) => item.id === selectedItemId);
+				const selectedItem = findItemById(view.root.items, selectedItemIds[0]);
 				if (!(selectedItem && Tree.is(selectedItem.content, FluidTable) && selectedRowId)) {
 					return true;
 				}
