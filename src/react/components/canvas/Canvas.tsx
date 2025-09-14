@@ -454,13 +454,40 @@ export function Canvas(props: {
 					// Handle tap-to-clear-selection for touch events (equivalent to onClick for mouse)
 					if (e.pointerType === "touch") {
 						const target = e.target as Element | null;
-						// Only clear selection if tapping on background (not on items)
+
+						// Check if this is on an item or a resize/rotate handle
 						const isOnItem =
 							target?.closest("[data-item-id]") ||
 							target?.closest("[data-svg-item-id]");
-						if (!isOnItem) {
-							// For touch events, directly clear selection instead of using handleBackgroundClick
-							// This avoids the complexity of synthetic event conversion
+						const isOnHandle =
+							target?.closest("[data-resize-handle]") ||
+							target?.closest("[data-rotate-handle]");
+
+						// Check if we're currently or recently manipulating something
+						// This prevents clearing selection when touch events bubble up from manipulation operations
+						const isManipulating = !!document.documentElement.dataset.manipulating;
+						const hasResizeState = !!presence.resize.state?.local;
+						const hasDragState = !!presence.drag.state.local;
+
+						// Only clear selection if tapping on background AND not during/after manipulation
+						if (
+							!isOnItem &&
+							!isOnHandle &&
+							!isManipulating &&
+							!hasResizeState &&
+							!hasDragState
+						) {
+							// For touch events, respect suppressClearUntil flag like mouse events do
+							const svg = svgRef.current as
+								| (SVGSVGElement & { dataset: DOMStringMap })
+								| null;
+							const until = svg?.dataset?.suppressClearUntil
+								? parseInt(svg.dataset.suppressClearUntil)
+								: 0;
+							if (until && Date.now() < until) {
+								if (svg) delete svg.dataset.suppressClearUntil;
+								return;
+							}
 							presence.itemSelection?.clearSelection();
 						}
 					}
