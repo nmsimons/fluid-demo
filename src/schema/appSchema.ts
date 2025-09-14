@@ -393,17 +393,11 @@ export class Item extends sf.object("Item", {
 		const parent = Tree.parent(this);
 		if (Tree.is(parent, Items)) {
 			parent.removeAt(parent.indexOf(this));
-		} else if (Tree.is(parent, Group)) {
-			parent.content.removeAt(parent.content.indexOf(this));
 		}
 	}
 }
-export class Group extends sf.object("Group", {
-	id: sf.string,
-	content: sf.array([Item]),
-}) {}
 
-// TODO: Support groups
+// TODO: Support nested items
 export class Items extends sf.array("Items", [Item]) {
 	/**
 	 * Create a new shape item and add it to the items collection

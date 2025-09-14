@@ -10,7 +10,7 @@ import React, {
 	useRef,
 	useState,
 } from "react";
-import { App, Comment, Comments, Group, Item } from "../../../schema/appSchema.js";
+import { App, Comment, Comments, Item } from "../../../schema/appSchema.js";
 import { Pane } from "./Pane.js";
 import { useTree } from "../../hooks/useTree.js";
 import { getContentHandler } from "../../../utils/contentHandlers.js";
@@ -44,9 +44,7 @@ export const CommentPane = forwardRef<
 	useTree(app);
 	const item = app.items.find((item) => item.id === props.itemId) ?? app;
 	useEffect(() => {
-		if (item instanceof Group) {
-			setTitle("Group Comments");
-		} else if (item instanceof Item) {
+		if (item instanceof Item) {
 			const handler = getContentHandler(item);
 			setTitle(`Comments on ${handler.getName()}`);
 		} else {
