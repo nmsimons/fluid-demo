@@ -277,13 +277,13 @@ These items are candidates for iterative improvement:
 
 ## Quick Reference: Key Files
 
-| File                                          | Purpose                                                                |
-| --------------------------------------------- | ---------------------------------------------------------------------- |
-| `src/react/components/canvas/Canvas.tsx`     | Main collaborative canvas (SVG + HTML layering, ink + overlays)        |
-| `src/react/hooks/useCanvasNavigation.ts`     | Pan/zoom logic with discrete zoom steps & cursor anchoring             |
-| `src/presence/Interfaces/InkManager.ts`      | Ephemeral ink presence contract                                        |
-| `src/presence/ink.ts`                        | Implementation utilities for broadcasting ink (if present)             |
-| `src/schema/app_schema.ts`                   | Persistent ink schema (`InkStroke`, `InkPoint`, `InkStyle`, `InkBBox`) |
+| File                                     | Purpose                                                                |
+| ---------------------------------------- | ---------------------------------------------------------------------- |
+| `src/react/components/canvas/Canvas.tsx` | Main collaborative canvas (SVG + HTML layering, ink + overlays)        |
+| `src/react/hooks/useCanvasNavigation.ts` | Pan/zoom logic with discrete zoom steps & cursor anchoring             |
+| `src/presence/Interfaces/InkManager.ts`  | Ephemeral ink presence contract                                        |
+| `src/presence/ink.ts`                    | Implementation utilities for broadcasting ink (if present)             |
+| `src/schema/app_schema.ts`               | Persistent ink schema (`InkStroke`, `InkPoint`, `InkStyle`, `InkBBox`) |
 
 ## User Interface
 
