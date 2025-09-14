@@ -26,8 +26,8 @@
  */
 
 import { useEffect, useCallback, useRef } from "react";
-import { SelectionManager } from "./presence/Interfaces/SelectionManager.js";
-import { TypedSelection } from "./presence/selection.js";
+import { SelectionManager } from "../presence/Interfaces/SelectionManager.js";
+import { TypedSelection } from "../presence/selection.js";
 
 /**
  * Generic event subscription hook for Fluid Framework Listenable objects.

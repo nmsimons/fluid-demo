@@ -6,9 +6,9 @@
 import React, { JSX } from "react";
 import { TreeView, Tree } from "fluid-framework";
 import { App, Shape } from "../../../schema/appSchema.js";
-import { undoRedo } from "../../../utils/undo.js";
+import { undoRedo } from "../../../undo/undo.js";
 import { isShape, isTable } from "../../../utils/contentHandlers.js";
-import { TypedSelection } from "../../../utils/presence/selection.js";
+import { TypedSelection } from "../../../presence/selection.js";
 import {
 	NewCircleButton,
 	NewSquareButton,
@@ -41,7 +41,7 @@ import { DeleteSelectedRowsButton } from "./buttons/TableButtons.js";
 // All toolbar button UIs now componentized; direct TooltipButton usage removed.
 import { MessageBar, MessageBarBody, MessageBarTitle } from "@fluentui/react-message-bar";
 import { Toolbar, ToolbarDivider, ToolbarGroup } from "@fluentui/react-toolbar";
-import type { SelectionManager } from "../../../utils/presence/Interfaces/SelectionManager.js";
+import type { SelectionManager } from "../../../presence/Interfaces/SelectionManager.js";
 
 export interface AppToolbarProps {
 	view: TreeView<typeof App>;

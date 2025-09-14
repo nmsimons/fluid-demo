@@ -1,5 +1,5 @@
 import { AzureClient } from "@fluidframework/azure-client";
-import { loadApp } from "../AppLoad.js";
+import { loadApp } from "../appLoad.js";
 import { getClientProps } from "../infra/azure/azureClientProps.js";
 import { AttachState } from "fluid-framework";
 import { AccountInfo, PublicClientApplication } from "@azure/msal-browser";

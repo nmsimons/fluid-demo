@@ -12,11 +12,11 @@ import "../../../styles/ios-minimal.css";
 // import { fixIOSZIndexIssues } from "../../../utils/iosZIndexFix.js";
 import { ConnectionState, IFluidContainer, TreeView } from "fluid-framework";
 import { Canvas } from "../canvas/Canvas.js";
-import type { SelectionManager } from "../../../utils/presence/Interfaces/SelectionManager.js";
-import { undoRedo } from "../../../utils/undo.js";
+import type { SelectionManager } from "../../../presence/Interfaces/SelectionManager.js";
+import { undoRedo } from "../../../undo/undo.js";
 import { useSelectionSync, useMultiTypeSelectionSync } from "../../../utils/eventSubscriptions.js";
-import { DragAndRotatePackage } from "../../../utils/presence/drag.js";
-import { TypedSelection } from "../../../utils/presence/selection.js";
+import { DragAndRotatePackage } from "../../../presence/drag.js";
+import { TypedSelection } from "../../../presence/selection.js";
 import {
 	Avatar,
 	AvatarGroup,
@@ -30,20 +30,20 @@ import { ToolbarDivider } from "@fluentui/react-toolbar";
 import { Tooltip } from "@fluentui/react-tooltip";
 import { Menu, MenuTrigger, MenuPopover, MenuList, MenuItem } from "@fluentui/react-menu";
 import { SignOut20Regular, PersonSwap20Regular } from "@fluentui/react-icons";
-import { User, UsersManager } from "../../../utils/presence/Interfaces/UsersManager.js";
+import { User, UsersManager } from "../../../presence/Interfaces/UsersManager.js";
 import { PresenceContext } from "../../contexts/PresenceContext.js";
 import { AuthContext } from "../../contexts/AuthContext.js";
 import { signOutHelper, switchAccountHelper } from "../../../infra/auth.js";
-import { DragManager } from "../../../utils/presence/Interfaces/DragManager.js";
-import { ResizeManager } from "../../../utils/presence/Interfaces/ResizeManager.js";
-import { ResizePackage } from "../../../utils/presence/Interfaces/ResizeManager.js";
+import { DragManager } from "../../../presence/Interfaces/DragManager.js";
+import { ResizeManager } from "../../../presence/Interfaces/ResizeManager.js";
+import { ResizePackage } from "../../../presence/Interfaces/ResizeManager.js";
 import { CommentPane, CommentPaneRef } from "../panels/CommentPane.js";
 import { useTree } from "../../hooks/useTree.js";
 import { useKeyboardShortcuts } from "../../hooks/useKeyboardShortcuts.js";
 import { useAppKeyboardShortcuts } from "../../hooks/useAppKeyboardShortcuts.js";
 import { PaneContext } from "../../contexts/PaneContext.js";
 import { AppToolbar } from "../toolbar/AppToolbar.js";
-import { InkPresenceManager } from "../../../utils/presence/Interfaces/InkManager.js";
+import { InkPresenceManager } from "../../../presence/Interfaces/InkManager.js";
 // Removed circle ink creation; ink tool toggles freehand drawing.
 
 // Context for comment pane actions

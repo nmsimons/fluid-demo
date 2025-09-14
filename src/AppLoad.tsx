@@ -2,7 +2,7 @@ import { AzureClient } from "@fluidframework/azure-client";
 import React, { Suspense, lazy } from "react";
 import { createRoot } from "react-dom/client";
 import { App, appTreeConfiguration } from "./schema/appSchema.js";
-import { createUndoRedoStacks } from "./utils/undo.js";
+import { createUndoRedoStacks } from "./undo/undo.js";
 import { containerSchema } from "./schema/containerSchema.js";
 import { loadFluidData } from "./infra/fluid.js";
 import { IFluidContainer } from "fluid-framework";
@@ -42,13 +42,13 @@ const AppLoadingSpinner = () => {
 };
 
 import { getPresence } from "@fluidframework/presence/beta";
-import { createTypedSelectionManager } from "./utils/presence/selection.js";
-import { createUsersManager } from "./utils/presence/users.js";
-import { UserInfo } from "./utils/presence/Interfaces/UsersManager.js";
+import { createTypedSelectionManager } from "./presence/selection.js";
+import { createUsersManager } from "./presence/users.js";
+import { UserInfo } from "./presence/Interfaces/UsersManager.js";
 import { AccountInfo, PublicClientApplication } from "@azure/msal-browser";
-import { createDragManager } from "./utils/presence/drag.js";
-import { createResizeManager } from "./utils/presence/resize.js";
-import { createInkPresenceManager } from "./utils/presence/ink.js";
+import { createDragManager } from "./presence/drag.js";
+import { createResizeManager } from "./presence/resize.js";
+import { createInkPresenceManager } from "./presence/ink.js";
 
 export async function loadApp(props: {
 	client: AzureClient;

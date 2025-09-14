@@ -29,8 +29,8 @@ import {
 } from "@fluentui/react-icons";
 import { Tree, TreeStatus } from "fluid-framework";
 import { useTableButtonState } from "../../../../utils/eventSubscriptions.js";
-import { selectionType, TypedSelection } from "../../../../utils/presence/selection.js";
-import { SelectionManager } from "../../../../utils/presence/Interfaces/SelectionManager.js";
+import { selectionType, TypedSelection } from "../../../../presence/selection.js";
+import { SelectionManager } from "../../../../presence/Interfaces/SelectionManager.js";
 import {
 	Menu,
 	MenuItemRadio,

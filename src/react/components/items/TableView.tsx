@@ -34,7 +34,7 @@ import {
 	ArrowSortUpFilled,
 	ReOrderDotsVertical16Filled,
 } from "@fluentui/react-icons";
-import { selectionType } from "../../../utils/presence/selection.js";
+import { selectionType } from "../../../presence/selection.js";
 import {
 	CellInputBoolean,
 	CellInputNumber,
