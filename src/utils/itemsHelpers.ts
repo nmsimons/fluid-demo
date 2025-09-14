@@ -4,7 +4,7 @@
  */
 
 import { Tree } from "fluid-framework";
-import { Item, Items } from "../schema/appSchema.js";
+import { Group, Item, Items } from "../schema/appSchema.js";
 
 /**
  * Utility functions for working with nested Items arrays
@@ -13,15 +13,15 @@ import { Item, Items } from "../schema/appSchema.js";
 /**
  * Check if an element from an Items array is an Item (not a nested Items array)
  */
-export function isItem(element: Item | Items): element is Item {
+export function isItem(element: Item | Group): element is Item {
 	return Tree.is(element, Item);
 }
 
 /**
  * Check if an element from an Items array is a nested Items array (not an Item)
  */
-export function isItems(element: Item | Items): element is Items {
-	return Tree.is(element, Items);
+export function isGroup(element: Item | Group): element is Group {
+	return Tree.is(element, Group);
 }
 
 /**
@@ -35,9 +35,9 @@ export function flattenItems(items: Items): Item[] {
 	for (const element of items) {
 		if (isItem(element)) {
 			result.push(element);
-		} else if (isItems(element)) {
+		} else if (isGroup(element)) {
 			// Recursively flatten nested Items arrays
-			result.push(...flattenItems(element));
+			result.push(...flattenItems(element.items));
 		}
 	}
 
@@ -56,9 +56,9 @@ export function findItemById(items: Items, id: string): Item | undefined {
 			if (element.id === id) {
 				return element;
 			}
-		} else if (isItems(element)) {
+		} else if (isGroup(element)) {
 			// Recursively search in nested Items arrays
-			const found = findItemById(element, id);
+			const found = findItemById(element.items, id);
 			if (found) {
 				return found;
 			}

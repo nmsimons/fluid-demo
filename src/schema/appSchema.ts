@@ -403,7 +403,7 @@ export class Item extends sf.object("Item", {
 type _validateItems = ValidateRecursiveSchema<typeof Items>;
 
 // TODO: Support nested items
-export class Items extends sf.arrayRecursive("Items", [Item, () => Items]) {
+export class Items extends sf.arrayRecursive("Items", [Item, () => Group]) {
 	/**
 	 * Create a new shape item and add it to the items collection
 	 */
@@ -678,6 +678,11 @@ export class Items extends sf.arrayRecursive("Items", [Item, () => Items]) {
 		return true;
 	}
 }
+
+export class Group extends sf.objectRecursive("Group", {
+	id: sf.string,
+	items: Items,
+}) {}
 
 // ---- Ink (extended vector) schema definitions ----
 export class InkPoint extends sf.object("InkPoint", {
