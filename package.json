@@ -42,7 +42,7 @@
 		"@fluentui/react-text": "^9.5.2",
 		"@fluentui/react-textarea": "^9.4.88",
 		"@fluentui/react-theme": "^9.1.24",
-		"@fluentui/react-toolbar": "^9.2.27",
+		"@fluentui/react-toolbar": "^9.6.6",
 		"@fluentui/react-tooltip": "^9.4.38",
 		"@fluidframework/azure-client": "^2.60.0",
 		"@fluidframework/odsp-client": "^2.60.0",
