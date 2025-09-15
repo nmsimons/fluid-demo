@@ -10,7 +10,8 @@ import "../../../styles/ios-minimal.css";
 // import "../../../styles/ios-fixes.css";
 // import "../../../styles/ios-safari-fixes.css";
 // import { fixIOSZIndexIssues } from "../../../utils/iosZIndexFix.js";
-import { ConnectionState, IFluidContainer, TreeView } from "fluid-framework";
+import { ConnectionState, IFluidContainer } from "fluid-framework";
+import { TreeViewAlpha } from "@fluidframework/tree/alpha";
 import { Canvas } from "../canvas/Canvas.js";
 import type { SelectionManager } from "../../../presence/Interfaces/SelectionManager.js";
 import { undoRedo } from "../../../undo/undo.js";
@@ -85,7 +86,7 @@ export function ReactApp(props: {
 	const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
 	const [selectedColumnId, setSelectedColumnId] = useState<string>("");
 	const [selectedRowId, setSelectedRowId] = useState<string>("");
-	const [view, setView] = useState<TreeViewAlpha<typeof App>>(tree);
+	const [view] = useState<TreeViewAlpha<typeof App>>(tree);
 	const [canUndo, setCanUndo] = useState(false);
 	const [canRedo, setCanRedo] = useState(false);
 	const commentPaneRef = useRef<CommentPaneRef>(null);

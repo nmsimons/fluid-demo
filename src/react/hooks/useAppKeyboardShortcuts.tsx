@@ -3,7 +3,8 @@
  * (Clean header restored; adds viewport centering for new items.)
  */
 
-import { TreeView, Tree } from "fluid-framework";
+import { Tree } from "fluid-framework";
+import { TreeViewAlpha } from "@fluidframework/tree/alpha";
 import { App, FluidTable } from "../../schema/appSchema.js";
 import { KeyboardShortcut } from "./useKeyboardShortcuts.js";
 import { undoRedo } from "../../undo/undo.js";

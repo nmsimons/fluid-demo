@@ -1,7 +1,7 @@
 import { AzureClient } from "@fluidframework/azure-client";
 import React, { Suspense, lazy } from "react";
 import { createRoot } from "react-dom/client";
-import { App, Items, appTreeConfiguration } from "./schema/appSchema.js";
+import { App, appTreeConfiguration } from "./schema/appSchema.js";
 import { createUndoRedoStacks } from "./undo/undo.js";
 import { containerSchema } from "./schema/containerSchema.js";
 import { loadFluidData } from "./infra/fluid.js";
@@ -49,6 +49,7 @@ import { AccountInfo, PublicClientApplication } from "@azure/msal-browser";
 import { createDragManager } from "./presence/drag.js";
 import { createResizeManager } from "./presence/resize.js";
 import { createInkPresenceManager } from "./presence/ink.js";
+import { asTreeViewAlpha } from "@fluidframework/tree/alpha";
 
 export async function loadApp(props: {
 	client: AzureClient;
@@ -64,9 +65,11 @@ export async function loadApp(props: {
 		const { container } = await loadFluidData(containerId, containerSchema, client);
 
 		// Initialize the SharedTree DDSes
-		const appTree = container.initialObjects.appData.viewWith(appTreeConfiguration);
+		const appTree = asTreeViewAlpha(
+			container.initialObjects.appData.viewWith(appTreeConfiguration)
+		);
 		if (appTree.compatibility.canInitialize) {
-			appTree.initialize(new App({ items: [] as unknown as Items, comments: [], inks: [] }));
+			appTree.initialize(new App({ items: [], comments: [], inks: [] }));
 		}
 
 		// Get the Presence data object from the container

@@ -4,7 +4,8 @@
  */
 
 import React, { JSX } from "react";
-import { TreeView, Tree } from "fluid-framework";
+import { Tree } from "fluid-framework";
+import { TreeViewAlpha } from "@fluidframework/tree/alpha";
 import { App, Shape } from "../../../schema/appSchema.js";
 import { undoRedo } from "../../../undo/undo.js";
 import { isShape, isTable } from "../../../utils/contentHandlers.js";
