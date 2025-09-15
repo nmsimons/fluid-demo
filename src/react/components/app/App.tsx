@@ -39,6 +39,7 @@ import { DragManager } from "../../../presence/Interfaces/DragManager.js";
 import { ResizeManager } from "../../../presence/Interfaces/ResizeManager.js";
 import { ResizePackage } from "../../../presence/Interfaces/ResizeManager.js";
 import { CommentPane, CommentPaneRef } from "../panels/CommentPane.js";
+import { TaskPane } from "../panels/AIPane.js";
 import { useTree } from "../../hooks/useTree.js";
 import { useKeyboardShortcuts } from "../../hooks/useKeyboardShortcuts.js";
 import { useAppKeyboardShortcuts } from "../../hooks/useAppKeyboardShortcuts.js";
@@ -86,7 +87,7 @@ export function ReactApp(props: {
 	const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
 	const [selectedColumnId, setSelectedColumnId] = useState<string>("");
 	const [selectedRowId, setSelectedRowId] = useState<string>("");
-	const [view] = useState<TreeViewAlpha<typeof App>>(tree);
+	const [view, setView] = useState<TreeViewAlpha<typeof App>>(tree);
 	const [canUndo, setCanUndo] = useState(false);
 	const [canRedo, setCanRedo] = useState(false);
 	const commentPaneRef = useRef<CommentPaneRef>(null);
@@ -190,11 +191,13 @@ export function ReactApp(props: {
 		selectedColumnId,
 		selectedRowId,
 		commentPaneHidden,
+		aiTaskPaneHidden,
 		undoRedo,
 		users,
 		canUndo,
 		canRedo,
 		setCommentPaneHidden,
+		setAiTaskPaneHidden,
 		openCommentPaneAndFocus,
 		selectionManager: itemSelection,
 	});
@@ -278,6 +281,12 @@ export function ReactApp(props: {
 							setHidden={setCommentPaneHidden}
 							itemId={selectedItemId}
 							app={view.root}
+						/>
+						<TaskPane
+							hidden={aiTaskPaneHidden}
+							setHidden={setAiTaskPaneHidden}
+							main={tree}
+							setRenderView={setView}
 						/>
 					</div>
 				</div>

@@ -29,11 +29,13 @@ export interface UseAppKeyboardShortcutsProps {
 	selectedColumnId: string;
 	selectedRowId: string;
 	commentPaneHidden: boolean;
+	aiTaskPaneHidden: boolean;
 	undoRedo: undoRedo;
 	users: UsersManager;
 	canUndo: boolean;
 	canRedo: boolean;
 	setCommentPaneHidden: (hidden: boolean) => void;
+	setAiTaskPaneHidden: (hidden: boolean) => void;
 	openCommentPaneAndFocus: (itemId: string) => void;
 	selectionManager: SelectionManager;
 }
@@ -58,6 +60,7 @@ export interface UseAppKeyboardShortcutsProps {
  * - Delete: Delete selected items
  * - 1-9: Apply color to selected shapes
  * - M: Toggle comment pane visibility
+ * - Ctrl+I: Toggle AI task pane visibility
  * - Enter: Add comment to selected item
  * - Escape: Clear all selections
  * - Arrow keys: Navigate table selections
@@ -70,11 +73,13 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 		selectedColumnId,
 		selectedRowId,
 		commentPaneHidden,
+		aiTaskPaneHidden,
 		undoRedo,
 		users,
 		canUndo,
 		canRedo,
 		setCommentPaneHidden,
+		setAiTaskPaneHidden,
 		openCommentPaneAndFocus,
 		selectionManager,
 		pan,
@@ -281,6 +286,12 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 			key: "m",
 			ctrlKey: true,
 			action: () => setCommentPaneHidden(!commentPaneHidden),
+		},
+		// Toggle AI task pane
+		{
+			key: "i",
+			ctrlKey: true,
+			action: () => setAiTaskPaneHidden(!aiTaskPaneHidden),
 		},
 		// Vote shortcut
 		{

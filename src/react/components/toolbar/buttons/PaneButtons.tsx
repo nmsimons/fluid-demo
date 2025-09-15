@@ -4,7 +4,7 @@
  */
 
 import React, { JSX } from "react";
-import { CommentRegular, CommentFilled } from "@fluentui/react-icons";
+import { CommentRegular, CommentFilled, BotRegular, BotFilled } from "@fluentui/react-icons";
 import { TooltipButton } from "../../forms/Button.js";
 
 // Comments pane toggle
@@ -19,6 +19,22 @@ export function CommentsPaneToggleButton(props: {
 			icon={paneHidden ? <CommentRegular /> : <CommentFilled />}
 			tooltip={paneHidden ? "Show Comments" : "Hide Comments"}
 			keyboardShortcut="Ctrl+M"
+		/>
+	);
+}
+
+// AI Task pane toggle
+export function AIPaneToggleButton(props: {
+	paneHidden: boolean;
+	onToggle: (hidden: boolean) => void;
+}): JSX.Element {
+	const { paneHidden, onToggle } = props;
+	return (
+		<TooltipButton
+			onClick={() => onToggle(!paneHidden)}
+			icon={paneHidden ? <BotRegular /> : <BotFilled />}
+			tooltip={paneHidden ? "Show AI Assistant" : "Hide AI Assistant"}
+			keyboardShortcut="Ctrl+I"
 		/>
 	);
 }

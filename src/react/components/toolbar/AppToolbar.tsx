@@ -37,7 +37,7 @@ import {
 } from "./buttons/ZOrderButtons.js";
 import { InkColorPicker, InkToggleButton, EraserToggleButton } from "./buttons/InkButtons.js";
 import { UndoButton, RedoButton, ClearAllButton } from "./buttons/ActionButtons.js";
-import { CommentsPaneToggleButton } from "./buttons/PaneButtons.js";
+import { CommentsPaneToggleButton, AIPaneToggleButton } from "./buttons/PaneButtons.js";
 import { ZoomMenu } from "./buttons/ViewButtons.js";
 import { DeleteSelectedRowsButton } from "./buttons/TableButtons.js";
 // All toolbar button UIs now componentized; direct TooltipButton usage removed.
@@ -88,6 +88,8 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 		selectedRowId,
 		commentPaneHidden,
 		setCommentPaneHidden,
+		aiTaskPaneHidden,
+		setAiTaskPaneHidden,
 		undoRedo,
 		canUndo,
 		canRedo,
@@ -329,6 +331,10 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 				<CommentsPaneToggleButton
 					paneHidden={commentPaneHidden}
 					onToggle={(h) => setCommentPaneHidden(h)}
+				/>
+				<AIPaneToggleButton
+					paneHidden={aiTaskPaneHidden}
+					onToggle={(h) => setAiTaskPaneHidden(h)}
 				/>
 			</ToolbarGroup>
 			{/* Right side grouping (auto) */}
