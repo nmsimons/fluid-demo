@@ -21,6 +21,7 @@ export interface UseAppKeyboardShortcutsProps {
 	view: TreeView<typeof App>;
 	canvasSize: { width: number; height: number };
 	pan?: { x: number; y: number };
+	zoom?: number;
 	selectedItemId: string;
 	selectedItemIds: string[];
 	selectedColumnId: string;
@@ -75,6 +76,7 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 		openCommentPaneAndFocus,
 		selectionManager,
 		pan,
+		zoom,
 	} = props;
 
 	return [
@@ -103,42 +105,42 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 			key: "c",
 			action: () => {
 				view.root.items.createShapeItem("circle", canvasSize, SHAPE_COLORS);
-				centerLastItem(view.root.items, pan, undefined, props.canvasSize, 120, 120, true);
+				centerLastItem(view.root.items, pan, zoom, props.canvasSize, 120, 120, true);
 			},
 		},
 		{
 			key: "s",
 			action: () => {
 				view.root.items.createShapeItem("square", canvasSize, SHAPE_COLORS);
-				centerLastItem(view.root.items, pan, undefined, props.canvasSize, 120, 120, true);
+				centerLastItem(view.root.items, pan, zoom, props.canvasSize, 120, 120, true);
 			},
 		},
 		{
 			key: "t",
 			action: () => {
 				view.root.items.createShapeItem("triangle", canvasSize, SHAPE_COLORS);
-				centerLastItem(view.root.items, pan, undefined, props.canvasSize, 120, 120, true);
+				centerLastItem(view.root.items, pan, zoom, props.canvasSize, 120, 120, true);
 			},
 		},
 		{
 			key: "r",
 			action: () => {
 				view.root.items.createShapeItem("star", canvasSize, SHAPE_COLORS);
-				centerLastItem(view.root.items, pan, undefined, props.canvasSize, 120, 120, true);
+				centerLastItem(view.root.items, pan, zoom, props.canvasSize, 120, 120, true);
 			},
 		},
 		{
 			key: "n",
 			action: () => {
 				view.root.items.createNoteItem(canvasSize, users.getMyself().value.id);
-				centerLastItem(view.root.items, pan, undefined, props.canvasSize, 180, 120, true);
+				centerLastItem(view.root.items, pan, zoom, props.canvasSize, 180, 120, true);
 			},
 		},
 		{
 			key: "b",
 			action: () => {
 				view.root.items.createTableItem(canvasSize);
-				centerLastItem(view.root.items, pan, undefined, props.canvasSize, 240, 160, true);
+				centerLastItem(view.root.items, pan, zoom, props.canvasSize, 240, 160, true);
 			},
 		},
 		// Selected item shortcuts

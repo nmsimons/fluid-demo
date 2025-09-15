@@ -181,6 +181,7 @@ export function ReactApp(props: {
 		view,
 		canvasSize,
 		pan,
+		zoom,
 		selectedItemId,
 		selectedItemIds,
 		selectedColumnId,
