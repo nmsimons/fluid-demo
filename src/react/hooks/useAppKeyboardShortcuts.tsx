@@ -11,6 +11,7 @@ import { UsersManager } from "../../presence/Interfaces/UsersManager.js";
 import { SelectionManager } from "../../presence/Interfaces/SelectionManager.js";
 import { SHAPE_COLORS } from "../components/toolbar/buttons/CreationButtons.js";
 import { findItemById, findItemsByIds, getAllItems } from "../../utils/itemsHelpers.js";
+import { centerLastItem } from "../../utils/centerItem.js";
 
 /**
  * Props interface for the useAppKeyboardShortcuts hook.
@@ -76,36 +77,6 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 		pan,
 	} = props;
 
-	// Helper to center last inserted item
-	const centerLast = (estimatedW = 120, estimatedH = 120): void => {
-		if (!pan) return;
-		const zoom = 1; // keyboard path currently lacks zoom context; assume 1 for now
-		const items = view.root.items;
-		const allItems = getAllItems(items);
-		if (allItems.length === 0) return;
-		const last = allItems[allItems.length - 1];
-		const vw = props.canvasSize.width / zoom;
-		const vh = props.canvasSize.height / zoom;
-		const vx = -pan.x / zoom;
-		const vy = -pan.y / zoom;
-		let w = estimatedW;
-		let h = estimatedH;
-		// If shape, use its size
-		try {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const c: any = last.content;
-			if (c && typeof c.size === "number") {
-				w = h = c.size;
-			}
-		} catch {
-			/* ignore */
-		}
-		Tree.runTransaction(items, () => {
-			last.x = vx + vw / 2 - w / 2;
-			last.y = vy + vh / 2 - h / 2;
-		});
-	};
-
 	return [
 		// Undo/Redo shortcuts - Essential for collaborative editing
 		{
@@ -132,42 +103,42 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 			key: "c",
 			action: () => {
 				view.root.items.createShapeItem("circle", canvasSize, SHAPE_COLORS);
-				centerLast();
+				centerLastItem(view.root.items, pan, undefined, props.canvasSize, 120, 120, true);
 			},
 		},
 		{
 			key: "s",
 			action: () => {
 				view.root.items.createShapeItem("square", canvasSize, SHAPE_COLORS);
-				centerLast();
+				centerLastItem(view.root.items, pan, undefined, props.canvasSize, 120, 120, true);
 			},
 		},
 		{
 			key: "t",
 			action: () => {
 				view.root.items.createShapeItem("triangle", canvasSize, SHAPE_COLORS);
-				centerLast();
+				centerLastItem(view.root.items, pan, undefined, props.canvasSize, 120, 120, true);
 			},
 		},
 		{
 			key: "r",
 			action: () => {
 				view.root.items.createShapeItem("star", canvasSize, SHAPE_COLORS);
-				centerLast();
+				centerLastItem(view.root.items, pan, undefined, props.canvasSize, 120, 120, true);
 			},
 		},
 		{
 			key: "n",
 			action: () => {
 				view.root.items.createNoteItem(canvasSize, users.getMyself().value.id);
-				centerLast(180, 120);
+				centerLastItem(view.root.items, pan, undefined, props.canvasSize, 180, 120, true);
 			},
 		},
 		{
 			key: "b",
 			action: () => {
 				view.root.items.createTableItem(canvasSize);
-				centerLast(240, 160);
+				centerLastItem(view.root.items, pan, undefined, props.canvasSize, 240, 160, true);
 			},
 		},
 		// Selected item shortcuts

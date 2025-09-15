@@ -16,8 +16,7 @@ import { TooltipButton } from "../../forms/Button.js";
 import { useTree } from "../../../hooks/useTree.js";
 import { PresenceContext } from "../../../contexts/PresenceContext.js";
 import { Items } from "../../../../schema/appSchema.js";
-import { getContentHandler } from "../../../../utils/contentHandlers.js";
-import { Tree } from "@fluidframework/tree";
+import { centerLastItem } from "../../../../utils/centerItem.js";
 
 export const SHAPE_COLORS = [
 	"#000000",
@@ -31,35 +30,6 @@ export const SHAPE_COLORS = [
 	"#F5FF33",
 	"#FF8C33",
 ];
-
-function centerLastItem(
-	items: Items,
-	pan: { x: number; y: number } | undefined,
-	zoom: number | undefined,
-	canvas: { width: number; height: number },
-	estW = 120,
-	estH = 120
-) {
-	if (!pan || !zoom || items.length === 0) return;
-	const last = items[items.length - 1];
-	if (!last) return;
-	let w = estW;
-	let h = estH;
-	const handler = getContentHandler(last);
-	if (handler.type === "shape") {
-		w = h = handler.getSize();
-	}
-	const vw = canvas.width / zoom;
-	const vh = canvas.height / zoom;
-	const vx = -pan.x / zoom;
-	const vy = -pan.y / zoom;
-	const cx = vx + vw / 2 - w / 2;
-	const cy = vy + vh / 2 - h / 2;
-	Tree.runTransaction(items, () => {
-		last.x = cx;
-		last.y = cy;
-	});
-}
 
 // Shape / item creation buttons
 export function NewCircleButton(props: {
