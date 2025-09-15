@@ -22,6 +22,7 @@ export interface UseAppKeyboardShortcutsProps {
 	canvasSize: { width: number; height: number };
 	pan?: { x: number; y: number };
 	zoom?: number;
+	shapeColor?: string;
 	selectedItemId: string;
 	selectedItemIds: string[];
 	selectedColumnId: string;
@@ -77,6 +78,7 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 		selectionManager,
 		pan,
 		zoom,
+		shapeColor,
 	} = props;
 
 	return [
@@ -104,28 +106,36 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 		{
 			key: "c",
 			action: () => {
-				view.root.items.createShapeItem("circle", canvasSize, SHAPE_COLORS);
+				// Use the specific color or fallback to random selection (same logic as buttons)
+				const colors = shapeColor ? [shapeColor] : SHAPE_COLORS;
+				view.root.items.createShapeItem("circle", canvasSize, colors);
 				centerLastItem(view.root.items, pan, zoom, props.canvasSize, 120, 120, true);
 			},
 		},
 		{
 			key: "s",
 			action: () => {
-				view.root.items.createShapeItem("square", canvasSize, SHAPE_COLORS);
+				// Use the specific color or fallback to random selection (same logic as buttons)
+				const colors = shapeColor ? [shapeColor] : SHAPE_COLORS;
+				view.root.items.createShapeItem("square", canvasSize, colors);
 				centerLastItem(view.root.items, pan, zoom, props.canvasSize, 120, 120, true);
 			},
 		},
 		{
 			key: "t",
 			action: () => {
-				view.root.items.createShapeItem("triangle", canvasSize, SHAPE_COLORS);
+				// Use the specific color or fallback to random selection (same logic as buttons)
+				const colors = shapeColor ? [shapeColor] : SHAPE_COLORS;
+				view.root.items.createShapeItem("triangle", canvasSize, colors);
 				centerLastItem(view.root.items, pan, zoom, props.canvasSize, 120, 120, true);
 			},
 		},
 		{
 			key: "r",
 			action: () => {
-				view.root.items.createShapeItem("star", canvasSize, SHAPE_COLORS);
+				// Use the specific color or fallback to random selection (same logic as buttons)
+				const colors = shapeColor ? [shapeColor] : SHAPE_COLORS;
+				view.root.items.createShapeItem("star", canvasSize, colors);
 				centerLastItem(view.root.items, pan, zoom, props.canvasSize, 120, 120, true);
 			},
 		},
