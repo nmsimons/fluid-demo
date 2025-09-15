@@ -1,5 +1,5 @@
 import React from "react";
-import { Items, Item } from "../../../schema/app_schema.js";
+import { Items, Item } from "../../../schema/appSchema.js";
 import { ItemView } from "../items/ItemView.js";
 
 export function ItemsHtmlLayer(props: {
@@ -11,7 +11,7 @@ export function ItemsHtmlLayer(props: {
 	const { items, canvasPosition, pan, zoom } = props;
 	return (
 		<div
-			className="relative h-full w-full"
+			className="items-html-layer relative h-full w-full"
 			style={{
 				left: `${pan.x}px`,
 				top: `${pan.y}px`,

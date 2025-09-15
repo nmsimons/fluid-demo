@@ -25,12 +25,12 @@
 //
 // Event plumbing:
 //   * Rotation & resize actions are delegated to the underlying HTML elements
-//     (in itemux.tsx) by synthesizing a pointerdown on the existing handles.
+//     (in ItemView.tsx) by synthesizing a pointerdown on the existing handles.
 //     This avoids duplicating business logic; overlay is a visual proxy only.
 //
 // ============================================================================
 import React from "react";
-import { FluidTable, Item, Shape } from "../../schema/app_schema.js";
+import { FluidTable, Item, Shape } from "../../schema/appSchema.js";
 import { Tree } from "fluid-framework";
 import { getActiveDragForItem } from "../utils/dragUtils.js";
 
@@ -68,7 +68,13 @@ export function SelectionOverlay(props: {
 		}
 		if (w === 0 || h === 0) return null;
 	}
-	const padding = 8;
+
+	// Check if we're on iOS for larger touch targets
+	const isIOS =
+		/iPad|iPhone|iPod/.test(navigator.userAgent) ||
+		(navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+	const padding = 10 / zoom;
 	const active = getActiveDragForItem(presence, item.id);
 	// If dragging (but not resizing) override position/rotation for smoothness.
 	if (active && !(resizePresence && resizePresence.id === item.id)) {
@@ -107,6 +113,7 @@ export function SelectionOverlay(props: {
 			</g>
 			{!isTable && (
 				<g transform={`translate(${w / 2}, ${-rotationOffsetLocal})`}>
+					{/* Visible rotation handle */}
 					<circle
 						r={6 / zoom}
 						fill="#000"
@@ -139,6 +146,41 @@ export function SelectionOverlay(props: {
 							}
 						}}
 					/>
+					{/* Larger invisible touch target for iOS */}
+					{isIOS && (
+						<circle
+							r={Math.max(22 / zoom, 6 / zoom)}
+							fill="transparent"
+							cursor="grab"
+							onClick={(e) => {
+								e.stopPropagation();
+							}}
+							onPointerDown={(e) => {
+								e.stopPropagation();
+								const container = document.querySelector(
+									`[data-item-id='${item.id}']`
+								) as HTMLElement | null;
+								const rotateHandle = container?.querySelector(
+									".cursor-grab"
+								) as HTMLElement | null;
+								const target = rotateHandle ?? container;
+								if (target) {
+									const evt = new PointerEvent("pointerdown", {
+										bubbles: true,
+										cancelable: true,
+										clientX: e.clientX,
+										clientY: e.clientY,
+										pointerType: e.pointerType,
+										pointerId: e.pointerId,
+										button: 0,
+										buttons: 1,
+										isPrimary: e.isPrimary,
+									});
+									target.dispatchEvent(evt);
+								}
+							}}
+						/>
+					)}
 				</g>
 			)}
 			{isShape && (
@@ -146,6 +188,11 @@ export function SelectionOverlay(props: {
 					{(() => {
 						const handleSize = 8 / zoom;
 						const half = handleSize / 2;
+						// For iOS, create larger invisible touch targets
+						const touchTargetSize = isIOS
+							? Math.max(44 / zoom, handleSize)
+							: handleSize;
+						const touchHalf = touchTargetSize / 2;
 						const positions = [
 							// Top-left
 							{ x: -outwardLocal, y: -outwardLocal, cursor: "nwse-resize" as const },
@@ -169,43 +216,85 @@ export function SelectionOverlay(props: {
 							},
 						];
 						return positions.map((pos, i) => (
-							<rect
-								key={i}
-								x={pos.x - half}
-								y={pos.y - half}
-								width={handleSize}
-								height={handleSize}
-								fill="#000"
-								stroke="none"
-								cursor={pos.cursor}
-								onClick={(e) => {
-									e.stopPropagation();
-								}}
-								onPointerDown={(e) => {
-									e.stopPropagation();
-									const container = document.querySelector(
-										`[data-item-id='${item.id}']`
-									) as HTMLElement | null;
-									const handles = Array.from(
-										container?.querySelectorAll(".cursor-nw-resize") ?? []
-									) as HTMLElement[];
-									const handle = handles[i] ?? container;
-									if (handle) {
-										const evt = new PointerEvent("pointerdown", {
-											bubbles: true,
-											cancelable: true,
-											clientX: e.clientX,
-											clientY: e.clientY,
-											pointerType: e.pointerType,
-											pointerId: e.pointerId,
-											button: 0,
-											buttons: 1,
-											isPrimary: e.isPrimary,
-										});
-										handle.dispatchEvent(evt);
-									}
-								}}
-							/>
+							<g key={i}>
+								{/* Visible handle */}
+								<rect
+									x={pos.x - half}
+									y={pos.y - half}
+									width={handleSize}
+									height={handleSize}
+									fill="#000"
+									stroke="none"
+									cursor={pos.cursor}
+									onClick={(e) => {
+										e.stopPropagation();
+									}}
+									onPointerDown={(e) => {
+										e.stopPropagation();
+										const container = document.querySelector(
+											`[data-item-id='${item.id}']`
+										) as HTMLElement | null;
+										const handles = Array.from(
+											container?.querySelectorAll(".cursor-nw-resize") ?? []
+										) as HTMLElement[];
+										const handle = handles[i] ?? container;
+										if (handle) {
+											const evt = new PointerEvent("pointerdown", {
+												bubbles: true,
+												cancelable: true,
+												clientX: e.clientX,
+												clientY: e.clientY,
+												pointerType: e.pointerType,
+												pointerId: e.pointerId,
+												button: 0,
+												buttons: 1,
+												isPrimary: e.isPrimary,
+											});
+											handle.dispatchEvent(evt);
+										}
+									}}
+								/>
+								{/* Larger invisible touch target for iOS */}
+								{isIOS && touchTargetSize > handleSize && (
+									<rect
+										x={pos.x - touchHalf}
+										y={pos.y - touchHalf}
+										width={touchTargetSize}
+										height={touchTargetSize}
+										fill="transparent"
+										stroke="none"
+										cursor={pos.cursor}
+										onClick={(e) => {
+											e.stopPropagation();
+										}}
+										onPointerDown={(e) => {
+											e.stopPropagation();
+											const container = document.querySelector(
+												`[data-item-id='${item.id}']`
+											) as HTMLElement | null;
+											const handles = Array.from(
+												container?.querySelectorAll(".cursor-nw-resize") ??
+													[]
+											) as HTMLElement[];
+											const handle = handles[i] ?? container;
+											if (handle) {
+												const evt = new PointerEvent("pointerdown", {
+													bubbles: true,
+													cancelable: true,
+													clientX: e.clientX,
+													clientY: e.clientY,
+													pointerType: e.pointerType,
+													pointerId: e.pointerId,
+													button: 0,
+													buttons: 1,
+													isPrimary: e.isPrimary,
+												});
+												handle.dispatchEvent(evt);
+											}
+										}}
+									/>
+								)}
+							</g>
 						));
 					})()}
 				</g>

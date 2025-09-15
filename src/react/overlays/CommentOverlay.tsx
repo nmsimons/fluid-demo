@@ -23,7 +23,7 @@
 // No mutation of model state occurs here; purely presentational.
 // ============================================================================
 import React from "react";
-import { Item, FluidTable } from "../../schema/app_schema.js";
+import { Item, FluidTable } from "../../schema/appSchema.js";
 import { Tree } from "fluid-framework";
 import { getActiveDragForItem } from "../utils/dragUtils.js";
 import { Comment20Filled } from "@fluentui/react-icons";

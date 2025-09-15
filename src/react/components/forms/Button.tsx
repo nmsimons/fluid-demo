@@ -24,7 +24,12 @@ export function TooltipButton(props: {
 
 	return (
 		<Tooltip content={tooltipContent} relationship="description">
-			<ToolbarButton icon={icon} className={finalClass || undefined} {...btnRest}>
+			<ToolbarButton
+				icon={icon}
+				className={finalClass || undefined}
+				aria-label={tooltip ?? "No Tooltip Provided"}
+				{...btnRest}
+			>
 				{children}
 			</ToolbarButton>
 		</Tooltip>

@@ -15,8 +15,7 @@ import {
 	SwatchPicker,
 	renderSwatchPickerGrid,
 } from "@fluentui/react-components";
-import { useTree } from "../../../hooks/useTree.js";
-import { Shape } from "../../../../schema/app_schema.js";
+import { Shape } from "../../../../schema/appSchema.js";
 import { Tree } from "@fluidframework/tree";
 
 export const SHAPE_COLORS = [
@@ -32,37 +31,42 @@ export const SHAPE_COLORS = [
 	"#FF8C33",
 ];
 
-// Color picker for shapes (dropdown with SwatchPicker grid)
-export function ShapeColorPicker(props: { shapes: Shape[] }): JSX.Element {
-	const { shapes } = props;
-	if (shapes.length === 0) return <></>;
-	useTree(shapes[0]);
-	const count = shapes.length;
-	const allSame = shapes.every((s) => s.color === shapes[0].color);
-	const selected = allSame ? shapes[0].color : undefined;
-	const ariaLabel = count === 1 ? "Shape color picker" : `Color picker for ${count} shapes`;
-	const setColor = (c: string) => {
-		Tree.runTransaction(shapes[0], () => {
-			shapes.forEach((s) => {
-				s.color = c;
+// Global shape color picker (always visible, doesn't require selected shapes)
+export function ShapeColorPicker(props: {
+	color: string;
+	onColorChange: (color: string) => void;
+	selectedShapes?: Shape[];
+}): JSX.Element {
+	const { color, onColorChange, selectedShapes = [] } = props;
+
+	const handleColorChange = (newColor: string) => {
+		// First, update the global shape color for future shapes
+		onColorChange(newColor);
+
+		// Then, if shapes are selected, update their colors too
+		if (selectedShapes.length > 0) {
+			Tree.runTransaction(selectedShapes[0], () => {
+				selectedShapes.forEach((shape) => {
+					shape.color = newColor;
+				});
 			});
-		});
+		}
 	};
 
 	return (
 		<Menu>
 			<MenuTrigger>
 				<ToolbarButton style={{ minWidth: 0 }}>
-					<Circle24Filled color={selected ?? "linear-gradient(45deg,#888,#444)"} />
+					<Circle24Filled color={color} />
 					<ChevronDownRegular />
 				</ToolbarButton>
 			</MenuTrigger>
 			<MenuPopover>
 				<MenuList>
 					<ColorPicker
-						setColor={setColor}
-						selected={selected}
-						ariaLabel={ariaLabel}
+						setColor={handleColorChange}
+						selected={color}
+						ariaLabel="Shape color picker"
 						label="Shape Color"
 					/>
 				</MenuList>

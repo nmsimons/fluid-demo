@@ -4,12 +4,19 @@
  */
 
 import React, { JSX, useContext, useEffect, useState, useRef } from "react";
-import { App } from "../../../schema/app_schema.js";
+import { App } from "../../../schema/appSchema.js";
 import "../../../output.css";
-import { ConnectionState, IFluidContainer } from "fluid-framework";
+import "../../../styles/ios-minimal.css";
+// import "../../../styles/ios-fixes.css";
+// import "../../../styles/ios-safari-fixes.css";
+// import { fixIOSZIndexIssues } from "../../../utils/iosZIndexFix.js";
+import { ConnectionState, IFluidContainer, TreeView } from "fluid-framework";
 import { Canvas } from "../canvas/Canvas.js";
-import type { SelectionManager } from "../../../utils/presence/Interfaces/SelectionManager.js";
-import { undoRedo } from "../../../utils/undo.js";
+import type { SelectionManager } from "../../../presence/Interfaces/SelectionManager.js";
+import { undoRedo } from "../../../undo/undo.js";
+import { useSelectionSync, useMultiTypeSelectionSync } from "../../../utils/eventSubscriptions.js";
+import { DragAndRotatePackage } from "../../../presence/drag.js";
+import { TypedSelection } from "../../../presence/selection.js";
 import {
 	Avatar,
 	AvatarGroup,
@@ -23,24 +30,20 @@ import { ToolbarDivider } from "@fluentui/react-toolbar";
 import { Tooltip } from "@fluentui/react-tooltip";
 import { Menu, MenuTrigger, MenuPopover, MenuList, MenuItem } from "@fluentui/react-menu";
 import { SignOut20Regular, PersonSwap20Regular } from "@fluentui/react-icons";
-import { User, UsersManager } from "../../../utils/presence/Interfaces/UsersManager.js";
+import { User, UsersManager } from "../../../presence/Interfaces/UsersManager.js";
 import { PresenceContext } from "../../contexts/PresenceContext.js";
 import { AuthContext } from "../../contexts/AuthContext.js";
 import { signOutHelper, switchAccountHelper } from "../../../infra/auth.js";
-import { DragManager } from "../../../utils/presence/Interfaces/DragManager.js";
-import { ResizeManager } from "../../../utils/presence/Interfaces/ResizeManager.js";
-import { DragAndRotatePackage } from "../../../utils/presence/drag.js";
-import { ResizePackage } from "../../../utils/presence/Interfaces/ResizeManager.js";
-import { useSelectionSync, useMultiTypeSelectionSync } from "../../../utils/eventSubscriptions.js";
-import { TypedSelection } from "../../../utils/presence/selection.js";
+import { DragManager } from "../../../presence/Interfaces/DragManager.js";
+import { ResizeManager } from "../../../presence/Interfaces/ResizeManager.js";
+import { ResizePackage } from "../../../presence/Interfaces/ResizeManager.js";
 import { CommentPane, CommentPaneRef } from "../panels/CommentPane.js";
 import { useTree } from "../../hooks/useTree.js";
 import { useKeyboardShortcuts } from "../../hooks/useKeyboardShortcuts.js";
 import { useAppKeyboardShortcuts } from "../../hooks/useAppKeyboardShortcuts.js";
 import { PaneContext } from "../../contexts/PaneContext.js";
 import { AppToolbar } from "../toolbar/AppToolbar.js";
-import { InkPresenceManager } from "../../../utils/presence/Interfaces/InkManager.js";
-import { TreeViewAlpha } from "@fluidframework/tree/alpha";
+import { InkPresenceManager } from "../../../presence/Interfaces/InkManager.js";
 // Removed circle ink creation; ink tool toggles freehand drawing.
 
 // Context for comment pane actions
@@ -72,6 +75,7 @@ export function ReactApp(props: {
 	const [eraserActive, setEraserActive] = useState(false);
 	const [inkColor, setInkColor] = useState<string>("#2563eb");
 	const [inkWidth, setInkWidth] = useState<number>(4);
+	const [shapeColor, setShapeColor] = useState<string>("#FF0000"); // Default to red
 
 	// Keep linter satisfied until pan is surfaced elsewhere
 	useEffect(() => {
@@ -146,8 +150,14 @@ export function ReactApp(props: {
 	}, [tree.events, undoRedo]);
 
 	useEffect(() => {
-		console.log("View Changed");
+		// View changed
 	}, [view]);
+
+	// Initialize iOS Safari z-index fixes
+	useEffect(() => {
+		// Temporarily disabled to debug toolbar visibility
+		// fixIOSZIndexIssues();
+	}, []);
 
 	// Use unified selection sync for item selection state management
 	useSelectionSync(
@@ -172,6 +182,8 @@ export function ReactApp(props: {
 		view,
 		canvasSize,
 		pan,
+		zoom,
+		shapeColor,
 		selectedItemId,
 		selectedItemIds,
 		selectedColumnId,
@@ -208,6 +220,7 @@ export function ReactApp(props: {
 					className="flex flex-col bg-transparent h-screen w-full overflow-hidden overscroll-none"
 				>
 					<Header saved={saved} connectionState={connectionState} />
+					{/* <div style={{ position: "relative", zIndex: 9999, isolation: "isolate" }}> */}
 					<AppToolbar
 						view={view}
 						tree={tree}
@@ -235,8 +248,11 @@ export function ReactApp(props: {
 						onInkColorChange={setInkColor}
 						inkWidth={inkWidth}
 						onInkWidthChange={setInkWidth}
+						shapeColor={shapeColor}
+						onShapeColorChange={setShapeColor}
 					/>
-					<div className="flex h-[calc(100vh-96px)] w-full flex-row ">
+					{/* </div> */}
+					<div className="canvas-container flex h-[calc(100vh-96px)] w-full flex-row ">
 						<PaneContext.Provider
 							value={{
 								panes: [{ name: "comments", visible: !commentPaneHidden }],
@@ -333,15 +349,6 @@ export const CurrentUser = (): JSX.Element => {
 
 	// Get the user's email from MSAL account
 	const userEmail = msalInstance?.getActiveAccount()?.username || currentUser.name;
-
-	// Debug logging
-	console.log("CurrentUser component - user data:", {
-		name: currentUser.name,
-		id: currentUser.id,
-		email: userEmail,
-		hasImage: !!currentUser.image,
-		imageLength: currentUser.image?.length,
-	});
 
 	const handleSignOut = async () => {
 		if (msalInstance) {

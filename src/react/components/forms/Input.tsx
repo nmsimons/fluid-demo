@@ -1,5 +1,5 @@
 import React, { JSX } from "react";
-import { DateTime, Vote, FluidRow, FluidColumn } from "../../../schema/app_schema.js";
+import { DateTime, Vote, FluidRow, FluidColumn } from "../../../schema/appSchema.js";
 import { Tree, TreeStatus } from "fluid-framework";
 import { ThumbLikeFilled, ThumbLikeRegular } from "@fluentui/react-icons";
 import { ToolbarButton } from "@fluentui/react-toolbar";

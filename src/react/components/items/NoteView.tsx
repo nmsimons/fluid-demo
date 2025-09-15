@@ -2,7 +2,7 @@
 // Note object
 
 import React from "react";
-import { Note } from "../../../schema/app_schema.js";
+import { Note } from "../../../schema/appSchema.js";
 import { Textarea } from "@fluentui/react-textarea";
 import { useTree } from "../../hooks/useTree.js";
 

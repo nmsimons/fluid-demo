@@ -51,7 +51,7 @@ import {
 	InkStyle,
 	InkBBox,
 	App,
-} from "../../../schema/app_schema.js";
+} from "../../../schema/appSchema.js";
 import { Tree } from "fluid-framework";
 import { IFluidContainer } from "fluid-framework";
 import { PresenceContext } from "../../contexts/PresenceContext.js";
@@ -90,6 +90,7 @@ export function Canvas(props: {
 		inkColor = "#2563eb",
 		inkWidth = 4,
 	} = props;
+
 	// Global presence context (ephemeral collaboration state: selections, drags, ink, etc.)
 	const presence = useContext(PresenceContext);
 	useTree(items);
@@ -263,59 +264,6 @@ export function Canvas(props: {
 	};
 
 	// Begin inking on left button background press (not on items)
-	const handlePointerDown = (e: React.PointerEvent) => {
-		// Check if this is a handle interaction - if so, don't start ink/erase
-		const targetEl = e.target as Element | null;
-		const isHandle = targetEl?.closest("[data-resize-handle], [data-rotate-handle]");
-		if (isHandle) {
-			// Let the handle component deal with this event
-			return;
-		}
-
-		// Manage three mutually exclusive interactions: inking, erasing, panning(right mouse handled upstream).
-		if (inkActive || eraserActive) {
-			if (targetEl?.closest("[data-item-id], [data-svg-item-id]")) {
-				// Suppress cursor over items
-				setCursor((c) => ({ ...c, visible: false }));
-			} else {
-				const rect = svgRef.current?.getBoundingClientRect();
-				if (rect)
-					setCursor({ x: e.clientX - rect.left, y: e.clientY - rect.top, visible: true });
-			}
-		}
-		pointerTypeRef.current = e.pointerType;
-		// Eraser mode: on pointer down start erase interaction instead of drawing
-		if (eraserActive) {
-			if (e.button !== 0) return;
-			pointerIdRef.current = e.pointerId; // track drag for scrubbing
-			performErase(toLogical(e.clientX, e.clientY));
-			return; // don't start ink
-		}
-		if (!inkActive) return; // only when ink tool active
-		if (e.button !== 0) return; // left only
-		// Ignore if clicked on an item or existing selectable element
-		const target = e.target as Element | null;
-		if (target?.closest("[data-item-id]")) return;
-		if (target?.closest("[data-svg-item-id]")) return;
-		// Start inking
-		const p = toLogical(e.clientX, e.clientY);
-		pointerIdRef.current = e.pointerId;
-		setInking(true);
-		tempPointsRef.current = [new InkPoint({ x: p.x, y: p.y, t: Date.now() })];
-		lastPointRef.current = p;
-		strokeIdRef.current = crypto.randomUUID();
-		// Broadcast initial presence stroke (ephemeral only, not yet committed)
-		presence.ink?.setStroke({
-			id: strokeIdRef.current,
-			points: tempPointsRef.current.map((pt) => ({ x: pt.x, y: pt.y, t: pt.t })),
-			color: inkColor,
-			width: inkWidth,
-			opacity: 1,
-			startTime: Date.now(),
-		});
-		e.preventDefault();
-	};
-
 	const handlePointerMove = (e: React.PointerEvent) => {
 		// Update cursor visibility + optionally perform erase scrubbing.
 		if (!(inkActive || eraserActive)) {
@@ -479,290 +427,388 @@ export function Canvas(props: {
 	}, [inking, root]);
 
 	return (
-		<svg
-			id="canvas"
-			ref={svgRef}
-			className="relative flex h-full w-full bg-transparent"
-			style={{
-				touchAction: "none",
-				cursor: isPanning ? "grabbing" : undefined,
-				zIndex: 0, // Canvas background - keep original positioning
-				pointerEvents: "auto", // Allow pointer events but don't force them
-			}}
-			onClick={handleBackgroundClick}
-			onMouseDown={beginPanIfBackground}
-			onPointerDown={(e) => {
-				// Check if something is already being manipulated
-				if (document.documentElement.dataset.manipulating) {
-					handlePointerDown(e);
-					return;
-				}
-
-				// Check if this is a handle interaction - if so, don't interfere
-				const target = e.target as Element | null;
-				const isHandle = target?.closest("[data-resize-handle], [data-rotate-handle]");
-				if (isHandle) {
-					// Let the handle component deal with this event
-					return;
-				}
-
-				// For touch events, check if we're touching an item first
-				if (e.pointerType === "touch") {
-					const isOnItem =
-						target?.closest("[data-item-id]") || target?.closest("[data-svg-item-id]");
-
-					// Only allow panning if not on an item and not in ink/eraser mode
-					if (!isOnItem && !(inkActive || eraserActive)) {
-						beginPanIfBackground(e);
-					}
-				} else {
-					// For non-touch (mouse), use original logic
-					if (!(inkActive || eraserActive)) beginPanIfBackground(e);
-				}
-				handlePointerDown(e);
-			}}
-			onPointerMove={handlePointerMove}
-			onPointerLeave={handlePointerLeave}
-			onPointerUp={handlePointerUp}
-			onContextMenu={(e) => {
-				// Always suppress default context menu on canvas
-				e.preventDefault();
-			}}
-		>
-			{/* Light dot grid background that pans and zooms with content */}
-			<defs>
-				<pattern
-					id="dot-grid-pattern"
-					patternUnits="userSpaceOnUse"
-					width={48}
-					height={48}
-					patternTransform={`translate(${pan.x} ${pan.y}) scale(${zoom})`}
-				>
-					{/* Keep dot screen size constant: radius scales inverse to zoom with a minimum for visibility */}
-					<circle cx={24} cy={24} r={1 / zoom} fill="#9ca3af" />
-				</pattern>
-			</defs>
-			<rect
-				x={0}
-				y={0}
-				width="100%"
-				height="100%"
-				fill="url(#dot-grid-pattern)"
-				pointerEvents="none"
+		<div className="relative h-full w-full">
+			{/* Background dots layer - HTML/CSS for consistent behavior across all platforms */}
+			<div
+				className="absolute inset-0"
+				style={{
+					backgroundImage: `radial-gradient(circle, #6b7280 1px, transparent 1px)`,
+					backgroundSize: `${48 * zoom}px ${48 * zoom}px`,
+					backgroundPosition: `${pan.x}px ${pan.y}px`,
+					pointerEvents: "none",
+				}}
 			/>
-			{/* Ink rendering layer (moved before items to sit underneath all items) */}
-			<g
-				transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}
-				pointerEvents="none"
-				data-layer="ink"
+
+			<svg
+				id="canvas"
+				data-canvas-root="true"
+				ref={svgRef}
+				className="canvas-svg absolute inset-0 h-full w-full bg-transparent"
+				style={{
+					touchAction: "none",
+					cursor: isPanning ? "grabbing" : undefined,
+					pointerEvents: "auto",
+				}}
+				onClick={(e) => handleBackgroundClick(e)}
+				onPointerUp={(e) => {
+					// Handle tap-to-clear-selection for touch events (equivalent to onClick for mouse)
+					if (e.pointerType === "touch") {
+						const target = e.target as Element | null;
+
+						// Check if this is on an item or a resize/rotate handle
+						const isOnItem =
+							target?.closest("[data-item-id]") ||
+							target?.closest("[data-svg-item-id]");
+						const isOnHandle =
+							target?.closest("[data-resize-handle]") ||
+							target?.closest("[data-rotate-handle]");
+
+						// Check if we're currently or recently manipulating something
+						// This prevents clearing selection when touch events bubble up from manipulation operations
+						const isManipulating = !!document.documentElement.dataset.manipulating;
+						const hasResizeState = !!presence.resize.state?.local;
+						const hasDragState = !!presence.drag.state.local;
+
+						// Only clear selection if tapping on background AND not during/after manipulation
+						if (
+							!isOnItem &&
+							!isOnHandle &&
+							!isManipulating &&
+							!hasResizeState &&
+							!hasDragState
+						) {
+							// For touch events, respect suppressClearUntil flag like mouse events do
+							const svg = svgRef.current as
+								| (SVGSVGElement & { dataset: DOMStringMap })
+								| null;
+							const until = svg?.dataset?.suppressClearUntil
+								? parseInt(svg.dataset.suppressClearUntil)
+								: 0;
+							if (until && Date.now() < until) {
+								if (svg) delete svg.dataset.suppressClearUntil;
+								return;
+							}
+							presence.itemSelection?.clearSelection();
+						}
+					}
+					handlePointerUp(e);
+				}}
+				onPointerDown={(e) => {
+					// Check if something is already being manipulated
+					if (document.documentElement.dataset.manipulating) {
+						return;
+					}
+
+					// Check if this is a handle interaction - if so, don't interfere
+					const target = e.target as Element | null;
+					const isHandle = target?.closest("[data-resize-handle], [data-rotate-handle]");
+					if (isHandle) {
+						// Let the handle component deal with this event
+						return;
+					}
+
+					// For touch events, check if we're touching an item first
+					if (e.pointerType === "touch") {
+						const isOnItem =
+							target?.closest("[data-item-id]") ||
+							target?.closest("[data-svg-item-id]");
+
+						// Only allow panning if not on an item and not in ink/eraser mode
+						if (!isOnItem && !(inkActive || eraserActive)) {
+							beginPanIfBackground(e);
+						}
+					} else {
+						// For non-touch (mouse), use original logic
+						if (!(inkActive || eraserActive)) beginPanIfBackground(e);
+					}
+
+					// Manage three mutually exclusive interactions: inking, erasing, panning(right mouse handled upstream).
+					if (inkActive || eraserActive) {
+						if (target?.closest("[data-item-id], [data-svg-item-id]")) {
+							// Suppress cursor over items
+							setCursor((c) => ({ ...c, visible: false }));
+						} else {
+							const rect = svgRef.current?.getBoundingClientRect();
+							if (rect)
+								setCursor({
+									x: e.clientX - rect.left,
+									y: e.clientY - rect.top,
+									visible: true,
+								});
+						}
+					}
+					pointerTypeRef.current = e.pointerType;
+
+					// Eraser mode: on pointer down start erase interaction instead of drawing
+					if (eraserActive) {
+						if (e.button !== 0) return;
+						// Clear selection when starting to erase (same as mouse click behavior)
+						presence.itemSelection?.clearSelection();
+						pointerIdRef.current = e.pointerId; // track drag for scrubbing
+						performErase(toLogical(e.clientX, e.clientY));
+						return; // don't start ink
+					}
+
+					if (!inkActive) return; // only when ink tool active
+					if (e.button !== 0) return; // left only
+
+					// Ignore if clicked on an item or existing selectable element
+					if (target?.closest("[data-item-id]")) return;
+					if (target?.closest("[data-svg-item-id]")) return;
+
+					// Clear selection when starting to ink on background (same as mouse click behavior)
+					presence.itemSelection?.clearSelection();
+
+					// Start inking
+					const p = toLogical(e.clientX, e.clientY);
+					pointerIdRef.current = e.pointerId;
+					setInking(true);
+					tempPointsRef.current = [new InkPoint({ x: p.x, y: p.y, t: Date.now() })];
+					lastPointRef.current = p;
+					strokeIdRef.current = crypto.randomUUID();
+					// Broadcast initial presence stroke (ephemeral only, not yet committed)
+					presence.ink?.setStroke({
+						id: strokeIdRef.current,
+						points: tempPointsRef.current.map((pt) => ({ x: pt.x, y: pt.y, t: pt.t })),
+						color: inkColor,
+						width: inkWidth,
+						opacity: 1,
+						startTime: Date.now(),
+					});
+					e.preventDefault();
+				}}
+				onPointerMove={handlePointerMove}
+				onPointerLeave={handlePointerLeave}
+				onContextMenu={(e) => {
+					// Always suppress default context menu on canvas
+					e.preventDefault();
+				}}
 			>
-				{Array.from(inksIterable).map((s: InkStroke) => {
-					const pts = Array.from(s.simplified ?? s.points) as InkPoint[];
-					if (!pts.length) return null;
-					const base = s.style?.strokeWidth ?? 4;
-					const w = Math.max(0.5, base * zoom);
-					return (
-						<g key={s.id}>
-							<polyline
-								fill="none"
-								stroke={s.style?.strokeColor ?? "#000"}
-								strokeWidth={w}
-								strokeOpacity={s.style?.opacity ?? 1}
-								strokeLinecap={"round"}
-								strokeLinejoin={"round"}
-								vectorEffect="non-scaling-stroke"
-								points={pts.map((p: InkPoint) => `${p.x},${p.y}`).join(" ")}
-							/>
-						</g>
-					);
-				})}
-				{/* Eraser hover highlight (draw after base strokes) */}
-				{eraserActive &&
-					eraserHoverId &&
-					(() => {
-						const stroke = Array.from(inksIterable).find(
-							(s: InkStroke) => s.id === eraserHoverId
-						);
-						if (!stroke) return null;
-						const pts = Array.from(stroke.simplified ?? stroke.points) as InkPoint[];
+				{/* Full-size HTML layer hosting existing item views */}
+				<foreignObject x={0} y={0} width="100%" height="100%">
+					{/* Full-size wrapper to capture background drags anywhere inside the foreignObject */}
+					<div
+						className="relative h-full w-full"
+						onMouseDown={handleHtmlBackgroundMouseDown}
+						onContextMenu={(e) => {
+							e.preventDefault();
+						}}
+						onDragOver={(e) => {
+							e.preventDefault();
+							e.dataTransfer.dropEffect = "move";
+						}}
+						style={{
+							userSelect: "none",
+							position: "relative",
+						}}
+					>
+						<ItemsHtmlLayer
+							items={items}
+							canvasPosition={canvasPosition}
+							pan={pan}
+							zoom={zoom}
+						/>
+					</div>
+				</foreignObject>
+				{/* Ink rendering layer - positioned after items for consistent layering */}
+				<g
+					transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}
+					pointerEvents="none"
+					data-layer="ink"
+				>
+					{Array.from(inksIterable).map((s: InkStroke) => {
+						const pts = Array.from(s.simplified ?? s.points) as InkPoint[];
 						if (!pts.length) return null;
+						const base = s.style?.strokeWidth ?? 4;
+						const w = Math.max(0.5, base * zoom);
+						return (
+							<g key={s.id}>
+								<polyline
+									fill="none"
+									stroke={s.style?.strokeColor ?? "#000"}
+									strokeWidth={w}
+									strokeOpacity={s.style?.opacity ?? 1}
+									strokeLinecap={"round"}
+									strokeLinejoin={"round"}
+									vectorEffect="non-scaling-stroke"
+									points={pts.map((p: InkPoint) => `${p.x},${p.y}`).join(" ")}
+								/>
+							</g>
+						);
+					})}
+					{/* Eraser hover highlight (draw after base strokes) */}
+					{eraserActive &&
+						eraserHoverId &&
+						(() => {
+							const stroke = Array.from(inksIterable).find(
+								(s: InkStroke) => s.id === eraserHoverId
+							);
+							if (!stroke) return null;
+							const pts = Array.from(
+								stroke.simplified ?? stroke.points
+							) as InkPoint[];
+							if (!pts.length) return null;
+							return (
+								<polyline
+									key={`hover-${stroke.id}`}
+									fill="none"
+									stroke="#dc2626"
+									strokeWidth={Math.max(
+										0.5,
+										(stroke.style?.strokeWidth ?? 4) * zoom + 2
+									)}
+									strokeOpacity={0.9}
+									strokeLinecap="round"
+									strokeLinejoin="round"
+									vectorEffect="non-scaling-stroke"
+									strokeDasharray="4 3"
+									points={pts.map((p: InkPoint) => `${p.x},${p.y}`).join(" ")}
+								/>
+							);
+						})()}
+					{/* Remote ephemeral strokes */}
+					{presence.ink?.getRemoteStrokes().map((r) => {
+						const pts = r.stroke.points;
+						if (!pts.length) return null;
+						const w = Math.max(0.5, r.stroke.width * zoom);
 						return (
 							<polyline
-								key={`hover-${stroke.id}`}
+								key={`ephemeral-${r.attendeeId}`}
 								fill="none"
-								stroke="#dc2626"
-								strokeWidth={Math.max(
-									0.5,
-									(stroke.style?.strokeWidth ?? 4) * zoom + 2
-								)}
-								strokeOpacity={0.9}
+								stroke={r.stroke.color}
+								strokeWidth={w}
+								strokeOpacity={0.4}
 								strokeLinecap="round"
 								strokeLinejoin="round"
 								vectorEffect="non-scaling-stroke"
-								strokeDasharray="4 3"
-								points={pts.map((p: InkPoint) => `${p.x},${p.y}`).join(" ")}
+								points={pts.map((p) => `${p.x},${p.y}`).join(" ")}
 							/>
 						);
-					})()}
-				{/* Remote ephemeral strokes */}
-				{presence.ink?.getRemoteStrokes().map((r) => {
-					const pts = r.stroke.points;
-					if (!pts.length) return null;
-					const w = Math.max(0.5, r.stroke.width * zoom);
-					return (
+					})}
+					{/* Local ephemeral (if drawing) */}
+					{inking && tempPointsRef.current.length > 0 && (
 						<polyline
-							key={`ephemeral-${r.attendeeId}`}
+							key="local-ephemeral"
 							fill="none"
-							stroke={r.stroke.color}
-							strokeWidth={w}
-							strokeOpacity={0.4}
+							stroke={inkColor}
+							strokeWidth={Math.max(0.5, inkWidth * zoom)}
+							strokeOpacity={0.7}
 							strokeLinecap="round"
 							strokeLinejoin="round"
 							vectorEffect="non-scaling-stroke"
-							points={pts.map((p) => `${p.x},${p.y}`).join(" ")}
+							points={tempPointsRef.current.map((p) => `${p.x},${p.y}`).join(" ")}
 						/>
-					);
-				})}
-				{/* Local ephemeral (if drawing) */}
-				{inking && tempPointsRef.current.length > 0 && (
-					<polyline
-						key="local-ephemeral"
-						fill="none"
-						stroke={inkColor}
-						strokeWidth={Math.max(0.5, inkWidth * zoom)}
-						strokeOpacity={0.7}
-						strokeLinecap="round"
-						strokeLinejoin="round"
-						vectorEffect="non-scaling-stroke"
-						points={tempPointsRef.current.map((p) => `${p.x},${p.y}`).join(" ")}
-					/>
-				)}
-			</g>
-			{/* Full-size HTML layer hosting existing item views */}
-			<foreignObject x={0} y={0} width="100%" height="100%">
-				{/* Full-size wrapper to capture background drags anywhere inside the foreignObject */}
-				<div
-					className="relative h-full w-full"
-					onMouseDown={handleHtmlBackgroundMouseDown}
-					onContextMenu={(e) => {
-						e.preventDefault();
-					}}
-					onDragOver={(e) => {
-						e.preventDefault();
-						e.dataTransfer.dropEffect = "move";
-					}}
-					style={{ userSelect: "none" }}
+					)}
+				</g>
+				{/* Per-item SVG wrappers (overlay), built from measured layout */}
+				<g
+					key={`sel-${selKey}-${motionKey}-${layoutVersion}`}
+					transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}
+					style={{ pointerEvents: "auto", touchAction: "none" }}
+					data-layer="selection-overlays"
 				>
-					<ItemsHtmlLayer
-						items={items}
-						canvasPosition={canvasPosition}
-						pan={pan}
-						zoom={zoom}
-					/>
-				</div>
-			</foreignObject>
-			{/* Per-item SVG wrappers (overlay), built from measured layout */}
-			<g
-				key={`sel-${selKey}-${motionKey}-${layoutVersion}`}
-				transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}
-			>
-				{items.map((item) => {
-					if (!(item instanceof Item)) return null;
-					const isSelected = presence.itemSelection?.testSelection({ id: item.id });
-					if (!isSelected) return null; // only draw selection overlays for selected items
-					return (
-						<SelectionOverlay
-							key={`wrap-${item.id}`}
-							item={item}
-							layout={layout}
-							presence={presence}
-							zoom={zoom}
-						/>
-					);
-				})}
-			</g>
-			{/* Presence indicators overlay for all items with remote selections */}
-			<g
-				key={`presence-${selKey}-${motionKey}-${layoutVersion}`}
-				transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}
-			>
-				{items.map((item) => {
-					if (!(item instanceof Item)) return null;
-					const remoteIds =
-						presence.itemSelection?.testRemoteSelection({ id: item.id }) ?? [];
-					if (!remoteIds.length) return null;
-					const isExpanded = expandedPresence.has(item.id);
-					const toggleExpanded = (e: React.MouseEvent) => {
-						e.stopPropagation();
-						setExpandedPresence((prev) => {
-							const next = new Set(prev);
-							if (next.has(item.id)) next.delete(item.id);
-							else next.add(item.id);
-							return next;
-						});
-					};
-					return (
-						<PresenceOverlay
-							key={`presence-${item.id}`}
-							item={item}
-							layout={layout}
-							presence={presence}
-							remoteIds={remoteIds}
-							zoom={zoom}
-							getInitials={getInitials}
-							getUserColor={getUserColor}
-							expanded={isExpanded}
-							onToggleExpanded={toggleExpanded}
-						/>
-					);
-				})}
-			</g>
-			{/* Comment indicators (zoom-invariant) */}
-			<g
-				key={`comments-${selKey}-${motionKey}-${layoutVersion}`}
-				transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}
-			>
-				{items.map((item) => {
-					if (!(item instanceof Item)) return null;
-					const isSelected =
-						presence.itemSelection?.testSelection({ id: item.id }) ?? false;
-					return (
-						<CommentOverlay
-							key={`comment-${item.id}`}
-							item={item}
-							layout={layout}
-							zoom={zoom}
-							commentPaneVisible={commentPaneVisible}
-							selected={isSelected}
-							presence={presence}
-						/>
-					);
-				})}
-			</g>
-			{/* Screen-space cursor overlay */}
-			{cursor.visible && (inkActive || eraserActive) && (
-				<g pointerEvents="none">
-					{(() => {
-						// For ink: radius is half of actual stroke width in screen space.
-						// stroke width rendered is zoom * inkWidth (but we clamp min visually earlier when drawing ephemeral lines)
-						const screenStrokeWidth = inkWidth * zoom;
-						const r = eraserActive ? 12 : Math.max(2, screenStrokeWidth / 2);
-						const stroke = eraserActive ? "#dc2626" : inkColor;
-						const fill = eraserActive ? "rgba(220,38,38,0.08)" : `${inkColor}22`; // light tint
+					{items.map((item) => {
+						if (!(item instanceof Item)) return null;
+						const isSelected = presence.itemSelection?.testSelection({ id: item.id });
+						if (!isSelected) return null; // only draw selection overlays for selected items
 						return (
-							<circle
-								cx={cursor.x}
-								cy={cursor.y}
-								r={r}
-								fill={fill}
-								stroke={stroke}
-								strokeDasharray={eraserActive ? "4 3" : undefined}
-								strokeWidth={1}
+							<SelectionOverlay
+								key={`wrap-${item.id}`}
+								item={item}
+								layout={layout}
+								presence={presence}
+								zoom={zoom}
 							/>
 						);
-					})()}
+					})}
 				</g>
-			)}
-		</svg>
+				{/* Presence indicators overlay for all items with remote selections */}
+				<g
+					key={`presence-${selKey}-${motionKey}-${layoutVersion}`}
+					transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}
+					style={{ pointerEvents: "auto", touchAction: "none" }}
+					data-layer="presence-overlays"
+				>
+					{items.map((item) => {
+						if (!(item instanceof Item)) return null;
+						const remoteIds =
+							presence.itemSelection?.testRemoteSelection({ id: item.id }) ?? [];
+						if (!remoteIds.length) return null;
+						const isExpanded = expandedPresence.has(item.id);
+						const toggleExpanded = (e: React.MouseEvent) => {
+							e.stopPropagation();
+							setExpandedPresence((prev) => {
+								const next = new Set(prev);
+								if (next.has(item.id)) next.delete(item.id);
+								else next.add(item.id);
+								return next;
+							});
+						};
+						return (
+							<PresenceOverlay
+								key={`presence-${item.id}`}
+								item={item}
+								layout={layout}
+								presence={presence}
+								remoteIds={remoteIds}
+								zoom={zoom}
+								getInitials={getInitials}
+								getUserColor={getUserColor}
+								expanded={isExpanded}
+								onToggleExpanded={toggleExpanded}
+							/>
+						);
+					})}
+				</g>
+				{/* Comment indicators (zoom-invariant) */}
+				<g
+					key={`comments-${selKey}-${motionKey}-${layoutVersion}`}
+					transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}
+					style={{ pointerEvents: "auto", touchAction: "none" }}
+					data-layer="comment-overlays"
+				>
+					{items.map((item) => {
+						if (!(item instanceof Item)) return null;
+						const isSelected =
+							presence.itemSelection?.testSelection({ id: item.id }) ?? false;
+						return (
+							<CommentOverlay
+								key={`comment-${item.id}`}
+								item={item}
+								layout={layout}
+								zoom={zoom}
+								commentPaneVisible={commentPaneVisible}
+								selected={isSelected}
+								presence={presence}
+							/>
+						);
+					})}
+				</g>
+				{/* Screen-space cursor overlay */}
+				{cursor.visible && (inkActive || eraserActive) && (
+					<g pointerEvents="none">
+						{(() => {
+							// For ink: radius is half of actual stroke width in screen space.
+							// stroke width rendered is zoom * inkWidth (but we clamp min visually earlier when drawing ephemeral lines)
+							const screenStrokeWidth = inkWidth * zoom;
+							const r = eraserActive ? 12 : Math.max(2, screenStrokeWidth / 2);
+							const stroke = eraserActive ? "#dc2626" : inkColor;
+							const fill = eraserActive ? "rgba(220,38,38,0.08)" : `${inkColor}22`; // light tint
+							return (
+								<circle
+									cx={cursor.x}
+									cy={cursor.y}
+									r={r}
+									fill={fill}
+									stroke={stroke}
+									strokeDasharray={eraserActive ? "4 3" : undefined}
+									strokeWidth={1}
+								/>
+							);
+						})()}
+					</g>
+				)}
+			</svg>
+		</div>
 	);
 }

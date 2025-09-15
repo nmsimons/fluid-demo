@@ -10,7 +10,7 @@
 // ============================================================================
 
 import { Tree } from "fluid-framework";
-import { Item, Shape, Note, FluidTable } from "../schema/app_schema.js";
+import { Item, Shape, Note, FluidTable } from "../schema/appSchema.js";
 
 /**
  * Content type enumeration for type-safe handling

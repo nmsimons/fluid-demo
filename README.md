@@ -1,6 +1,6 @@
 # Collaborative Canvas and Table Demo
 
-This application demonstrates the power of the Fluid Framework by building a collaborative canvas and data table application. Users can work together in real-time to create, edit, and interact with shapes, sticky notes, tables, and comments.
+This application demonstrates the power of the Fluid Framework by building a comprehensive collaborative canvas and data table application. Users can work together in real-time to create, edit, and interact with shapes, sticky notes, tables, ink drawings, and comments. The app showcases both persistent data synchronization (SharedTree) and ephemeral real-time collaboration (Presence API) working together to create a rich collaborative experience.
 
 ## Features
 
@@ -9,10 +9,12 @@ This application demonstrates the power of the Fluid Framework by building a col
 - **Shapes**: Create and manipulate circles, squares, triangles, and stars with different colors and sizes
 - **Sticky Notes**: Add collaborative text notes that can be edited by multiple users
 - **Tables**: Create data tables with different column types (string, number, boolean, date, vote)
+- **Ink Drawing**: Draw freehand ink strokes with pen, mouse, or touch input
 - **Real-time Collaboration**: See other users' selections, edits, and presence indicators in real-time
 - **Drag & Drop**: Move items around the canvas with live position updates
 - **Rotation & Resize**: Transform shapes with real-time preview for other users
 - **Layering**: Manage z-order with bring-to-front, send-to-back operations
+- **Undo/Redo**: Full undo/redo system for all canvas operations
 
 ### Advanced Presence & Selection (Fluid Presence API)
 
@@ -62,11 +64,29 @@ All the code required to set up the Fluid Framework and SharedTree data structur
 
 The application uses a comprehensive SharedTree schema defined in the `src/schema/` folder:
 
-- **`app_schema.ts`**: Main schema definitions including: - `Shape`: Geometric shapes (circle, square, triangle, star) with size, color, and type - `Note`: Text-based sticky notes with authorship - `FluidTable`: Collaborative tables with multiple column types - `Item`: Canvas items that can contain shapes, notes, or tables - `Vote`: Voting system for comments and items - `Comment`: Threaded comments with user attribution - `DateTime`: Date/time values for timestamps
-- **`container_schema.ts`**: Fluid container configuration
-- **`table_schema.ts`**: Extended table functionality and column definitions
+- **`appSchema.ts`**: Main schema definitions including:
+    - `Shape`: Geometric shapes (circle, square, triangle, star) with size, color, and type
+    - `Note`: Text-based sticky notes with authorship
+    - `FluidTable`: Collaborative tables with multiple column types
+    - `Item`: Canvas items that can contain shapes, notes, or tables
+    - `Items`: Simple array containing Item objects for canvas elements
+    - `Vote`: Voting system for comments and items
+    - `Comment`: Threaded comments with user attribution
+    - `InkStroke`: Freehand drawing strokes with points and styling
+    - `DateTime`: Date/time values for timestamps
+- **`containerSchema.ts`**: Fluid container configuration
 
-The schema supports rich data types including strings, numbers, booleans, dates, and custom voting objects. All schema changes are automatically synchronized across all connected clients.
+The schema supports rich data types including strings, numbers, booleans, dates, ink strokes, and custom voting objects. All schema changes are automatically synchronized across all connected clients.
+
+### Undo/Redo System
+
+The application includes a comprehensive undo/redo system located in `src/undo/`:
+
+- **Transaction-based**: All operations are wrapped in transactions for atomicity
+- **Cross-user**: Undo operations work across multiple collaborators
+- **Type-safe**: Strongly typed undo/redo operations
+- **Keyboard shortcuts**: Ctrl+Z / Ctrl+Y for undo/redo
+- **UI indicators**: Toolbar buttons show undo/redo availability
 
 ## Working with Data
 
@@ -195,7 +215,7 @@ The canvas uses a hybrid SVG + HTML strategy to balance fidelity, performance, a
 
 ### Layering
 
-- **SVG Root (`canvasux.tsx`)**: Owns the unified coordinate system (pan + zoom transform) and renders: - Persistent ink polylines (vector, efficient at scale) - Ephemeral ink (local + remote) with reduced opacity - Selection, presence, and comment overlays positioned in logical space - Custom cursor / eraser feedback (screen-space overlay)
+- **SVG Root (`Canvas.tsx`)**: Owns the unified coordinate system (pan + zoom transform) and renders: - Persistent ink polylines (vector, efficient at scale) - Ephemeral ink (local + remote) with reduced opacity - Selection, presence, and comment overlays positioned in logical space - Custom cursor / eraser feedback (screen-space overlay)
 - **HTML Layer (foreignObject)**: Hosts complex React components (tables, notes, shapes) so they can leverage normal DOM/CSS layout & accessibility while still moving/zooming with the SVG transform.
 
 ### Coordinate Spaces
@@ -237,7 +257,7 @@ Implemented in `useCanvasNavigation`:
 
 ## Presence Ink Interface
 
-Ephemeral ink presence is defined by `InkPresenceManager` (see `src/utils/presence/Interfaces/InkManager.ts`):
+Ephemeral ink presence is defined by `InkPresenceManager` (see `src/presence/Interfaces/InkManager.ts`):
 
 | Method             | Description                               |
 | ------------------ | ----------------------------------------- |
@@ -265,13 +285,13 @@ These items are candidates for iterative improvement:
 
 ## Quick Reference: Key Files
 
-| File                                          | Purpose                                                                |
-| --------------------------------------------- | ---------------------------------------------------------------------- |
-| `src/react/canvasux.tsx`                      | Main collaborative canvas (SVG + HTML layering, ink + overlays)        |
-| `src/react/hooks/useCanvasNavigation.ts`      | Pan/zoom logic with discrete zoom steps & cursor anchoring             |
-| `src/utils/presence/Interfaces/InkManager.ts` | Ephemeral ink presence contract                                        |
-| `src/utils/presence/ink.ts`                   | Implementation utilities for broadcasting ink (if present)             |
-| `src/schema/app_schema.ts`                    | Persistent ink schema (`InkStroke`, `InkPoint`, `InkStyle`, `InkBBox`) |
+| File                                     | Purpose                                                                |
+| ---------------------------------------- | ---------------------------------------------------------------------- |
+| `src/react/components/canvas/Canvas.tsx` | Main collaborative canvas (SVG + HTML layering, ink + overlays)        |
+| `src/react/hooks/useCanvasNavigation.ts` | Pan/zoom logic with discrete zoom steps & cursor anchoring             |
+| `src/presence/Interfaces/InkManager.ts`  | Ephemeral ink presence contract                                        |
+| `src/presence/ink.ts`                    | Implementation utilities for broadcasting ink (if present)             |
+| `src/schema/app_schema.ts`               | Persistent ink schema (`InkStroke`, `InkPoint`, `InkStyle`, `InkBBox`) |
 
 ## User Interface
 
@@ -282,8 +302,10 @@ The application is built with modern React and features a rich, interactive UI:
 - **React 18**: Modern React with hooks and contexts
 - **Fluent UI**: Microsoft's design system for consistent UX
 - **Tailwind CSS**: Utility-first CSS framework for styling
+- **Vite**: Fast build tool and development server
 - **TanStack Table**: Advanced table functionality with virtual scrolling
 - **TanStack Virtual**: Efficient virtualization for large datasets
+- **TypeScript**: Type-safe development
 
 ### Key UI Components
 
@@ -308,7 +330,16 @@ The application is built with modern React and features a rich, interactive UI:
 - **High Contrast**: Support for high contrast themes
 - **Focus Management**: Clear focus indicators
 
-To update styles, run the Tailwind CSS watcher:
+### Styling with Tailwind CSS
+
+The application uses Tailwind CSS for styling alongside Fluent UI components:
+
+- **Utility-first**: Use Tailwind utility classes for layout and styling
+- **Custom CSS**: Additional CSS in `src/styles/` for specialized needs
+- **iOS Support**: Special CSS fixes in `src/styles/ios-minimal.css` for iOS Safari
+- **Build Integration**: Tailwind is integrated with Vite build process
+
+To update styles during development, Tailwind CSS is automatically compiled by Vite. For manual compilation:
 
 ```bash
 npx tailwindcss -i ./src/index.css -o ./src/output.css --watch
@@ -330,6 +361,8 @@ You can use the following npm scripts (`npm run SCRIPT-NAME`) to build and run t
 | `dev`          | Runs the app in development mode with Vite dev server |
 | `dev:local`    | Runs the app using local Fluid relay service          |
 | `dev:azure`    | Runs the app using Azure Fluid Relay service          |
+| `dev:network`  | Runs the app accessible from network devices          |
+| `dev:ios`      | Runs the app with network access and shows IP         |
 | `build`        | Builds the app for production (compile + webpack)     |
 | `compile`      | Compiles TypeScript source code to JavaScript         |
 | `webpack`      | Builds the app using Vite                             |
@@ -338,6 +371,7 @@ You can use the following npm scripts (`npm run SCRIPT-NAME`) to build and run t
 | `lint`         | Lints source code using ESLint                        |
 | `test`         | Runs end-to-end tests with Playwright                 |
 | `pretest`      | Installs Playwright dependencies                      |
+| `network-ip`   | Shows network IP address for mobile testing           |
 
 ### Development Workflow
 
@@ -391,28 +425,38 @@ Authentication and service configuration is handled in the `src/infra/` folder:
 src/
 ├── infra/              # Fluid Framework and authentication setup
 ├── react/              # React components and UI
+│   ├── components/     # React components organized by feature
+│   │   ├── app/        # Main App component
+│   │   ├── canvas/     # Canvas and rendering components
+│   │   ├── items/      # Item components (shapes, notes, tables)
+│   │   ├── toolbar/    # Toolbar and button components
+│   │   └── panels/     # Side panels and overlays
 │   ├── contexts/       # React contexts for data management
 │   ├── hooks/          # Custom React hooks
-│   └── *.tsx          # Component files (itemux, tableux, etc.)
+│   └── overlays/       # Presence and selection overlays
 ├── schema/             # SharedTree schema definitions
 ├── start/              # Application initialization
+├── presence/           # Presence API implementations (signal-based)
+│   ├── drag.ts         # Real-time drag operations with signal optimization
+│   ├── resize.ts       # Shape resize collaboration with batched updates
+│   ├── selection.ts    # Multi-user selection tracking with state management
+│   ├── users.ts        # User management and profiles with auto-cleanup
+│   ├── ink.ts          # Ephemeral ink stroke management
+│   └── Interfaces/     # TypeScript interfaces for presence and signals
+├── undo/               # Undo/redo system
 ├── utils/              # Utility functions and managers
-│   ├── presence/       # Presence API implementations (signal-based)
-│   │   ├── drag.ts     # Real-time drag operations with signal optimization
-│   │   ├── resize.ts   # Shape resize collaboration with batched updates
-│   │   ├── selection.ts # Multi-user selection tracking with state management
-│   │   ├── users.ts    # User management and profiles with auto-cleanup
-│   │   └── Interfaces/ # TypeScript interfaces for presence and signals
-└── *.ts               # Main application files
+├── styles/             # CSS files including Tailwind and iOS fixes
+└── constants/          # Application constants and configuration
 ```
 
 ### Key Files
 
 - **`index.tsx`**: Application entry point
-- **`app_load.tsx`**: Application loader and initialization
-- **`ux.tsx`**: Main UI component
-- **`itemux.tsx`**: Canvas item rendering and interactions (includes presence indicators)
-- **`tableux.tsx`**: Table component with virtual scrolling and presence
+- **`AppLoad.tsx`**: Application loader and initialization
+- **`App.tsx`**: Main UI component and application shell
+- **`Canvas.tsx`**: Canvas component with SVG rendering and item interactions
+- **`ItemView.tsx`**: Canvas item rendering and interactions (includes presence indicators)
+- **`TableView.tsx`**: Table component with virtual scrolling and presence
 - **`contexts/PresenceContext.tsx`**: React context for presence data with signal management
 - **`hooks/usePresenceManager.tsx`**: React hook for presence subscriptions with automatic optimization
 

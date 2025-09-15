@@ -18,7 +18,7 @@
  */
 
 import { createContext, useContext } from "react";
-import { FluidTable } from "../../schema/app_schema.js";
+import { FluidTable } from "../../schema/appSchema.js";
 import { Tree, TreeStatus } from "fluid-framework";
 
 /**

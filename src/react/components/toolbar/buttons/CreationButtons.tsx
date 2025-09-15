@@ -15,9 +15,8 @@ import {
 import { TooltipButton } from "../../forms/Button.js";
 import { useTree } from "../../../hooks/useTree.js";
 import { PresenceContext } from "../../../contexts/PresenceContext.js";
-import { Items } from "../../../../schema/app_schema.js";
-import { getContentHandler } from "../../../../utils/contentHandlers.js";
-import { Tree } from "@fluidframework/tree";
+import { Items } from "../../../../schema/appSchema.js";
+import { centerLastItem } from "../../../../utils/centerItem.js";
 
 export const SHAPE_COLORS = [
 	"#000000",
@@ -32,49 +31,23 @@ export const SHAPE_COLORS = [
 	"#FF8C33",
 ];
 
-function centerLastItem(
-	items: Items,
-	pan: { x: number; y: number } | undefined,
-	zoom: number | undefined,
-	canvas: { width: number; height: number },
-	estW = 120,
-	estH = 120
-) {
-	if (!pan || !zoom || items.length === 0) return;
-	const last = items[items.length - 1];
-	if (!last) return;
-	let w = estW;
-	let h = estH;
-	const handler = getContentHandler(last);
-	if (handler.type === "shape") {
-		w = h = handler.getSize();
-	}
-	const vw = canvas.width / zoom;
-	const vh = canvas.height / zoom;
-	const vx = -pan.x / zoom;
-	const vy = -pan.y / zoom;
-	const cx = vx + vw / 2 - w / 2;
-	const cy = vy + vh / 2 - h / 2;
-	Tree.runTransaction(items, () => {
-		last.x = cx;
-		last.y = cy;
-	});
-}
-
 // Shape / item creation buttons
 export function NewCircleButton(props: {
 	items: Items;
 	canvasSize: { width: number; height: number };
 	pan?: { x: number; y: number };
 	zoom?: number;
+	shapeColor?: string;
 }): JSX.Element {
-	const { items, canvasSize, pan, zoom } = props;
+	const { items, canvasSize, pan, zoom, shapeColor } = props;
 	useTree(items);
 	return (
 		<TooltipButton
 			onClick={(e) => {
 				e.stopPropagation();
-				items.createShapeItem("circle", canvasSize, SHAPE_COLORS);
+				// Use the specific color or fallback to random selection
+				const colors = shapeColor ? [shapeColor] : SHAPE_COLORS;
+				items.createShapeItem("circle", canvasSize, colors);
 				centerLastItem(items, pan, zoom, canvasSize);
 			}}
 			icon={<CircleRegular />}
@@ -89,14 +62,17 @@ export function NewSquareButton(props: {
 	canvasSize: { width: number; height: number };
 	pan?: { x: number; y: number };
 	zoom?: number;
+	shapeColor?: string;
 }): JSX.Element {
-	const { items, canvasSize, pan, zoom } = props;
+	const { items, canvasSize, pan, zoom, shapeColor } = props;
 	useTree(items);
 	return (
 		<TooltipButton
 			onClick={(e) => {
 				e.stopPropagation();
-				items.createShapeItem("square", canvasSize, SHAPE_COLORS);
+				// Use the specific color or fallback to random selection
+				const colors = shapeColor ? [shapeColor] : SHAPE_COLORS;
+				items.createShapeItem("square", canvasSize, colors);
 				centerLastItem(items, pan, zoom, canvasSize);
 			}}
 			icon={<SquareRegular />}
@@ -111,14 +87,17 @@ export function NewTriangleButton(props: {
 	canvasSize: { width: number; height: number };
 	pan?: { x: number; y: number };
 	zoom?: number;
+	shapeColor?: string;
 }): JSX.Element {
-	const { items, canvasSize, pan, zoom } = props;
+	const { items, canvasSize, pan, zoom, shapeColor } = props;
 	useTree(items);
 	return (
 		<TooltipButton
 			onClick={(e) => {
 				e.stopPropagation();
-				items.createShapeItem("triangle", canvasSize, SHAPE_COLORS);
+				// Use the specific color or fallback to random selection
+				const colors = shapeColor ? [shapeColor] : SHAPE_COLORS;
+				items.createShapeItem("triangle", canvasSize, colors);
 				centerLastItem(items, pan, zoom, canvasSize);
 			}}
 			icon={<TriangleRegular />}
@@ -133,14 +112,17 @@ export function NewStarButton(props: {
 	canvasSize: { width: number; height: number };
 	pan?: { x: number; y: number };
 	zoom?: number;
+	shapeColor?: string;
 }): JSX.Element {
-	const { items, canvasSize, pan, zoom } = props;
+	const { items, canvasSize, pan, zoom, shapeColor } = props;
 	useTree(items);
 	return (
 		<TooltipButton
 			onClick={(e) => {
 				e.stopPropagation();
-				items.createShapeItem("star", canvasSize, SHAPE_COLORS);
+				// Use the specific color or fallback to random selection
+				const colors = shapeColor ? [shapeColor] : SHAPE_COLORS;
+				items.createShapeItem("star", canvasSize, colors);
 				centerLastItem(items, pan, zoom, canvasSize);
 			}}
 			icon={<StarRegular />}

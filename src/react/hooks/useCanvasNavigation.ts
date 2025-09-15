@@ -48,7 +48,9 @@ export function useCanvasNavigation(params: {
 	const clampZoom = (z: number) =>
 		Math.min(ZOOM_STEPS[ZOOM_STEPS.length - 1], Math.max(ZOOM_STEPS[0], z));
 
-	// Wheel zoom (non-passive) with cursor anchoring and discrete steps
+	// Wheel zoom with cursor anchoring and discrete steps
+	// Note: Non-passive listener is required to preventDefault() and implement custom zoom behavior
+	// This prevents browser's default zoom/scroll and allows precise control over canvas zoom
 	useEffect(() => {
 		const el = svgRef.current;
 		if (!el) return;
@@ -57,6 +59,7 @@ export function useCanvasNavigation(params: {
 		const accumRef = { current: 0 } as { current: number };
 		const STEP_TRIGGER = 40; // wheel delta accumulation threshold
 		const onWheel = (e: WheelEvent) => {
+			// Prevent default browser zoom/scroll to implement custom zoom behavior
 			e.preventDefault();
 			accumRef.current += e.deltaY;
 			if (Math.abs(accumRef.current) < STEP_TRIGGER) return; // wait until threshold reached
@@ -97,6 +100,7 @@ export function useCanvasNavigation(params: {
 		};
 		updateRefs();
 		const raf = requestAnimationFrame(updateRefs);
+		// passive: false is required to call preventDefault() and override browser zoom behavior
 		el.addEventListener("wheel", onWheel, { passive: false });
 		return () => {
 			cancelAnimationFrame(raf);
@@ -127,14 +131,43 @@ export function useCanvasNavigation(params: {
 		return () => window.removeEventListener("resize", handleResize);
 	}, []);
 
-	// Background click clears selection (unless suppressed)
-	const handleBackgroundClick = () => {
+	// Background click clears selection (unless suppressed or click originated within an item)
+	const handleBackgroundClick = (e?: MouseEvent | React.MouseEvent) => {
 		const svg = svgRef.current as (SVGSVGElement & { dataset: DOMStringMap }) | null;
-		const until = svg?.dataset?.suppressClearUntil
+		if (!svg) return;
+
+		// If the click target (or composed path) contains an item, skip clearing
+		const target = (e?.target as Element | undefined) ?? undefined;
+		if (target) {
+			// Check if the target or any parent is within an item
+			if (target.closest("[data-item-id]") || target.closest("[data-svg-item-id]")) {
+				return;
+			}
+			// Also check if the active element (focused element) is within an item
+			const activeElement = document.activeElement;
+			if (
+				activeElement &&
+				(activeElement.closest("[data-item-id]") ||
+					activeElement.closest("[data-svg-item-id]"))
+			) {
+				return;
+			}
+			// Check if this is a focus-related event by examining if the target is the SVG itself
+			// but there's a recently focused element within an item
+			if (target.tagName === "svg" && activeElement) {
+				const focusedItemContainer =
+					activeElement.closest("[data-item-id]") ||
+					activeElement.closest("[data-svg-item-id]");
+				if (focusedItemContainer) {
+					return;
+				}
+			}
+		}
+		const until = svg.dataset?.suppressClearUntil
 			? parseInt(svg.dataset.suppressClearUntil)
 			: 0;
 		if (until && Date.now() < until) {
-			if (svg) delete svg.dataset.suppressClearUntil;
+			delete svg.dataset.suppressClearUntil;
 			return;
 		}
 		presence.itemSelection?.clearSelection();

@@ -2,6 +2,7 @@ import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import dotenv from "dotenv";
 import tailwindcss from "@tailwindcss/vite";
+import { visualizer } from "rollup-plugin-visualizer";
 
 // Load environment variables
 dotenv.config();
@@ -10,14 +11,26 @@ export default defineConfig(({ mode }) => {
 	const env = loadEnv(mode, process.cwd(), "");
 
 	return {
-		plugins: [react(), tailwindcss()],
+		plugins: [
+			react(),
+			tailwindcss(),
+			visualizer({
+				filename: "dist/bundle-analysis.html",
+				open: false,
+				gzipSize: true,
+				brotliSize: true,
+			}),
+		],
 		build: {
 			outDir: "dist",
 			sourcemap: true,
+			// Let Vite handle chunking automatically - no manual chunking
 		},
 		server: {
 			port: 8080,
+			host: true, // Allow access from network
 			hot: true,
+			strictPort: true, // Fail if port is already in use
 		},
 		define: {
 			// Only expose specific environment variables that are actually needed

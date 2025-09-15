@@ -16,7 +16,7 @@ import { TooltipButton } from "../../forms/Button.js";
 import { useTree } from "../../../hooks/useTree.js";
 import { PresenceContext } from "../../../contexts/PresenceContext.js";
 import { CommentPaneContext } from "../../app/App.js";
-import { Vote, Item } from "../../../../schema/app_schema.js";
+import { Vote, Item } from "../../../../schema/appSchema.js";
 
 // Basic actions
 export function DeleteButton(props: { delete: () => void; count?: number }): JSX.Element {

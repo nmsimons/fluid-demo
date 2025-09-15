@@ -14,9 +14,9 @@ import {
 } from "@fluentui/react-icons";
 import { TooltipButton } from "../../forms/Button.js";
 import { useTree } from "../../../hooks/useTree.js";
-import { FluidTable } from "../../../../schema/app_schema.js";
+import { FluidTable } from "../../../../schema/appSchema.js";
 
-// Simple table manipulation buttons (from appbuttonux.tsx)
+// Simple table manipulation buttons for basic table operations
 export function AddColumnButton(props: { table: FluidTable }): JSX.Element {
 	const { table } = props;
 	useTree(table);

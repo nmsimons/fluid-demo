@@ -4,10 +4,12 @@
  */
 
 import React, { JSX } from "react";
-import { Tree } from "fluid-framework";
-import { App, Shape } from "../../../schema/app_schema.js";
-import { undoRedo } from "../../../utils/undo.js";
+import { TreeView, Tree } from "fluid-framework";
+import { App, Shape } from "../../../schema/appSchema.js";
+import { undoRedo } from "../../../undo/undo.js";
 import { isShape, isTable } from "../../../utils/contentHandlers.js";
+import { findItemsByIds } from "../../../utils/itemsHelpers.js";
+import { TypedSelection } from "../../../presence/selection.js";
 import {
 	NewCircleButton,
 	NewSquareButton,
@@ -35,14 +37,12 @@ import {
 import { InkColorPicker, InkToggleButton, EraserToggleButton } from "./buttons/InkButtons.js";
 import { UndoButton, RedoButton, ClearAllButton } from "./buttons/ActionButtons.js";
 import { CommentsPaneToggleButton } from "./buttons/PaneButtons.js";
-import { SelectionCountBadge, ZoomMenu } from "./buttons/ViewButtons.js";
+import { ZoomMenu } from "./buttons/ViewButtons.js";
 import { DeleteSelectedRowsButton } from "./buttons/TableButtons.js";
 // All toolbar button UIs now componentized; direct TooltipButton usage removed.
 import { MessageBar, MessageBarBody, MessageBarTitle } from "@fluentui/react-message-bar";
 import { Toolbar, ToolbarDivider, ToolbarGroup } from "@fluentui/react-toolbar";
-import type { SelectionManager } from "../../../utils/presence/Interfaces/SelectionManager.js";
-import { TypedSelection } from "../../../utils/presence/selection.js";
-import { TreeViewAlpha } from "@fluidframework/tree/alpha";
+import type { SelectionManager } from "../../../presence/Interfaces/SelectionManager.js";
 
 export interface AppToolbarProps {
 	view: TreeViewAlpha<typeof App>;
@@ -71,6 +71,8 @@ export interface AppToolbarProps {
 	onInkColorChange: (c: string) => void;
 	inkWidth: number;
 	onInkWidthChange: (w: number) => void;
+	shapeColor: string;
+	onShapeColorChange: (c: string) => void;
 }
 
 export function AppToolbar(props: AppToolbarProps): JSX.Element {
@@ -99,12 +101,14 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 		onInkColorChange,
 		inkWidth,
 		onInkWidthChange,
+		shapeColor,
+		onShapeColorChange,
 	} = props;
 
 	// Zoom slider logic moved into ZoomMenu component.
 
 	return (
-		<Toolbar className="h-[48px] shadow-lg flex-nowrap overflow-x-auto overflow-y-hidden whitespace-nowrap min-h-[48px] max-h-[48px]">
+		<Toolbar className="app-toolbar h-[48px] shadow-lg flex-nowrap overflow-x-auto overflow-y-hidden whitespace-nowrap min-h-[48px] max-h-[48px]">
 			{/* Undo / Redo group (leftmost) */}
 			<ToolbarGroup>
 				<UndoButton onUndo={() => undoRedo.undo()} disabled={!canUndo} />
@@ -134,31 +138,55 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 				/>
 			</ToolbarGroup>
 			<ToolbarDivider />
+			{/* Shape creation buttons */}
 			<ToolbarGroup>
 				<NewCircleButton
 					items={view.root.items}
 					canvasSize={canvasSize}
 					pan={pan}
 					zoom={zoom}
+					shapeColor={shapeColor}
 				/>
 				<NewSquareButton
 					items={view.root.items}
 					canvasSize={canvasSize}
 					pan={pan}
 					zoom={zoom}
+					shapeColor={shapeColor}
 				/>
 				<NewTriangleButton
 					items={view.root.items}
 					canvasSize={canvasSize}
 					pan={pan}
 					zoom={zoom}
+					shapeColor={shapeColor}
 				/>
 				<NewStarButton
 					items={view.root.items}
 					canvasSize={canvasSize}
 					pan={pan}
 					zoom={zoom}
+					shapeColor={shapeColor}
 				/>
+				{(() => {
+					// Get selected items and filter for shapes
+					const selectedItems = findItemsByIds(view.root.items, selectedItemIds);
+					const selectedShapes = selectedItems
+						.filter((item) => isShape(item))
+						.map((item) => item.content as Shape);
+
+					return (
+						<ShapeColorPicker
+							color={shapeColor}
+							onColorChange={onShapeColorChange}
+							selectedShapes={selectedShapes}
+						/>
+					);
+				})()}
+			</ToolbarGroup>
+			<ToolbarDivider />
+			{/* Note and Table creation buttons */}
+			<ToolbarGroup>
 				<NewNoteButton
 					items={view.root.items}
 					canvasSize={canvasSize}
@@ -173,9 +201,7 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 				/>
 			</ToolbarGroup>
 			{(() => {
-				const selectedItems = selectedItemIds
-					.map((id) => view.root.items.find((item) => item.id === id))
-					.filter(Boolean);
+				const selectedItems = findItemsByIds(view.root.items, selectedItemIds);
 				const hasSelectedItems = selectedItems.length > 0;
 				const singleSelectedItem = selectedItems.length === 1 ? selectedItems[0] : null;
 
@@ -185,93 +211,77 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 				}
 
 				return (
-					<div className="flex items-center h-full toolbar-slide-in">
-						<ToolbarDivider />
-						{/* Multi-selection indicator (componentized) */}
-						{selectedItems.length > 1 && (
+					<>
+						<div className="flex items-center h-full toolbar-slide-in bg-blue-100 border-l-2 border-blue-500 pl-4 pr-4 ml-4">
+							{/* Selection context using Fluent design principles */}
+							<div className="px-1 py-1 text-xs font-semibold text-blue-700 rounded mr-1">
+								{selectedItems.length === 1
+									? "Selected"
+									: `${selectedItems.length} Selected`}
+							</div>
 							<ToolbarGroup>
-								<SelectionCountBadge count={selectedItems.length} />
-							</ToolbarGroup>
-						)}
-						<ToolbarGroup>
-							{/* Single-item actions: only show when exactly one item is selected */}
-							{singleSelectedItem && (
-								<>
-									<VoteButton vote={singleSelectedItem.votes} />
-									<CommentButton item={singleSelectedItem} />
-								</>
-							)}
-							{/* Multi-item actions: show when any items are selected */}
-							{hasSelectedItems && (
-								<>
-									<DuplicateButton
-										count={selectedItems.length}
-										duplicate={() => {
-											Tree.runTransaction(view.root.items, () => {
-												selectedItems.forEach((item) => {
-													if (item) {
-														view.root.items.duplicateItem(
-															item,
-															canvasSize
-														);
-													}
+								{/* Single-item actions: only show when exactly one item is selected */}
+								{singleSelectedItem && (
+									<>
+										<VoteButton vote={singleSelectedItem.votes} />
+										<CommentButton item={singleSelectedItem} />
+									</>
+								)}
+								{/* Multi-item actions: show when any items are selected */}
+								{hasSelectedItems && (
+									<>
+										<DuplicateButton
+											count={selectedItems.length}
+											duplicate={() => {
+												Tree.runTransaction(view.root.items, () => {
+													selectedItems.forEach((item) => {
+														if (item) {
+															view.root.items.duplicateItem(
+																item,
+																canvasSize
+															);
+														}
+													});
 												});
-											});
-										}}
-									/>
-									<DeleteButton
-										delete={() => {
-											Tree.runTransaction(view.root.items, () => {
-												selectedItems.forEach((item) => item?.delete());
-											});
-										}}
-										count={selectedItems.length}
-									/>
-								</>
-							)}
-						</ToolbarGroup>
-						<ToolbarDivider />
-						<ToolbarGroup>
-							<SendItemToBackButton
-								items={view.root.items}
-								selectedItemId={selectedItemId}
-							/>
-							<MoveItemBackwardButton
-								items={view.root.items}
-								selectedItemId={selectedItemId}
-							/>
-							<MoveItemForwardButton
-								items={view.root.items}
-								selectedItemId={selectedItemId}
-							/>
-							<BringItemToFrontButton
-								items={view.root.items}
-								selectedItemId={selectedItemId}
-							/>
-						</ToolbarGroup>
-						{/* Shape color picker: show when any shapes are selected */}
-						{(() => {
-							const selectedShapes = selectedItems
-								.filter(
-									(item): item is NonNullable<typeof item> =>
-										item !== undefined && isShape(item)
-								)
-								.map((item) => item.content as Shape);
-
-							return (
-								selectedShapes.length > 0 && (
-									<div className="flex items-center h-full toolbar-slide-in-delayed">
-										<ToolbarDivider />
-										<ToolbarGroup>
-											<ShapeColorPicker shapes={selectedShapes} />
-										</ToolbarGroup>
-									</div>
-								)
-							);
-						})()}
+											}}
+										/>
+										<DeleteButton
+											delete={() => {
+												Tree.runTransaction(view.root.items, () => {
+													selectedItems.forEach((item) => item?.delete());
+												});
+											}}
+											count={selectedItems.length}
+										/>
+									</>
+								)}
+							</ToolbarGroup>
+							<ToolbarDivider />
+							<ToolbarGroup>
+								<SendItemToBackButton
+									items={view.root.items}
+									selectedItemId={selectedItemId}
+								/>
+								<MoveItemBackwardButton
+									items={view.root.items}
+									selectedItemId={selectedItemId}
+								/>
+								<MoveItemForwardButton
+									items={view.root.items}
+									selectedItemId={selectedItemId}
+								/>
+								<BringItemToFrontButton
+									items={view.root.items}
+									selectedItemId={selectedItemId}
+								/>
+							</ToolbarGroup>
+						</div>
 						{singleSelectedItem && isTable(singleSelectedItem) && (
-							<div className="flex items-center h-full toolbar-slide-in-delayed">
-								<ToolbarDivider />
+							<div className="flex items-center h-full toolbar-slide-in-delayed bg-green-100 border-l-2 border-green-500 pl-4 pr-4 ml-4">
+								{/* Table-specific controls with distinct visual styling */}
+								<div className="px-1 py-1 text-xs font-semibold text-green-700 rounded mr-1">
+									Table
+								</div>
 								<ToolbarGroup>
 									<AddColumnButton table={singleSelectedItem.content} />
 									<AddRowButton table={singleSelectedItem.content} />
@@ -298,7 +308,7 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 								</ToolbarGroup>
 							</div>
 						)}
-					</div>
+					</>
 				);
 			})()}
 			<ToolbarDivider />

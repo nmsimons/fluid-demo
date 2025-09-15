@@ -14,7 +14,7 @@ import {
 	Column,
 	SortingFn,
 } from "@tanstack/react-table";
-import React, { JSX, useState, useEffect, useContext } from "react";
+import React, { JSX, useState, useContext, useMemo } from "react";
 import {
 	DateTime,
 	Vote,
@@ -23,17 +23,18 @@ import {
 	FluidColumn,
 	typeDefinition,
 	hintValues,
-} from "../../../schema/app_schema.js";
+} from "../../../schema/appSchema.js";
 import { Tree, TreeStatus } from "fluid-framework";
 import { useVirtualizer, VirtualItem, Virtualizer } from "@tanstack/react-virtual";
-import { ColumnTypeDropdown, DeleteButton, IconButton } from "../toolbar/buttons/TableButtons.js";
+import { ColumnTypeDropdown, IconButton } from "../toolbar/buttons/TableButtons.js";
+import { DeleteButton } from "../toolbar/buttons/EditButtons.js";
 import {
 	ArrowSortDownFilled,
 	ArrowSortFilled,
 	ArrowSortUpFilled,
 	ReOrderDotsVertical16Filled,
 } from "@fluentui/react-icons";
-import { selectionType } from "../../../utils/presence/selection.js";
+import { selectionType } from "../../../presence/selection.js";
 import {
 	CellInputBoolean,
 	CellInputNumber,
@@ -47,45 +48,88 @@ import { objectIdNumber, useTree } from "../../hooks/useTree.js";
 import { usePresenceManager } from "../../hooks/usePresenceManger.js";
 import { TableContext, useTable } from "../../contexts/TableContext.js";
 
-const leftColumnWidth = "20px"; // Width of the index column
-const columnWidth = "200px"; // Width of the data columns
+/**
+ * Layout Constants
+ *
+ * Defines consistent column widths throughout the table component.
+ * These ensure proper alignment between headers and body cells.
+ */
+const leftColumnWidth = "20px"; // Width of the index column (row numbers)
+const columnWidth = "200px"; // Width of data columns (consistent sizing)
 
+/**
+ * TableView Component
+ *
+ * A collaborative data table component built with TanStack Table and Fluid Framework.
+ * Supports real-time collaboration, virtual scrolling, column sorting, and presence indicators.
+ *
+ * Key Features:
+ * - Real-time collaborative editing with Fluid Framework
+ * - Virtual scrolling for performance with large datasets
+ * - Column sorting and type management (string, number, boolean, date, vote)
+ * - Live presence indicators showing where other users are working
+ * - Optimized re-rendering using memoization and tree change monitoring
+ *
+ * Architecture:
+ * - Uses a single useTree hook to monitor all table changes efficiently
+ * - Memoizes data and column configurations to prevent unnecessary re-renders
+ * - Separates concerns: TableView (main), TableHeadersView (headers), TableBodyView (body)
+ */
 export function TableView(props: { fluidTable: FluidTable }): JSX.Element {
 	const { fluidTable } = props;
-	const invalTable = useTree(fluidTable); // Register for tree deltas when the component mounts
-	const invalColumns = useTree(fluidTable.columns, true); // Register for tree deltas when the component mounts
-	const invalRows = useTree(fluidTable.rows, true); // Register for tree deltas when the component mounts
 
-	const [data, setData] = useState<FluidRow[]>(fluidTable.rows.map((row) => row));
-	const [columns, setColumns] = useState<ColumnDef<FluidRow, cellValue>[]>(
-		updateColumnData(fluidTable.columns.map((column) => column)) // Create a column helper based on the columns in the table
-	);
+	/**
+	 * Tree Change Monitoring
+	 *
+	 * Uses a single useTree hook with deep=true to monitor the entire table structure.
+	 * This approach is more efficient than multiple hooks and prevents cascading re-renders.
+	 * The invalidation counter increments whenever any part of the table changes:
+	 * - Table structure changes
+	 * - Row additions/deletions/modifications
+	 * - Column additions/deletions/modifications
+	 * - Cell value changes
+	 */
+	const invalTable = useTree(fluidTable, true);
 
-	// Register for tree deltas when the component mounts. Any time the rows change, the app will update.
-	useEffect(() => {
-		if (Tree.status(fluidTable) === TreeStatus.InDocument) {
-			setData(fluidTable.rows.map((row) => row));
-		} else {
-			console.error("Fluid table not in document");
-			// Do not return a JSX element here; just return undefined
-			return;
-		}
-	}, [invalRows, invalTable]);
+	/**
+	 * Fluid Framework Status Validation
+	 *
+	 * Ensures the table is properly connected to the Fluid container.
+	 * If not in document, the table data may not be available or synchronized.
+	 */
+	if (Tree.status(fluidTable) !== TreeStatus.InDocument) {
+		console.error("Fluid table not in document");
+		return <div className="p-4 text-red-600">Table not available</div>;
+	}
 
-	useEffect(() => {
-		if (Tree.status(fluidTable) === TreeStatus.InDocument) {
-			console.log("Columns changed");
-			setColumns(updateColumnData(fluidTable.columns.map((column) => column)));
-		} else {
-			console.error("Fluid table not in document");
-			// Do not return a JSX element here; just return undefined
-			return;
-		}
-	}, [invalColumns, invalTable]);
+	/**
+	 * Data Preparation with Memoization
+	 *
+	 * Converts Fluid Framework TreeArrayNodes to regular JavaScript arrays
+	 * that TanStack Table can work with. Memoized to prevent unnecessary
+	 * re-computations unless the table structure actually changes.
+	 */
+	const data = useMemo(() => Array.from(fluidTable.rows), [invalTable]);
+	const columns = useMemo(() => updateColumnData(Array.from(fluidTable.columns)), [invalTable]);
 
-	// The virtualizer will need a reference to the scrollable container element
+	/**
+	 * Table Container Reference
+	 *
+	 * Required by TanStack Virtual for measuring the scrollable container.
+	 * Used to calculate which rows should be rendered in the viewport.
+	 */
 	const tableContainerRef = React.useRef<HTMLDivElement>(null);
 
+	/**
+	 * TanStack Table Instance
+	 *
+	 * Configures the table with:
+	 * - data: Array of FluidRow objects (memoized from Fluid tree)
+	 * - columns: Column definitions with accessors and sorting (memoized)
+	 * - getRowId: Uses FluidRow.id for stable row identification
+	 * - getCoreRowModel: Basic table functionality
+	 * - getSortedRowModel: Enables column sorting
+	 */
 	const table = useReactTable({
 		data,
 		columns,
@@ -95,7 +139,17 @@ export function TableView(props: { fluidTable: FluidTable }): JSX.Element {
 	});
 
 	return (
+		/* 
+			TableContext provides the FluidTable instance to all child components.
+			This enables header and cell components to access table methods like
+			getColumn(), deleteColumn(), etc. without prop drilling.
+		*/
 		<TableContext.Provider value={{ table: fluidTable }}>
+			{/* 
+				Main table container with overflow handling.
+				The table uses CSS Grid display for consistent column sizing
+				and virtualization support.
+			*/}
 			<div ref={tableContainerRef} className="overflow-auto mx-auto h-full w-full relative">
 				<table
 					style={{ display: "grid" }}
@@ -109,6 +163,13 @@ export function TableView(props: { fluidTable: FluidTable }): JSX.Element {
 	);
 }
 
+/**
+ * TableHeadersView Component
+ *
+ * Renders the sticky table header row containing column headers.
+ * Uses CSS Grid layout to align with the table body columns.
+ * The header remains fixed at the top during scrolling.
+ */
 export function TableHeadersView(props: { table: Table<FluidRow> }): JSX.Element {
 	const { table } = props;
 
@@ -116,7 +177,7 @@ export function TableHeadersView(props: { table: Table<FluidRow> }): JSX.Element
 		<thead
 			style={{
 				display: "grid",
-				zIndex: 4,
+				zIndex: 4, // Ensures header stays above body content when scrolling
 			}}
 			className="bg-gray-200 sticky top-0 min-h-[36px] w-full inline-flex items-center shadow-sm z-2"
 		>
@@ -135,6 +196,12 @@ export function TableHeadersView(props: { table: Table<FluidRow> }): JSX.Element
 	);
 }
 
+/**
+ * IndexHeaderView Component
+ *
+ * Renders the leftmost header cell for the row index column.
+ * This column shows row numbers and doesn't contain any interactive elements.
+ */
 export function IndexHeaderView(): JSX.Element {
 	return (
 		<th
@@ -148,26 +215,74 @@ export function IndexHeaderView(): JSX.Element {
 	);
 }
 
+/**
+ * TableHeaderView Component
+ *
+ * Renders an individual column header with full collaborative editing capabilities.
+ *
+ * Features:
+ * - Column name editing (ColumnInput)
+ * - Column type selection (ColumnTypeDropdown)
+ * - Sorting controls (SortButton)
+ * - Column deletion (DeleteButton)
+ * - Presence indicators showing where other users are working
+ * - Error handling for missing/invalid columns
+ *
+ * The component maintains its own tree subscription to the FluidColumn
+ * to ensure updates when column properties change.
+ */
 export function TableHeaderView(props: { header: Header<FluidRow, unknown> }): JSX.Element {
 	const { header } = props;
 	const fluidTable = useTable(); // Get the fluid table from context
-	const fluidColumn: FluidColumn | undefined = (() => {
+
+	/**
+	 * Column Resolution with Error Handling
+	 *
+	 * Attempts to find the FluidColumn object corresponding to this header.
+	 * Memoized to prevent repeated lookups on each render.
+	 * If the column is not found, displays an error state.
+	 */
+	const fluidColumn = useMemo(() => {
 		try {
-			return fluidTable.getColumn(header.id); // Get the column from the table
+			return fluidTable.getColumn(header.id);
 		} catch (e) {
 			console.error("Fluid column not found", header.id);
-			return undefined;
+			return null;
 		}
-	})();
+	}, [fluidTable, header.id]);
 
-	if (fluidColumn === undefined) {
-		return <></>;
+	// Early return with error state if column not found
+	if (!fluidColumn) {
+		return (
+			<th
+				style={{
+					display: "flex",
+					minWidth: columnWidth,
+					width: columnWidth,
+					maxWidth: columnWidth,
+				}}
+				className="relative p-1 border-r-1 border-gray-100 bg-red-100"
+			>
+				<div className="text-red-600 text-xs">Column Error</div>
+			</th>
+		);
 	}
 
+	/**
+	 * Column-Specific Tree Monitoring
+	 *
+	 * Subscribes to changes in this specific column's properties
+	 * (name, type, etc.) to trigger re-renders when needed.
+	 */
 	useTree(fluidColumn);
-	const selection = useContext(PresenceContext).tableSelection; // Get the selection manager from context
+	const selection = useContext(PresenceContext).tableSelection;
 
-	// handle a focus event in the header
+	/**
+	 * Focus Handler for Presence
+	 *
+	 * When a user interacts with this column header, it updates their
+	 * presence state so other users can see where they're working.
+	 */
 	const handleFocus = () => {
 		// set the selection to the column
 		selection.setSelection({ id: fluidColumn.id, type: "column" });
@@ -204,11 +319,9 @@ export function TableHeaderView(props: { header: Header<FluidRow, unknown> }): J
 
 export function SortButton(props: { column: Column<FluidRow> }): JSX.Element {
 	const { column } = props;
-	const [sorted, setSorted] = useState(column.getIsSorted());
 
-	useEffect(() => {
-		setSorted(column.getIsSorted());
-	}, [column.getIsSorted()]);
+	// Use column.getIsSorted() directly instead of local state
+	const sorted = column.getIsSorted();
 
 	const handleClick = (e: React.MouseEvent) => {
 		const sortingFn = column.getToggleSortingHandler();
@@ -282,17 +395,38 @@ export function TableRowView(props: {
 	virtualRow: VirtualItem;
 	rowVirtualizer: Virtualizer<HTMLDivElement, HTMLTableRowElement>;
 }): JSX.Element {
-	const { row, virtualRow, rowVirtualizer } = props;
-	const fluidTable = useTable(); // Get the fluid table from context
+	const { row, virtualRow } = props;
+	const fluidTable = useTable();
 
 	const style = { transform: `translateY(${virtualRow.start}px)` };
 
-	// Get the fluid row from the row
-	const fluidRow = fluidTable.getRow(row.id);
-	if (fluidRow === undefined) {
-		console.error("Fluid row not found", row.id);
-		return <></>;
+	// Get the fluid row - use useMemo for better performance
+	const fluidRow = useMemo(() => {
+		const foundRow = fluidTable.getRow(row.id);
+		if (!foundRow) {
+			console.error("Fluid row not found", row.id);
+		}
+		return foundRow;
+	}, [fluidTable, row.id]);
+
+	// Early return with error state if row not found
+	if (!fluidRow) {
+		return (
+			<tr
+				style={{
+					...style,
+					display: "flex",
+					position: "absolute",
+					width: "100%",
+					height: `${virtualRow.size}px`,
+				}}
+				className="bg-red-100"
+			>
+				<td className="p-2 text-red-600">Row Error: {row.id}</td>
+			</tr>
+		);
 	}
+
 	useTree(fluidRow);
 
 	return (
@@ -396,26 +530,29 @@ export function TableCellView(props: { cell: Cell<FluidRow, cellValue> }): JSX.E
 
 export function TableCellViewContent(props: { cell: Cell<FluidRow, cellValue> }): JSX.Element {
 	const { cell } = props;
+	const fluidTable = useTable();
 
-	const fluidTable = useTable(); // Get the fluid table from context
+	// Get fluid row and column with proper error handling
+	const fluidRow = useMemo(() => {
+		const row = fluidTable.getRow(cell.row.id);
+		if (!row) {
+			console.error("Fluid row not found", cell.row.id);
+		}
+		return row;
+	}, [fluidTable, cell.row.id]);
 
-	const fluidRow = fluidTable.getRow(cell.row.id);
-	if (fluidRow === undefined) {
-		console.error("Fluid row not found", cell.row.id);
-		return <></>;
-	}
-	const fluidColumn = (() => {
+	const fluidColumn = useMemo(() => {
 		try {
-			return fluidTable.getColumn(cell.column.id); // Get the column from the table
+			return fluidTable.getColumn(cell.column.id);
 		} catch (e) {
 			console.error("Fluid column not found", cell.column.id);
-			return undefined;
+			return null;
 		}
-	})();
+	}, [fluidTable, cell.column.id]);
 
-	if (!fluidColumn) {
-		console.error("Fluid column not found", cell.column.id);
-		return <></>;
+	// Early return for missing data
+	if (!fluidRow || !fluidColumn) {
+		return <div className="text-red-500 text-xs p-1">Cell Error</div>;
 	}
 
 	const value = fluidRow.getCell(fluidColumn);
@@ -491,25 +628,38 @@ export function PresenceIndicator(props: {
 	type: selectionType;
 }): JSX.Element {
 	const { item, type } = props;
-	const selectedItem = { id: item.id, type } as const; // Default to cell for Cell and Row types, Header will override it
-
+	const selectedItem = { id: item.id, type } as const;
 	const selection = useContext(PresenceContext).tableSelection;
 
-	const [selected, setSelected] = useState(selection.testSelection(selectedItem));
-	const [remoteSelected, setRemoteSelected] = useState(
-		selection.testRemoteSelection(selectedItem)
-	);
+	// Use a single state object to reduce complexity
+	const [selectionState, setSelectionState] = useState(() => ({
+		isSelected: selection.testSelection(selectedItem),
+		remoteSelected: selection.testRemoteSelection(selectedItem),
+	}));
 
+	// Single presence manager hook with consolidated state updates
 	usePresenceManager(
 		selection,
 		() => {
-			setRemoteSelected(selection.testRemoteSelection(selectedItem));
+			// Remote update
+			setSelectionState((prev) => ({
+				...prev,
+				remoteSelected: selection.testRemoteSelection(selectedItem),
+			}));
 		},
 		() => {
-			setSelected(selection.testSelection(selectedItem));
+			// Local update
+			setSelectionState((prev) => ({
+				...prev,
+				isSelected: selection.testSelection(selectedItem),
+			}));
 		},
 		() => {
-			setRemoteSelected(selection.testRemoteSelection(selectedItem));
+			// Disconnect - refresh both states
+			setSelectionState({
+				isSelected: selection.testSelection(selectedItem),
+				remoteSelected: selection.testRemoteSelection(selectedItem),
+			});
 		}
 	);
 
@@ -517,10 +667,14 @@ export function PresenceIndicator(props: {
 
 	return (
 		<>
-			<PresenceBox color="outline-blue-600" hidden={!selected} isRow={isRow} />
+			<PresenceBox
+				color="outline-blue-600"
+				hidden={!selectionState.isSelected}
+				isRow={isRow}
+			/>
 			<PresenceBox
 				color="outline-red-800"
-				hidden={remoteSelected.length === 0}
+				hidden={selectionState.remoteSelected.length === 0}
 				isRow={isRow}
 			/>
 		</>
@@ -540,29 +694,57 @@ function PresenceBox(props: { color: string; hidden: boolean; isRow: boolean }):
 
 export type cellValue = typeDefinition; // Define the allowed cell value types
 
+/**
+ * updateColumnData Function
+ *
+ * Converts FluidColumn objects into TanStack Table ColumnDef configurations.
+ * This function is called whenever the table's column structure changes.
+ *
+ * Process:
+ * 1. Creates a column helper for type-safe column definitions
+ * 2. Adds the special "index" column for row numbers
+ * 3. Converts each FluidColumn into a ColumnDef with:
+ *    - Unique ID from FluidColumn.id
+ *    - Header text from FluidColumn.props.name
+ *    - Data accessor that calls row.getCell(column)
+ *    - Appropriate sorting function based on column type
+ *
+ * @param columnsArray - Array of FluidColumn objects from the table schema
+ * @returns Array of ColumnDef objects for TanStack Table
+ */
 const updateColumnData = (columnsArray: FluidColumn[]) => {
-	// Create a column helper based on the columns in the table
+	// Create a column helper for type-safe column definition creation
 	const columnHelper = createColumnHelper<FluidRow>();
 
-	// Create an array of ColumnDefs based on the columns in the table using
-	// the column helper
+	// Initialize array with column definitions
 	const headerArray: ColumnDef<FluidRow, cellValue>[] = [];
-	// Add the index column
-	const d = columnHelper.display({
+
+	/**
+	 * Index Column
+	 *
+	 * Special display-only column that shows row numbers.
+	 * Uses TanStack Table's display column type since it doesn't access data.
+	 */
+	const indexColumn = columnHelper.display({
 		id: "index",
 	});
-	headerArray.push(d);
+	headerArray.push(indexColumn);
 
-	// Add the data columns
+	/**
+	 * Data Columns
+	 *
+	 * Convert each FluidColumn into a TanStack Table accessor column.
+	 * Each column includes custom sorting logic based on its data type.
+	 */
 	columnsArray.forEach((column) => {
 		const sortingConfig = getSortingConfig(column);
 		headerArray.push(
 			columnHelper.accessor((row) => row.getCell(column), {
-				id: column.id,
-				header: column.props.name,
-				sortingFn: sortingConfig.fn,
-				sortDescFirst: sortingConfig.desc,
-				sortUndefined: "last",
+				id: column.id, // Stable identifier for React keys and column management
+				header: column.props.name, // Display name shown in header
+				sortingFn: sortingConfig.fn, // Custom sorting based on column type
+				sortDescFirst: sortingConfig.desc, // Whether to sort descending first
+				sortUndefined: "last", // Always put undefined values at the end
 			})
 		);
 	});
