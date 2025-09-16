@@ -80,8 +80,22 @@ export function OverlaySVG(props: {
 			>
 				{items.map((item) => {
 					if (!(item instanceof Item)) return null;
-					const remoteIds =
+					const allRemoteIds =
 						presence.itemSelection?.testRemoteSelection({ id: item.id }) ?? [];
+					// Filter by branch - only show badges for users on the same branch
+					const remoteIds = allRemoteIds.filter((attendeeId) => {
+						// Check if this user's item selection matches our branch
+						const remoteSelected = presence.itemSelection?.getRemoteSelected();
+						if (remoteSelected) {
+							for (const [remoteSel, attendeeIds] of remoteSelected) {
+								if (attendeeIds.includes(attendeeId) && remoteSel.id === item.id) {
+									const userBranch = remoteSel.branch ?? "main";
+									return userBranch === presence.branch;
+								}
+							}
+						}
+						return false;
+					});
 					if (!remoteIds.length) return null;
 					const isExpanded = expandedPresence.has(item.id);
 					const toggleExpanded = (e: React.MouseEvent) => {

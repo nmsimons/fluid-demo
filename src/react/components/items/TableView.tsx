@@ -275,7 +275,8 @@ export function TableHeaderView(props: { header: Header<FluidRow, unknown> }): J
 	 * (name, type, etc.) to trigger re-renders when needed.
 	 */
 	useTree(fluidColumn);
-	const selection = useContext(PresenceContext).tableSelection;
+	const presence = useContext(PresenceContext);
+	const selection = presence.tableSelection;
 
 	/**
 	 * Focus Handler for Presence
@@ -285,7 +286,7 @@ export function TableHeaderView(props: { header: Header<FluidRow, unknown> }): J
 	 */
 	const handleFocus = () => {
 		// set the selection to the column
-		selection.setSelection({ id: fluidColumn.id, type: "column" });
+		selection.setSelection({ id: fluidColumn.id, type: "column", branch: presence.branch });
 	};
 
 	return (
@@ -462,19 +463,20 @@ export function TableRowView(props: {
 export function IndexCellView(props: { rowId: string }): JSX.Element {
 	const { rowId } = props;
 
-	const selection = useContext(PresenceContext).tableSelection; // Get the selection manager from context
+	const presence = useContext(PresenceContext);
+	const selection = presence.tableSelection; // Get the selection manager from context
 
 	// handle a click event in the cell
 	const handleClick = (e: React.MouseEvent) => {
 		if (e.ctrlKey) {
-			selection.toggleSelection({ id: rowId, type: "row" });
+			selection.toggleSelection({ id: rowId, type: "row", branch: presence.branch });
 		} else {
-			if (selection.testSelection({ id: rowId, type: "row" })) {
+			if (selection.testSelection({ id: rowId, type: "row", branch: presence.branch })) {
 				// If the row is already selected, clear the selection
 				selection.clearSelection();
 			} else {
 				// If the row is not selected, add the selection
-				selection.setSelection({ id: rowId, type: "row" });
+				selection.setSelection({ id: rowId, type: "row", branch: presence.branch });
 			}
 		}
 	};
@@ -502,11 +504,12 @@ export function IndexCellView(props: { rowId: string }): JSX.Element {
 export function TableCellView(props: { cell: Cell<FluidRow, cellValue> }): JSX.Element {
 	const { cell } = props;
 
-	const selection = useContext(PresenceContext).tableSelection; // Get the selection manager from context
+	const presence = useContext(PresenceContext);
+	const selection = presence.tableSelection; // Get the selection manager from context
 
 	// handle a click event in the cell
 	const handleFocus = (e: React.FocusEvent) => {
-		selection.setSelection({ id: cell.id, type: "cell" });
+		selection.setSelection({ id: cell.id, type: "cell", branch: presence.branch });
 	};
 
 	return (
@@ -629,12 +632,34 @@ export function PresenceIndicator(props: {
 }): JSX.Element {
 	const { item, type } = props;
 	const selectedItem = { id: item.id, type } as const;
-	const selection = useContext(PresenceContext).tableSelection;
+	const presence = useContext(PresenceContext);
+	const selection = presence.tableSelection;
+
+	// Helper function to filter remote selection by branch
+	const getFilteredRemoteSelection = () => {
+		const allRemoteIds = selection.testRemoteSelection(selectedItem);
+		// Filter by branch - only show badges for users on the same branch
+		return allRemoteIds.filter((attendeeId) => {
+			// Check if this user's selections match our branch
+			const remoteSelected = selection.getRemoteSelected();
+			for (const [remoteSel, attendeeIds] of remoteSelected) {
+				if (
+					attendeeIds.includes(attendeeId) &&
+					remoteSel.id === selectedItem.id &&
+					remoteSel.type === selectedItem.type
+				) {
+					const userBranch = remoteSel.branch ?? "main";
+					return userBranch === presence.branch;
+				}
+			}
+			return false;
+		});
+	};
 
 	// Use a single state object to reduce complexity
 	const [selectionState, setSelectionState] = useState(() => ({
 		isSelected: selection.testSelection(selectedItem),
-		remoteSelected: selection.testRemoteSelection(selectedItem),
+		remoteSelected: getFilteredRemoteSelection(),
 	}));
 
 	// Single presence manager hook with consolidated state updates
@@ -644,7 +669,7 @@ export function PresenceIndicator(props: {
 			// Remote update
 			setSelectionState((prev) => ({
 				...prev,
-				remoteSelected: selection.testRemoteSelection(selectedItem),
+				remoteSelected: getFilteredRemoteSelection(),
 			}));
 		},
 		() => {
@@ -658,7 +683,7 @@ export function PresenceIndicator(props: {
 			// Disconnect - refresh both states
 			setSelectionState({
 				isSelected: selection.testSelection(selectedItem),
-				remoteSelected: selection.testRemoteSelection(selectedItem),
+				remoteSelected: getFilteredRemoteSelection(),
 			});
 		}
 	);

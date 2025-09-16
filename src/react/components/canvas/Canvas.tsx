@@ -574,6 +574,7 @@ export function Canvas(props: {
 						width: inkWidth,
 						opacity: 1,
 						startTime: Date.now(),
+						branch: presence.branch,
 					});
 					e.preventDefault();
 				}}
@@ -667,24 +668,27 @@ export function Canvas(props: {
 							);
 						})()}
 					{/* Remote ephemeral strokes */}
-					{presence.ink?.getRemoteStrokes().map((r) => {
-						const pts = r.stroke.points;
-						if (!pts.length) return null;
-						const w = Math.max(0.5, r.stroke.width * zoom);
-						return (
-							<polyline
-								key={`ephemeral-${r.attendeeId}`}
-								fill="none"
-								stroke={r.stroke.color}
-								strokeWidth={w}
-								strokeOpacity={0.4}
-								strokeLinecap="round"
-								strokeLinejoin="round"
-								vectorEffect="non-scaling-stroke"
-								points={pts.map((p) => `${p.x},${p.y}`).join(" ")}
-							/>
-						);
-					})}
+					{presence.ink
+						?.getRemoteStrokes()
+						.filter((r) => r.stroke.branch === presence.branch)
+						.map((r) => {
+							const pts = r.stroke.points;
+							if (!pts.length) return null;
+							const w = Math.max(0.5, r.stroke.width * zoom);
+							return (
+								<polyline
+									key={`ephemeral-${r.attendeeId}`}
+									fill="none"
+									stroke={r.stroke.color}
+									strokeWidth={w}
+									strokeOpacity={0.4}
+									strokeLinecap="round"
+									strokeLinejoin="round"
+									vectorEffect="non-scaling-stroke"
+									points={pts.map((p) => `${p.x},${p.y}`).join(" ")}
+								/>
+							);
+						})}
 					{/* Local ephemeral (if drawing) */}
 					{inking && tempPointsRef.current.length > 0 && (
 						<polyline
@@ -731,8 +735,25 @@ export function Canvas(props: {
 				>
 					{items.map((item) => {
 						if (!(item instanceof Item)) return null;
-						const remoteIds =
+						const allRemoteIds =
 							presence.itemSelection?.testRemoteSelection({ id: item.id }) ?? [];
+						// Filter by branch - only show badges for users on the same branch
+						const remoteIds = allRemoteIds.filter((attendeeId) => {
+							// Check if this user's item selection matches our branch
+							const remoteSelected = presence.itemSelection?.getRemoteSelected();
+							if (remoteSelected) {
+								for (const [remoteSel, attendeeIds] of remoteSelected) {
+									if (
+										attendeeIds.includes(attendeeId) &&
+										remoteSel.id === item.id
+									) {
+										const userBranch = remoteSel.branch ?? "main";
+										return userBranch === presence.branch;
+									}
+								}
+							}
+							return false;
+						});
 						if (!remoteIds.length) return null;
 						const isExpanded = expandedPresence.has(item.id);
 						const toggleExpanded = (e: React.MouseEvent) => {

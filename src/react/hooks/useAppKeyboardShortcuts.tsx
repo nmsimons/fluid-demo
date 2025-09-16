@@ -38,6 +38,7 @@ export interface UseAppKeyboardShortcutsProps {
 	setAiTaskPaneHidden: (hidden: boolean) => void;
 	openCommentPaneAndFocus: (itemId: string) => void;
 	selectionManager: SelectionManager;
+	branch: string;
 }
 
 /**
@@ -82,6 +83,7 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 		setAiTaskPaneHidden,
 		openCommentPaneAndFocus,
 		selectionManager,
+		branch,
 		pan,
 		zoom,
 		shapeColor,
@@ -268,7 +270,10 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 			key: "a",
 			ctrlKey: true,
 			action: () => {
-				const allSelections = getAllItems(view.root.items).map((item) => ({ id: item.id }));
+				const allSelections = getAllItems(view.root.items).map((item) => ({
+					id: item.id,
+					branch,
+				}));
 				selectionManager.setSelection(allSelections);
 			},
 			disabled: view.root.items.length === 0,

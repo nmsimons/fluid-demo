@@ -65,4 +65,6 @@ export type ResizePackage = {
 	y: number;
 	/** Current size/scale of the element */
 	size: number;
+	/** Branch name for filtering presence updates */
+	branch: string;
 };

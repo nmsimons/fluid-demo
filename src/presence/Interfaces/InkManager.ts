@@ -63,6 +63,8 @@ export interface EphemeralInkStroke {
 	width: number;
 	opacity: number;
 	startTime: number;
+	/** Branch name for filtering presence updates */
+	branch: string;
 }
 
 /**

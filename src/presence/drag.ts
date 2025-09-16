@@ -110,6 +110,6 @@ export function createDragManager(props: {
 export interface DragAndRotatePackage extends DragPackage {
 	/** Current rotation angle of the dragged element in degrees */
 	rotation: number;
-	/** Whether this is a branch drag operation (for tree structures) */
-	branch: boolean;
+	/** Branch name for filtering presence updates (e.g., 'main' or UUID for local branch) */
+	branch: string;
 }

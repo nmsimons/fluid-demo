@@ -92,6 +92,7 @@ export function ReactApp(props: {
 	const [canRedo, setCanRedo] = useState(false);
 	const commentPaneRef = useRef<CommentPaneRef>(null);
 	const [aiTaskPaneHidden, setAiTaskPaneHidden] = useState(true);
+	const localBranchId = useRef<string>(crypto.randomUUID());
 
 	// Function to open comment pane and focus input
 	const openCommentPaneAndFocus = (itemId: string) => {
@@ -200,6 +201,7 @@ export function ReactApp(props: {
 		setAiTaskPaneHidden,
 		openCommentPaneAndFocus,
 		selectionManager: itemSelection,
+		branch: view !== tree ? localBranchId.current : "main",
 	});
 
 	useKeyboardShortcuts({
@@ -214,7 +216,7 @@ export function ReactApp(props: {
 				tableSelection: tableSelection,
 				drag: drag,
 				resize: resize,
-				branch: view !== tree,
+				branch: view !== tree ? localBranchId.current : "main",
 				ink: ink,
 			}}
 		>

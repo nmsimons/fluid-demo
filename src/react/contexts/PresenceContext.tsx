@@ -48,8 +48,8 @@ interface PresenceContextType {
 	/** Manager for resize operations with real-time dimension tracking */
 	resize: ResizeManager<ResizePackage | null>;
 
-	/** Boolean flag indicating if branch operations are enabled/active */
-	branch: boolean;
+	/** Branch name for filtering presence updates ('main' for normal tree, UUID for local branch) */
+	branch: string;
 
 	/** Ephemeral ink presence (live in-progress stroke) */
 	ink?: InkPresenceManager;
@@ -69,6 +69,6 @@ export const PresenceContext = createContext<PresenceContextType>({
 	tableSelection: {} as SelectionManager<TypedSelection>,
 	drag: {} as DragManager<DragAndRotatePackage | null>,
 	resize: {} as ResizeManager<ResizePackage | null>,
-	branch: false,
+	branch: "main",
 	ink: undefined,
 });

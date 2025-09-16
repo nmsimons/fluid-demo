@@ -355,6 +355,8 @@ export type TypedSelection = {
 	id: string;
 	/** Optional type of the selection (row, column, cell, etc.) */
 	type?: selectionType;
+	/** Branch name for filtering presence across different branches */
+	branch?: string;
 };
 
 /**

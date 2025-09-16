@@ -1,8 +1,8 @@
 import { PresenceContext } from "../contexts/PresenceContext.js";
 
 /**
- * Get the active drag/rotate state for an item from presence (local preferred, then any connected remote).
- * Returns null if no active drag for the item.
+ * Get the active drag/rotate state for an item from presence (local preferred, then any connected remote on the same branch).
+ * Returns null if no active drag for the item from users on the same branch.
  */
 export function getActiveDragForItem(
 	presence: React.ContextType<typeof PresenceContext>,
@@ -43,6 +43,13 @@ export function getActiveDragForItem(
 			if (isRecord(val) && typeof val["id"] === "string") {
 				const id = val["id"] as string;
 				if (id === itemId) {
+					// Check if this drag operation is from a user on the same branch
+					const userBranch =
+						typeof val["branch"] === "string" ? (val["branch"] as string) : "main";
+					if (userBranch !== presence.branch) {
+						// Skip drag operations from users on different branches
+						continue;
+					}
 					const x = typeof val["x"] === "number" ? (val["x"] as number) : 0;
 					const y = typeof val["y"] === "number" ? (val["y"] as number) : 0;
 					const rotation =

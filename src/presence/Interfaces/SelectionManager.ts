@@ -184,4 +184,6 @@ export interface SelectionManager<TSelection extends Selection = Selection>
 export type Selection = {
 	/** Unique identifier for the selectable item */
 	id: string;
+	/** Branch name for filtering presence across different branches */
+	branch?: string;
 };

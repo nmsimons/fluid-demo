@@ -192,7 +192,7 @@ export function ItemView(props: {
 
 	// Presence listeners
 	const applyDrag = (d: DragAndRotatePackage) => {
-		if (!d || d.id !== item.id) return;
+		if (!d || d.id !== item.id || d.branch !== presence.branch) return;
 		// Ephemeral (presence) update: we optimistically render the new position
 		// immediately for smooth remote & local collaborative movement. Commit to
 		// the authoritative Fluid tree only on pointerup / drag end.
@@ -211,7 +211,12 @@ export function ItemView(props: {
 		if (w && h) layout.set(item.id, { left: d.x, top: d.y, right: d.x + w, bottom: d.y + h });
 	};
 	const applyResize = (r: ResizePackage | null) => {
-		if (r && r.id === item.id && getContentHandler(item).canResize()) {
+		if (
+			r &&
+			r.id === item.id &&
+			r.branch === presence.branch &&
+			getContentHandler(item).canResize()
+		) {
 			// During a resize we shift the item's (x,y) so that scaling occurs around
 			// the geometric center, keeping the visual center stationary while edges
 			// expand / contract uniformly.
@@ -286,9 +291,9 @@ export function ItemView(props: {
 		if (!shouldSkipSelection) {
 			// Respect Ctrl/Meta for multi-select
 			if (e.ctrlKey || e.metaKey) {
-				presence.itemSelection.toggleSelection({ id: item.id });
+				presence.itemSelection.toggleSelection({ id: item.id, branch: presence.branch });
 			} else {
-				presence.itemSelection.setSelection({ id: item.id });
+				presence.itemSelection.setSelection({ id: item.id, branch: presence.branch });
 			}
 		}
 
@@ -767,7 +772,13 @@ export function CornerResizeHandles({
 			/* unsupported */
 		}
 		// Seed resize presence so pan guard sees active manipulation instantly
-		presence.resize.setResizing({ id: item.id, x: item.x, y: item.y, size: shape.size });
+		presence.resize.setResizing({
+			id: item.id,
+			x: item.x,
+			y: item.y,
+			size: shape.size,
+			branch: presence.branch,
+		});
 		document.documentElement.dataset.manipulating = "1";
 		initSize.current = shape.size;
 		centerModel.current = { x: item.x + shape.size / 2, y: item.y + shape.size / 2 };
@@ -794,7 +805,13 @@ export function CornerResizeHandles({
 			const newSize = clampShapeSize(desired);
 			const newX = centerModel.current.x - newSize / 2;
 			const newY = centerModel.current.y - newSize / 2;
-			presence.resize.setResizing({ id: item.id, x: newX, y: newY, size: newSize });
+			presence.resize.setResizing({
+				id: item.id,
+				x: newX,
+				y: newY,
+				size: newSize,
+				branch: presence.branch,
+			});
 		};
 		const up = () => {
 			setResizing(false);
