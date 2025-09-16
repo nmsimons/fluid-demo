@@ -1,6 +1,17 @@
 /*!
- * Copyright (c) Microsoft Corporation and contributors. All rights reserved.
- * Licensed under the MIT License.
+ * Copyright (c) Microsoft Corporation and contributors. All rights reserved.	const {
+		items,
+		container, // eslint-disable-line @typescript-eslint/no-unused-vars
+		setSize,
+		zoom: externalZoom,
+		onZoomChange,
+		onPanChange,
+		inkActive,
+		eraserActive,
+		inkColor = "#2563eb",
+		inkWidth = 3,
+		showBranchMessage = false,
+	} = props; under the MIT License.
  */
 
 import React, { JSX, useContext, useRef, useState, useEffect } from "react";
@@ -65,6 +76,8 @@ import { useCanvasNavigation } from "../../hooks/useCanvasNavigation.js";
 import { useOverlayRerenders } from "../../hooks/useOverlayRerenders.js";
 import { ItemsHtmlLayer } from "./ItemsHtmlLayer.js";
 import { PaneContext } from "../../contexts/PaneContext.js";
+import { FloatingMessages } from "./FloatingMessages.js";
+import { useFloatingMessages } from "../../hooks/useFloatingMessages.js";
 
 export function Canvas(props: {
 	items: Items;
@@ -77,6 +90,7 @@ export function Canvas(props: {
 	eraserActive?: boolean;
 	inkColor?: string;
 	inkWidth?: number;
+	showBranchMessage?: boolean;
 }): JSX.Element {
 	const {
 		items,
@@ -89,10 +103,15 @@ export function Canvas(props: {
 		eraserActive,
 		inkColor = "#2563eb",
 		inkWidth = 4,
+		showBranchMessage = false,
 	} = props;
 
 	// Global presence context (ephemeral collaboration state: selections, drags, ink, etc.)
 	const presence = useContext(PresenceContext);
+	const { messages, addMessage, removeMessage } = useFloatingMessages();
+
+	// Track the branch message ID so we can remove it when condition changes
+	const branchMessageIdRef = useRef<string | null>(null);
 	useTree(items);
 	const layout = useContext(LayoutContext);
 
@@ -123,6 +142,29 @@ export function Canvas(props: {
 		onZoomChange,
 	});
 	const { selKey, motionKey } = useOverlayRerenders(presence);
+
+	// Show branch notification when on a local branch
+	useEffect(() => {
+		if (showBranchMessage) {
+			// Only add message if we don't already have one
+			if (branchMessageIdRef.current === null) {
+				const messageId = addMessage({
+					message:
+						"You are working in a local AI branch. Your changes will not be synchronized with other users.",
+					type: "info",
+					dismissible: true,
+					autoHide: false,
+				});
+				branchMessageIdRef.current = messageId;
+			}
+		} else {
+			// Remove the branch message when switching back to main branch
+			if (branchMessageIdRef.current !== null) {
+				removeMessage(branchMessageIdRef.current);
+				branchMessageIdRef.current = null;
+			}
+		}
+	}, [showBranchMessage, addMessage, removeMessage]);
 	// Track expanded state for presence indicators per item
 	const [expandedPresence, setExpandedPresence] = useState<Set<string>>(new Set());
 	// Screen-space cursor for ink / eraser
@@ -830,6 +872,7 @@ export function Canvas(props: {
 					</g>
 				)}
 			</svg>
+			<FloatingMessages messages={messages} onDismiss={removeMessage} />
 		</div>
 	);
 }
