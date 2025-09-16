@@ -41,24 +41,28 @@ export function TaskPane(props: {
 		if (branch !== undefined) {
 			const setupAgent = async () => {
 				console.log("Setting up AI agent with manual token...");
-				
+
 				const manualToken = process.env.AZURE_OPENAI_MANUAL_TOKEN;
-				
+
 				if (!manualToken) {
-					console.error("No manual token found. Please add AZURE_OPENAI_MANUAL_TOKEN to your .env file");
-					console.error("Get token with: az account get-access-token --resource https://cognitiveservices.azure.com --query accessToken --output tsv");
+					console.error(
+						"No manual token found. Please add AZURE_OPENAI_MANUAL_TOKEN to your .env file"
+					);
+					console.error(
+						"Get token with: az account get-access-token --resource https://cognitiveservices.azure.com --query accessToken --output tsv"
+					);
 					return;
 				}
 
 				try {
 					console.log("Using manual token for Azure OpenAI authentication");
-					
+
 					// Create a simple token provider that returns your manual token
 					const azureADTokenProvider = async () => {
 						console.log("Token provider called - returning manual token");
 						return manualToken;
 					};
-					
+
 					const chatOpenAI = new AzureChatOpenAI({
 						azureADTokenProvider: azureADTokenProvider,
 						model: "gpt-5",
@@ -68,18 +72,13 @@ export function TaskPane(props: {
 					});
 
 					setAgent(
-						createSemanticAgent(
-							chatOpenAI,
-							branch,
-							{
-								log: (msg) => console.log(msg),
-								domainHints,
-							}
-						)
+						createSemanticAgent(chatOpenAI, branch, {
+							log: (msg) => console.log(msg),
+							domainHints,
+						})
 					);
-					
+
 					console.log("AI agent successfully created with manual token");
-					
 				} catch (error) {
 					console.error("Failed to set up AI agent:", error);
 					console.error("Check if your token is valid and has the correct permissions");
