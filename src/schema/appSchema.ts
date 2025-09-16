@@ -554,6 +554,20 @@ export class Item extends sf.object("Item", {
 			parent.removeAt(parent.indexOf(this));
 		}
 	}
+
+	public static [exposeMethodsSymbol](methods: ExposedMethods): void {
+		methods.expose(
+			Item,
+			"delete",
+			buildFunc(
+				{
+					description: "Deletes this item from its parent Items array.",
+					returns: z.void(),
+				},
+				["userId", z.string()]
+			)
+		);
+	}
 }
 
 // Simple Items array containing only Item objects
