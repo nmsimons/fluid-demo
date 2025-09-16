@@ -153,8 +153,14 @@ export function ReactApp(props: {
 	}, [tree.events, undoRedo]);
 
 	useEffect(() => {
-		// View changed
-	}, [view]);
+		// View changed - clear selections when switching branches to avoid stale branch data
+		itemSelection.clearSelection();
+		tableSelection.clearSelection();
+		setSelectedItemId("");
+		setSelectedItemIds([]);
+		setSelectedColumnId("");
+		setSelectedRowId("");
+	}, [view, itemSelection, tableSelection]);
 
 	// Initialize iOS Safari z-index fixes
 	useEffect(() => {
