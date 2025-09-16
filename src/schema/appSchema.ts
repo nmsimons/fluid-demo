@@ -9,12 +9,18 @@ import {
 	TreeViewConfigurationAlpha,
 } from "@fluidframework/tree/alpha";
 import {
+	buildFunc,
+	exposeMethodsSymbol,
+	type ExposedMethods,
+} from "@fluidframework/tree-agent/alpha";
+import {
 	SHAPE_MIN_SIZE,
 	SHAPE_MAX_SIZE,
 	SHAPE_SPAWN_MIN_SIZE,
 	SHAPE_SPAWN_MAX_SIZE,
 } from "../constants/shape.js";
 import { Tree, TreeNodeFromImplicitAllowedTypes, TreeStatus } from "fluid-framework";
+import z from "zod";
 
 export type HintValues = (typeof hintValues)[keyof typeof hintValues];
 export const hintValues = {
@@ -84,7 +90,7 @@ export class Vote extends sf.object(hintValues.vote, {
 	 * The key is the user id and the value is irrelevant
 	 * @param vote The vote to add
 	 */
-	addVote(vote: string): void {
+	private addVote(vote: string): void {
 		if (this.votes.includes(vote)) {
 			return;
 		}
@@ -95,7 +101,7 @@ export class Vote extends sf.object(hintValues.vote, {
 	 * Remove a vote from the map of votes
 	 * @param vote The vote to remove
 	 */
-	removeVote(vote: string): void {
+	private removeVote(vote: string): void {
 		if (!this.votes.includes(vote)) {
 			return;
 		}
@@ -106,7 +112,7 @@ export class Vote extends sf.object(hintValues.vote, {
 	/**
 	 * Toggle a vote in the map of votes
 	 */
-	toggleVote(vote: string): void {
+	public toggleVote(vote: string): void {
 		if (this.votes.includes(vote)) {
 			this.removeVote(vote);
 		} else {
@@ -127,10 +133,37 @@ export class Vote extends sf.object(hintValues.vote, {
 	 * @param userId The user id
 	 * @return Whether the user has voted
 	 */
-	hasVoted(userId: string): boolean {
+	public hasVoted(userId: string): boolean {
 		return this.votes.includes(userId);
 	}
+
+	public static [exposeMethodsSymbol](methods: ExposedMethods): void {
+		methods.expose(
+			Vote,
+			"toggleVote",
+			buildFunc(
+				{
+					description:
+						"Toggles the user's vote. If the user has voted, it removes the vote; otherwise, it adds the vote.",
+					returns: z.void(),
+				},
+				["userId", z.string()]
+			)
+		);
+		methods.expose(
+			Vote,
+			"hasVoted",
+			buildFunc(
+				{
+					description: "Checks if the user has voted.",
+					returns: z.boolean(),
+				},
+				["userId", z.string()]
+			)
+		);
+	}
 }
+
 export class Comment extends sf.object("Comment", {
 	id: sf.string,
 	text: sf.string,
@@ -153,6 +186,20 @@ export class Comment extends sf.object("Comment", {
 			parent.removeAt(parent.indexOf(this));
 		}
 	}
+
+	public static [exposeMethodsSymbol](methods: ExposedMethods): void {
+		methods.expose(
+			Comment,
+			"delete",
+			buildFunc(
+				{
+					description: "Deletes the comment in the parent array.",
+					returns: z.void(),
+				},
+				["userId", z.string()]
+			)
+		);
+	}
 }
 
 export class Comments extends sf.array("Comments", [Comment]) {
@@ -169,20 +216,15 @@ export class Comments extends sf.array("Comments", [Comment]) {
 	}
 }
 
-export class Note extends sf.object(
-	"Note",
-	// Fields for Notes which SharedTree will store and synchronize across clients.
-	// These fields are exposed as members of instances of the Note class.
-	{
-		id: sf.string,
-		text: sf.string,
-		author: sf.required(sf.string, {
-			metadata: {
-				description: `A unique user id for author of the node, or "AI Agent" if created by an agent`,
-			},
-		}),
-	}
-) {}
+export class Note extends sf.object("Note", {
+	id: sf.string,
+	text: sf.string,
+	author: sf.required(sf.string, {
+		metadata: {
+			description: `A unique user id for author of the node, or "AI Agent" if created by an agent`,
+		},
+	}),
+}) {}
 
 export type typeDefinition = TreeNodeFromImplicitAllowedTypes<typeof schemaTypes>;
 const schemaTypes = [sf.string, sf.number, sf.boolean, DateTime, Vote] as const;
@@ -193,23 +235,50 @@ export const FluidColumnSchema = TableSchema.column({
 	cell: schemaTypes,
 	props: sf.object("ColumnProps", {
 		name: sf.string,
-		hint: sf.optional(sf.string),
+		hint: sf.optional(sf.string, {
+			metadata: {
+				description: `The type of the items in this column. Must be one of ${Object.values(hintValues).join(", ")}.`,
+			},
+		}),
 	}),
 });
 
-// Create row schema
 export const FluidRowSchema = TableSchema.row({
 	schemaFactory: sf,
 	cell: schemaTypes,
 });
 
-// Create the built-in table schema
 export class FluidTable extends TableSchema.table({
 	schemaFactory: sf,
 	cell: schemaTypes,
 	column: FluidColumnSchema,
 	row: FluidRowSchema,
 }) {
+	public static [exposeMethodsSymbol](methods: ExposedMethods): void {
+		methods.expose(
+			FluidTable,
+			"createDetachedRow",
+			buildFunc(
+				{
+					description: "Creates a new row without inserting it into the table.",
+					returns: z.instanceof(FluidRowSchema),
+				},
+				["userId", z.string()]
+			)
+		);
+		methods.expose(
+			FluidTable,
+			"deleteColumn",
+			buildFunc(
+				{
+					description: "Deletes a column and all of its cells from the table.",
+					returns: z.void(),
+				},
+				["column", z.instanceof(FluidColumnSchema)]
+			)
+		);
+	}
+
 	/**
 	 * Create a Row before inserting it into the table
 	 * */
