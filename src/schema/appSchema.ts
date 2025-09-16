@@ -525,6 +525,7 @@ export class FluidTable extends TableSchema.table({
 		return new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime()));
 	}
 }
+
 export class Item extends sf.object("Item", {
 	id: sf.string,
 	x: sf.required(sf.number, {
