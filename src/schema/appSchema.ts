@@ -277,6 +277,97 @@ export class FluidTable extends TableSchema.table({
 				["column", z.instanceof(FluidColumnSchema)]
 			)
 		);
+		methods.expose(
+			FluidTable,
+			"getColumnByCellId",
+			buildFunc(
+				{
+					description:
+						"Finds a column by a cell id formatted as 'columnId_rowId'. Returns undefined if not found.",
+					returns: z.instanceof(FluidColumnSchema).optional(),
+				},
+				["cellId", z.string()]
+			)
+		);
+		methods.expose(
+			FluidTable,
+			"addColumn",
+			buildFunc(
+				{
+					description: "Appends a new column to the end of the table.",
+					returns: z.void(),
+				},
+				["userId", z.string()]
+			)
+		);
+		methods.expose(
+			FluidTable,
+			"addRow",
+			buildFunc(
+				{
+					description: "Appends a new empty row to the table.",
+					returns: z.void(),
+				},
+				["userId", z.string()]
+			)
+		);
+		methods.expose(
+			FluidTable,
+			"moveColumnLeft",
+			buildFunc(
+				{
+					description: "Moves the specified column one position to the left if possible.",
+					returns: z.boolean(),
+				},
+				["column", z.instanceof(FluidColumnSchema)]
+			)
+		);
+		methods.expose(
+			FluidTable,
+			"moveColumnRight",
+			buildFunc(
+				{
+					description:
+						"Moves the specified column one position to the right if possible.",
+					returns: z.boolean(),
+				},
+				["column", z.instanceof(FluidColumnSchema)]
+			)
+		);
+		methods.expose(
+			FluidTable,
+			"moveRowUp",
+			buildFunc(
+				{
+					description: "Moves the specified row one position up if possible.",
+					returns: z.boolean(),
+				},
+				["row", z.instanceof(FluidRowSchema)]
+			)
+		);
+		methods.expose(
+			FluidTable,
+			"moveRowDown",
+			buildFunc(
+				{
+					description: "Moves the specified row one position down if possible.",
+					returns: z.boolean(),
+				},
+				["row", z.instanceof(FluidRowSchema)]
+			)
+		);
+		methods.expose(
+			FluidTable,
+			"createRowWithValues",
+			buildFunc(
+				{
+					description:
+						"Creates a new row populated with random values based on each column's hint.",
+					returns: z.instanceof(FluidRowSchema),
+				},
+				["userId", z.string()]
+			)
+		);
 	}
 
 	/**
