@@ -49,7 +49,7 @@ export class Shape extends sf.object("Shape", {
 /**
  * A SharedTree object date-time
  */
-export class DateTime extends sf.object(hintValues.date, {
+export class DateTime extends sf.object("DateTime", {
 	ms: sf.required(sf.number, {
 		metadata: { description: "The number of milliseconds since the epoch" },
 	}),
