@@ -70,20 +70,22 @@ export function TaskPane(props: {
 
 				// Fallback to Azure OpenAI
 				console.log("Using Azure OpenAI...");
-				
+
 				// Validate Azure configuration
 				const azureInstanceName = process.env.AZURE_OPENAI_API_INSTANCE_NAME;
 				const azureDeploymentName = process.env.AZURE_OPENAI_API_DEPLOYMENT_NAME;
 				const azureApiVersion = process.env.AZURE_OPENAI_API_VERSION;
 
 				if (!azureInstanceName || !azureDeploymentName || !azureApiVersion) {
-					console.error("Missing Azure OpenAI configuration. Required environment variables:");
+					console.error(
+						"Missing Azure OpenAI configuration. Required environment variables:"
+					);
 					console.error("- AZURE_OPENAI_API_INSTANCE_NAME");
 					console.error("- AZURE_OPENAI_API_DEPLOYMENT_NAME");
 					console.error("- AZURE_OPENAI_API_VERSION");
 					return;
 				}
-				
+
 				// Try manual token first
 				const manualToken = process.env.AZURE_OPENAI_MANUAL_TOKEN;
 				if (manualToken) {
@@ -121,7 +123,7 @@ export function TaskPane(props: {
 				console.log("Attempting standard Azure authentication...");
 				try {
 					const msalInstance = await authHelper();
-					
+
 					// Get or acquire token silently
 					const accounts = msalInstance.getAllAccounts();
 					let token: string;
@@ -133,7 +135,8 @@ export function TaskPane(props: {
 								scopes: ["https://cognitiveservices.azure.com/.default"],
 								account: accounts[0],
 							};
-							const silentResult = await msalInstance.acquireTokenSilent(silentRequest);
+							const silentResult =
+								await msalInstance.acquireTokenSilent(silentRequest);
 							token = silentResult.accessToken;
 							console.log("Token acquired silently");
 						} catch (silentError) {
@@ -143,7 +146,8 @@ export function TaskPane(props: {
 							const interactiveRequest = {
 								scopes: ["https://cognitiveservices.azure.com/.default"],
 							};
-							const interactiveResult = await msalInstance.acquireTokenPopup(interactiveRequest);
+							const interactiveResult =
+								await msalInstance.acquireTokenPopup(interactiveRequest);
 							token = interactiveResult.accessToken;
 							console.log("Token acquired interactively");
 						}
