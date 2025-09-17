@@ -40,15 +40,22 @@ const sf = new SchemaFactoryAlpha("fc1db2e8-0a00-11ee-be56-0242ac120002");
 
 export class Shape extends sf.object("Shape", {
 	size: sf.required(sf.number, {
-		metadata: { description: "The width and height of the shape" },
+		metadata: {
+			description:
+				"Uniform size of the shape in canvas pixels. Must be within [{SHAPE_MIN_SIZE}, {SHAPE_MAX_SIZE}] inclusive.",
+		},
 	}),
 	color: sf.required(sf.string, {
 		metadata: {
-			description: `The color of this shape, as a hexadecimal RGB string, e.g. "#00FF00" for bright green`,
+			description:
+				"Color fill of the shape as 7-character hex string (#RRGGBB) including leading '#'. Validated against /^#([0-9A-Fa-f]{6})$/.",
 		},
 	}),
 	type: sf.required(sf.string, {
-		metadata: { description: `One of "circle", "square", "triangle", or "star"` },
+		metadata: {
+			description:
+				"Shape variant discriminator. Must be exactly one of: 'circle' | 'square' | 'triangle' | 'star'.",
+		},
 	}),
 }) {} // The size is a number that represents the size of the shape
 
@@ -57,7 +64,10 @@ export class Shape extends sf.object("Shape", {
  */
 export class DateTime extends sf.object(hintValues.date, {
 	ms: sf.required(sf.number, {
-		metadata: { description: "The number of milliseconds since the epoch" },
+		metadata: {
+			description:
+				"UTC timestamp in milliseconds since Unix epoch (1970-01-01T00:00:00Z). Must represent a valid Date (Number.isFinite and >= 0).",
+		},
 	}),
 }) {
 	/**
@@ -83,7 +93,7 @@ export class DateTime extends sf.object(hintValues.date, {
  * A SharedTree object that allows users to vote
  */
 export class Vote extends sf.object(hintValues.vote, {
-	votes: sf.array(sf.string), // Map of votes
+	votes: sf.array(sf.string), // Set of unique userId strings representing affirmative votes.
 }) {
 	/**
 	 * Add a vote to the map of votes
@@ -165,8 +175,18 @@ export class Vote extends sf.object(hintValues.vote, {
 }
 
 export class Comment extends sf.object("Comment", {
-	id: sf.string,
-	text: sf.string,
+	id: sf.required(sf.string, {
+		metadata: {
+			description:
+				"Stable UUID for this comment; never reused for a different logical comment.",
+		},
+	}),
+	text: sf.required(sf.string, {
+		metadata: {
+			description:
+				"User-authored plain text body. May start empty then be updated. No markup expected.",
+		},
+	}),
 	userId: sf.required(sf.string, {
 		metadata: {
 			description: `A unique user id for the author of the node, or "AI Agent" if created by an agent`,
@@ -177,8 +197,12 @@ export class Comment extends sf.object("Comment", {
 			description: `A user-friendly name for the author of the node (e.g. "Alex Pardes"), or "AI Agent" if created by an agent`,
 		},
 	}),
-	votes: Vote,
-	createdAt: DateTime,
+	votes: sf.required(Vote, {
+		metadata: { description: "Set of userIds that endorsed this comment." },
+	}),
+	createdAt: sf.required(DateTime, {
+		metadata: { description: "UTC creation timestamp. Immutable after initial assignment." },
+	}),
 }) {
 	delete(): void {
 		const parent = Tree.parent(this);
@@ -217,8 +241,12 @@ export class Comments extends sf.array("Comments", [Comment]) {
 }
 
 export class Note extends sf.object("Note", {
-	id: sf.string,
-	text: sf.string,
+	id: sf.required(sf.string, {
+		metadata: { description: "Stable UUID for this note; unique within the document." },
+	}),
+	text: sf.required(sf.string, {
+		metadata: { description: "Plain text body of the note; may be empty when created." },
+	}),
 	author: sf.required(sf.string, {
 		metadata: {
 			description: `A unique user id for author of the node, or "AI Agent" if created by an agent`,
@@ -234,10 +262,17 @@ export const FluidColumnSchema = TableSchema.column({
 	schemaFactory: sf,
 	cell: schemaTypes,
 	props: sf.object("ColumnProps", {
-		name: sf.string,
+		name: sf.required(sf.string, {
+			metadata: {
+				description:
+					"Human-readable column header label (<=40 chars). Renaming does not alter existing cell values.",
+			},
+		}),
 		hint: sf.optional(sf.string, {
 			metadata: {
-				description: `The type of the items in this column. Must be one of ${Object.values(hintValues).join(", ")}.`,
+				description: `Semantic data kind for cells in this column. Must remain one of ${Object.values(
+					hintValues
+				).join(", ")}.`,
 			},
 		}),
 	}),
@@ -542,7 +577,8 @@ export class Item extends sf.object("Item", {
 	}),
 	rotation: sf.required(sf.number, {
 		metadata: {
-			description: "The rotation of the shape in clockwise degrees",
+			description:
+				"Clockwise rotation in degrees (0–359). Values outside this range should be normalized mod 360 by clients when mutating.",
 		},
 	}),
 	comments: Comments,
@@ -850,33 +886,64 @@ export class Items extends sf.array("Items", [Item]) {
 
 // ---- Ink (extended vector) schema definitions ----
 export class InkPoint extends sf.object("InkPoint", {
-	x: sf.number,
-	y: sf.number,
-	t: sf.optional(sf.number), // timestamp (ms since epoch or stroke start)
-	p: sf.optional(sf.number), // pressure 0..1
+	x: sf.required(sf.number, {
+		metadata: {
+			description:
+				"X coordinate in canvas pixels relative to the stroke's local coordinate system.",
+		},
+	}),
+	y: sf.required(sf.number, {
+		metadata: {
+			description:
+				"Y coordinate in canvas pixels relative to the stroke's local coordinate system.",
+		},
+	}),
+	t: sf.optional(sf.number, {
+		metadata: {
+			description:
+				"Timestamp (ms). May be absolute epoch or relative; used only for ordering.",
+		},
+	}),
+	p: sf.optional(sf.number, {
+		metadata: { description: "Pointer pressure normalized to [0,1]; omitted if unsupported." },
+	}),
 }) {}
 
 export class InkStyle extends sf.object("InkStyle", {
-	strokeColor: sf.string,
-	strokeWidth: sf.number,
-	opacity: sf.number,
-	lineCap: sf.string, // e.g. round | butt | square
-	lineJoin: sf.string, // e.g. round | miter | bevel
+	strokeColor: sf.required(sf.string, {
+		metadata: { description: "Stroke color token (#RRGGBB or CSS named color)." },
+	}),
+	strokeWidth: sf.required(sf.number, {
+		metadata: { description: "Base stroke width in canvas pixels." },
+	}),
+	opacity: sf.required(sf.number, { metadata: { description: "Stroke alpha in range [0,1]." } }),
+	lineCap: sf.required(sf.string, {
+		metadata: { description: "Line cap style: 'round' | 'butt' | 'square'." },
+	}),
+	lineJoin: sf.required(sf.string, {
+		metadata: { description: "Line join style: 'round' | 'miter' | 'bevel'." },
+	}),
 }) {}
 
 export class InkBBox extends sf.object("InkBBox", {
-	x: sf.number,
-	y: sf.number,
-	w: sf.number,
-	h: sf.number,
+	x: sf.required(sf.number, {
+		metadata: { description: "Minimum x of stroke's axis-aligned bounding box." },
+	}),
+	y: sf.required(sf.number, {
+		metadata: { description: "Minimum y of stroke's axis-aligned bounding box." },
+	}),
+	w: sf.required(sf.number, { metadata: { description: "Bounding box width in pixels (>=0)." } }),
+	h: sf.required(sf.number, {
+		metadata: { description: "Bounding box height in pixels (>=0)." },
+	}),
 }) {}
 
 export class InkStroke extends sf.object("InkStroke", {
-	id: sf.string,
-	points: sf.array([InkPoint]),
-	style: InkStyle,
-	bbox: InkBBox,
-	simplified: sf.optional(sf.array([InkPoint])),
+	id: sf.string, // Stable stroke id (UUID) for diffing and selection.
+	points: sf.array([InkPoint]), // Raw input points in drawing order.
+	style: InkStyle, // Rendering style for this stroke.
+	bbox: InkBBox, // Cached bounding box for fast hit testing.
+	simplified: sf.optional(sf.array([InkPoint])), // Optional simplified/decimated point list for performance rendering.
 }) {}
 
 export class App extends sf.object("App", {
