@@ -27,15 +27,18 @@ async function getZumoAuthToken(msalInstance: PublicClientApplication): Promise<
 	};
 
 	let msalToken: string;
+	let idToken: string;
 	try {
 		// Try silent token acquisition first
 		const silentResult = await msalInstance.acquireTokenSilent(tokenRequest);
 		msalToken = silentResult.accessToken;
+		idToken = silentResult.idToken;
 	} catch (silentError) {
 		console.log("Silent token acquisition failed, trying interactive:", silentError);
 		// Fall back to interactive token acquisition
 		const interactiveResult = await msalInstance.acquireTokenPopup(tokenRequest);
 		msalToken = interactiveResult.accessToken;
+		idToken = interactiveResult.idToken;
 	}
 
 	// Exchange the MSAL token for a ZUMO auth token
@@ -48,7 +51,9 @@ async function getZumoAuthToken(msalInstance: PublicClientApplication): Promise<
 			},
 			body: JSON.stringify({
 				access_token: msalToken,
+				id_token: idToken,
 			}),
+			credentials: "include",
 		}
 	);
 
@@ -117,6 +122,129 @@ export function TaskPane(props: {
 						return;
 					} catch (error) {
 						console.error("Failed to set up OpenAI agent:", error);
+						// Continue to Azure fallback
+					}
+				}
+
+				const endpoint = import.meta.env.VITE_OPENAI_BASE_URL;
+				if (endpoint) {
+					console.log(`Using OpenAI at ${endpoint}`);
+					try {
+						if (!msalInstance) {
+							throw new Error("MSAL instance not available from context");
+						}
+
+						// Acquire a ZUMO auth token and ensure requests to the middle-tier include it
+						const zumoToken = await getZumoAuthToken(msalInstance);
+						console.log("ZUMO auth token acquired for middle-tier requests");
+
+						// Cache and refresh logic for the ZUMO token so the agent can run long-lived
+						// and recover from token expiration.
+						let cachedZumoToken: string | undefined = zumoToken;
+						let refreshInProgress: Promise<void> | null = null;
+
+						const ensureZumoToken = async (): Promise<string> => {
+							if (cachedZumoToken) {
+								return cachedZumoToken;
+							}
+							if (!refreshInProgress) {
+								refreshInProgress = (async () => {
+									cachedZumoToken = await getZumoAuthToken(msalInstance);
+								})();
+								try {
+									await refreshInProgress;
+									return cachedZumoToken!;
+								} finally {
+									refreshInProgress = null;
+								}
+							} else {
+								await refreshInProgress;
+								return cachedZumoToken!;
+							}
+						};
+
+						const refreshZumoToken = async (): Promise<string> => {
+							if (refreshInProgress) {
+								await refreshInProgress;
+								return cachedZumoToken!;
+							}
+							refreshInProgress = (async () => {
+								cachedZumoToken = await getZumoAuthToken(msalInstance);
+							})();
+							try {
+								await refreshInProgress;
+								return cachedZumoToken!;
+							} finally {
+								refreshInProgress = null;
+							}
+						};
+
+						const customFetch = async (input: any, init?: any): Promise<Response> => {
+							let url: string;
+							if (typeof input === "string") {
+								url = input;
+							} else if (input instanceof Request) {
+								url = input.url;
+							} else {
+								url = String(input);
+							}
+
+							if (url.startsWith(endpoint)) {
+								// Ensure a ZUMO token is available
+								await ensureZumoToken();
+								let headers = new Headers(init?.headers || {});
+								headers.set("X-ZUMO-AUTH", cachedZumoToken!);
+								let response = await (globalThis as any).fetch(input, {
+									...init,
+									headers,
+								});
+
+								// If unauthorized, try refreshing the token and retry once
+								if (response.status === 401 || response.status === 403) {
+									try {
+										await refreshZumoToken();
+										headers = new Headers(init?.headers || {});
+										headers.set("X-ZUMO-AUTH", cachedZumoToken!);
+										response = await fetch(input, {
+											...init,
+											headers,
+										});
+									} catch (e) {
+										console.error("Failed to refresh ZUMO token:", e);
+									}
+								}
+
+								return response;
+							}
+
+							return (globalThis as any).fetch(input, init);
+						};
+
+						const chatOpenAI = new ChatOpenAI({
+							configuration: {
+								baseURL: endpoint,
+								fetch: customFetch,
+							},
+							apiKey: "not-used-due-to-custom-fetch-providing-auth",
+							model: process.env.OPENAI_MODEL || "gpt-5",
+						});
+
+						setAgent(
+							createSemanticAgent(chatOpenAI, branch, {
+								log: (msg) => console.log(msg),
+								domainHints,
+							})
+						);
+
+						console.log(
+							"AI agent successfully created with middle-tier OpenAI endpoint"
+						);
+						return;
+					} catch (error) {
+						console.error(
+							"Failed to set up OpenAI agent with middle-tier endpoint:",
+							error
+						);
 						// Continue to Azure fallback
 					}
 				}
@@ -195,6 +323,7 @@ export function TaskPane(props: {
 						azureOpenAIApiInstanceName: azureInstanceName,
 						azureOpenAIApiDeploymentName: azureDeploymentName,
 						azureOpenAIApiVersion: azureApiVersion,
+						azureOpenAIBasePath: endpoint,
 					});
 
 					setAgent(
