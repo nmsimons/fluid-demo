@@ -74,6 +74,25 @@ export class DateTime extends sf.object(hintValues.date, {
 }
 
 /**
+ * A SharedTree object representing a change or action by a user
+ */
+export class Change extends sf.object("Change", {
+	userId: sf.required(sf.string, {
+		metadata: {
+			description: `A unique user id for the user who made the change, or "AI Agent" if created by an agent`,
+		},
+	}),
+	username: sf.required(sf.string, {
+		metadata: {
+			description: `A user-friendly name for the user who made the change (e.g. "Alex Pardes"), or "AI Agent" if created by an agent`,
+		},
+	}),
+	datetime: sf.required(DateTime, {
+		metadata: { description: "The date and time when this change was made" },
+	}),
+}) {}
+
+/**
  * A SharedTree object that allows users to vote
  */
 export class Vote extends sf.object(hintValues.vote, {
@@ -152,6 +171,17 @@ export class Comment extends sf.object("Comment", {
 		if (Tree.is(parent, Comments)) {
 			parent.removeAt(parent.indexOf(this));
 		}
+	}
+}
+
+export class Changes extends sf.array("Changes", [Change]) {
+	addChange(userId: string, username: string): void {
+		const change = new Change({
+			userId,
+			username,
+			datetime: new DateTime({ ms: Date.now() }),
+		});
+		this.insertAtEnd(change);
 	}
 }
 
@@ -387,6 +417,12 @@ export class Item extends sf.object("Item", {
 	comments: Comments,
 	votes: Vote,
 	content: [Shape, Note, FluidTable],
+	created: sf.required(Change, {
+		metadata: { description: "Information about when and by whom this item was created" },
+	}),
+	changes: sf.required(Changes, {
+		metadata: { description: "History of changes made to this item" },
+	}),
 }) {
 	delete(): void {
 		const parent = Tree.parent(this);
@@ -404,7 +440,9 @@ export class Items extends sf.array("Items", [Item]) {
 	createShapeItem(
 		shapeType: "circle" | "square" | "triangle" | "star",
 		canvasSize: { width: number; height: number },
-		shapeColors: string[]
+		shapeColors: string[],
+		userId: string = "system",
+		username: string = "System"
 	): Item {
 		// Spawn within a moderate sub-range so new shapes aren't extreme
 		const maxSize = Math.min(SHAPE_SPAWN_MAX_SIZE, SHAPE_MAX_SIZE);
@@ -427,6 +465,12 @@ export class Items extends sf.array("Items", [Item]) {
 				this.getRandomNumber(0, 1) === 0
 					? this.getRandomNumber(0, 15)
 					: this.getRandomNumber(345, 360),
+			created: new Change({
+				userId,
+				username,
+				datetime: new DateTime({ ms: Date.now() }),
+			}),
+			changes: [],
 		});
 
 		this.insertAtEnd(item);
@@ -436,7 +480,12 @@ export class Items extends sf.array("Items", [Item]) {
 	/**
 	 * Create a new note item and add it to the items collection
 	 */
-	createNoteItem(canvasSize: { width: number; height: number }, authorId: string): Item {
+	createNoteItem(
+		canvasSize: { width: number; height: number },
+		authorId: string,
+		userId: string,
+		username: string
+	): Item {
 		const note = new Note({
 			id: crypto.randomUUID(),
 			text: "",
@@ -454,6 +503,12 @@ export class Items extends sf.array("Items", [Item]) {
 				this.getRandomNumber(0, 1) === 0
 					? this.getRandomNumber(0, 15)
 					: this.getRandomNumber(345, 360),
+			created: new Change({
+				userId,
+				username,
+				datetime: new DateTime({ ms: Date.now() }),
+			}),
+			changes: [],
 		});
 
 		this.insertAtEnd(item);
@@ -463,7 +518,11 @@ export class Items extends sf.array("Items", [Item]) {
 	/**
 	 * Create a new table item and add it to the items collection
 	 */
-	createTableItem(canvasSize: { width: number; height: number }): Item {
+	createTableItem(
+		canvasSize: { width: number; height: number },
+		userId: string,
+		username: string
+	): Item {
 		const table = this.createDefaultTable();
 
 		const item = new Item({
@@ -474,6 +533,12 @@ export class Items extends sf.array("Items", [Item]) {
 			votes: new Vote({ votes: [] }),
 			content: table,
 			rotation: 0,
+			created: new Change({
+				userId,
+				username,
+				datetime: new DateTime({ ms: Date.now() }),
+			}),
+			changes: [],
 		});
 
 		this.insertAtEnd(item);
@@ -521,7 +586,12 @@ export class Items extends sf.array("Items", [Item]) {
 	/**
 	 * Duplicate an existing item
 	 */
-	duplicateItem(item: Item, canvasSize: { width: number; height: number }): Item {
+	duplicateItem(
+		item: Item,
+		canvasSize: { width: number; height: number },
+		userId: string,
+		username: string
+	): Item {
 		// Calculate new position with offset
 		const offsetX = 20;
 		const offsetY = 20;
@@ -607,6 +677,12 @@ export class Items extends sf.array("Items", [Item]) {
 			votes: new Vote({ votes: [] }),
 			content: duplicatedContent,
 			rotation: item.rotation,
+			created: new Change({
+				userId,
+				username,
+				datetime: new DateTime({ ms: Date.now() }),
+			}),
+			changes: [],
 		});
 
 		this.insertAtEnd(duplicatedItem);
@@ -702,6 +778,12 @@ export class InkStroke extends sf.object("InkStroke", {
 	style: InkStyle,
 	bbox: InkBBox,
 	simplified: sf.optional(sf.array([InkPoint])),
+	created: sf.required(Change, {
+		metadata: { description: "Information about when and by whom this ink stroke was created" },
+	}),
+	changes: sf.required(Changes, {
+		metadata: { description: "History of changes made to this ink stroke" },
+	}),
 }) {}
 
 export class App extends sf.object("App", {

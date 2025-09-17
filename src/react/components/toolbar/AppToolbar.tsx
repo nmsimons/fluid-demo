@@ -3,7 +3,7 @@
  * Licensed under the MIT License.
  */
 
-import React, { JSX } from "react";
+import React, { JSX, useContext } from "react";
 import { Tree } from "fluid-framework";
 import { TreeViewAlpha } from "@fluidframework/tree/alpha";
 import { App, Shape } from "../../../schema/appSchema.js";
@@ -43,6 +43,7 @@ import { DeleteSelectedRowsButton } from "./buttons/TableButtons.js";
 // All toolbar button UIs now componentized; direct TooltipButton usage removed.
 import { Toolbar, ToolbarDivider, ToolbarGroup } from "@fluentui/react-toolbar";
 import type { SelectionManager } from "../../../presence/Interfaces/SelectionManager.js";
+import { PresenceContext } from "../../contexts/PresenceContext.js";
 
 export interface AppToolbarProps {
 	view: TreeViewAlpha<typeof App>;
@@ -107,6 +108,7 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 		onShapeColorChange,
 	} = props;
 
+	const presence = useContext(PresenceContext);
 	// Zoom slider logic moved into ZoomMenu component.
 
 	return (
@@ -240,7 +242,10 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 														if (item) {
 															view.root.items.duplicateItem(
 																item,
-																canvasSize
+																canvasSize,
+																presence.users.getMyself().value.id,
+																presence.users.getMyself().value
+																	.name
 															);
 														}
 													});

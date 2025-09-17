@@ -62,6 +62,8 @@ import {
 	InkStyle,
 	InkBBox,
 	App,
+	Change,
+	DateTime,
 } from "../../../schema/appSchema.js";
 import { Tree } from "fluid-framework";
 import { IFluidContainer } from "fluid-framework";
@@ -451,6 +453,12 @@ export function Canvas(props: {
 					lineJoin: "round",
 				}),
 				bbox: new InkBBox({ x: minX, y: minY, w: maxX - minX, h: maxY - minY }),
+				created: new Change({
+					userId: presence.users.getMyself().value.id,
+					username: presence.users.getMyself().value.name,
+					datetime: new DateTime({ ms: Date.now() }),
+				}),
+				changes: [],
 			});
 			root.inks.insertAtEnd(stroke);
 			tempPointsRef.current = [];
