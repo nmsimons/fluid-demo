@@ -179,12 +179,17 @@ export function TaskPane(props: {
 							}
 						};
 
-						const customFetch = async (input: any, init?: any): Promise<Response> => {
+						const customFetch = async (
+							input: RequestInfo | URL,
+							init?: RequestInit
+						): Promise<Response> => {
 							let url: string;
 							if (typeof input === "string") {
 								url = input;
 							} else if (input instanceof Request) {
 								url = input.url;
+							} else if (input instanceof URL) {
+								url = input.toString();
 							} else {
 								url = String(input);
 							}
@@ -194,7 +199,7 @@ export function TaskPane(props: {
 								await ensureZumoToken();
 								let headers = new Headers(init?.headers || {});
 								headers.set("X-ZUMO-AUTH", cachedZumoToken!);
-								let response = await (globalThis as any).fetch(input, {
+								let response = await fetch(input, {
 									...init,
 									headers,
 								});
@@ -217,7 +222,7 @@ export function TaskPane(props: {
 								return response;
 							}
 
-							return (globalThis as any).fetch(input, init);
+							return fetch(input, init);
 						};
 
 						const chatOpenAI = new ChatOpenAI({
