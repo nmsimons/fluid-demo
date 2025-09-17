@@ -25,6 +25,22 @@ export default defineConfig(({ mode }) => {
 			outDir: "dist",
 			sourcemap: true,
 			rollupOptions: {
+				/**
+				 * It'd be nice to turn this on, but the following pattern used in tree is not properly processed by rollup:
+				 *
+				 * ```ts
+				 * export const MapNodeSchema = {
+				 * 	[Symbol.hasInstance](value: TreeNodeSchema): value is MapNodeSchema {
+				 * 		return isMapNodeSchema(value);
+				 * 	},
+				 * } as const;
+				 * ```
+				 *
+				 * Specifically, rollup decides the Symbol.hasInstance property is dead code and removes it.
+				 * There is some commentary on this PR which is related, but alludes to this behavior being pre-existing
+				 * (and the PR description seems to imply this is by design):
+				 * https://github.com/rollup/rollup/pull/6046
+				 */
 				treeshake: false,
 			},
 			// Let Vite handle chunking automatically - no manual chunking
