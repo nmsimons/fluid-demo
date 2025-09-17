@@ -24,6 +24,9 @@ export default defineConfig(({ mode }) => {
 		build: {
 			outDir: "dist",
 			sourcemap: true,
+			rollupOptions: {
+				treeshake: false,
+			},
 			// Let Vite handle chunking automatically - no manual chunking
 		},
 		server: {
