@@ -1,14 +1,61 @@
 // A pane for displaying and interacting with an LLM on the right side of the screen
 import { Button, Textarea } from "@fluentui/react-components";
 import { ArrowLeftFilled, BotRegular } from "@fluentui/react-icons";
-import React, { ReactNode, useEffect, useState, useRef } from "react";
+import React, { ReactNode, useEffect, useState, useRef, useContext } from "react";
 import { Pane } from "./Pane.js";
 import { TreeViewAlpha } from "@fluidframework/tree/alpha";
 // import the function, not the type
 import { SharedTreeSemanticAgent, createSemanticAgent } from "@fluidframework/tree-agent/alpha";
 import { App } from "../../../schema/appSchema.js";
 import { AzureChatOpenAI, ChatOpenAI } from "@langchain/openai";
-import { authHelper } from "../../../infra/auth.js";
+import { AuthContext } from "../../contexts/AuthContext.js";
+import { PublicClientApplication } from "@azure/msal-browser";
+
+/**
+ * Helper function to get ZUMO auth token for Azure service calls
+ */
+async function getZumoAuthToken(msalInstance: PublicClientApplication): Promise<string> {
+	const accounts = msalInstance.getAllAccounts();
+	if (accounts.length === 0) {
+		throw new Error("No authenticated accounts found");
+	}
+
+	// Get token with the specific scope for the service
+	const tokenRequest = {
+		scopes: ["api://56bbaaea-f34d-4aee-9565-b37be2d84fa8/user_impersonation"],
+		account: accounts[0],
+	};
+
+	let msalToken: string;
+	try {
+		// Try silent token acquisition first
+		const silentResult = await msalInstance.acquireTokenSilent(tokenRequest);
+		msalToken = silentResult.accessToken;
+	} catch (silentError) {
+		console.log("Silent token acquisition failed, trying interactive:", silentError);
+		// Fall back to interactive token acquisition
+		const interactiveResult = await msalInstance.acquireTokenPopup(tokenRequest);
+		msalToken = interactiveResult.accessToken;
+	}
+
+	// Exchange the MSAL token for a ZUMO auth token
+	const authResponse = await fetch("https://mts-d6b6edexdtaqapg4.westus2-01.azurewebsites.net/.auth/login/aad", {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+		},
+		body: JSON.stringify({
+			access_token: msalToken,
+		}),
+	});
+
+	if (!authResponse.ok) {
+		throw new Error(`Failed to get ZUMO auth token: ${authResponse.status} ${authResponse.statusText}`);
+	}
+
+	const authResult = await authResponse.json();
+	return authResult.authenticationToken;
+}
 
 export function TaskPane(props: {
 	hidden: boolean;
@@ -20,6 +67,7 @@ export function TaskPane(props: {
 	const [branch, setBranch] = useState<typeof main | undefined>(undefined);
 	const [chats, setChats] = useState<string[]>([]);
 	const [agent, setAgent] = useState<SharedTreeSemanticAgent | undefined>();
+	const { msalInstance } = useContext(AuthContext);
 
 	useEffect(() => {
 		if (hidden) {
@@ -96,6 +144,7 @@ export function TaskPane(props: {
 							return manualToken;
 						};
 
+
 						const chatOpenAI = new AzureChatOpenAI({
 							azureADTokenProvider: azureADTokenProvider,
 							model: "gpt-5",
@@ -119,53 +168,21 @@ export function TaskPane(props: {
 					}
 				}
 
-				// Standard Azure auth flow using MSAL
+				// Standard Azure auth flow using MSAL from context
 				console.log("Attempting standard Azure authentication...");
 				try {
-					const msalInstance = await authHelper();
-
-					// Get or acquire token silently
-					const accounts = msalInstance.getAllAccounts();
-					let token: string;
-
-					if (accounts.length > 0) {
-						// Try to get token silently first
-						try {
-							const silentRequest = {
-								scopes: ["https://cognitiveservices.azure.com/.default"],
-								account: accounts[0],
-							};
-							const silentResult =
-								await msalInstance.acquireTokenSilent(silentRequest);
-							token = silentResult.accessToken;
-							console.log("Token acquired silently");
-						} catch (silentError) {
-							console.log("Silent token acquisition failed:", silentError);
-							console.log("Trying interactive token acquisition...");
-							// Fall back to interactive token acquisition
-							const interactiveRequest = {
-								scopes: ["https://cognitiveservices.azure.com/.default"],
-							};
-							const interactiveResult =
-								await msalInstance.acquireTokenPopup(interactiveRequest);
-							token = interactiveResult.accessToken;
-							console.log("Token acquired interactively");
-						}
-					} else {
-						// No accounts, need to sign in first
-						console.log("No accounts found, signing in...");
-						const loginRequest = {
-							scopes: ["https://cognitiveservices.azure.com/.default"],
-						};
-						const loginResult = await msalInstance.loginPopup(loginRequest);
-						token = loginResult.accessToken;
-						console.log("Signed in and token acquired");
+					if (!msalInstance) {
+						throw new Error("MSAL instance not available from context");
 					}
 
-					// Create Azure token provider
+					// Get ZUMO auth token for the service
+					const zumoToken = await getZumoAuthToken(msalInstance);
+					console.log("ZUMO auth token acquired successfully");
+
+					// Create Azure token provider that returns the ZUMO token
 					const azureADTokenProvider = async () => {
-						console.log("Token provider called - returning MSAL token");
-						return token;
+						console.log("Token provider called - returning ZUMO token");
+						return zumoToken;
 					};
 
 					const chatOpenAI = new AzureChatOpenAI({
@@ -183,19 +200,19 @@ export function TaskPane(props: {
 						})
 					);
 
-					console.log("AI agent successfully created with MSAL authentication");
+					console.log("AI agent successfully created with ZUMO authentication");
 				} catch (error) {
-					console.error("Failed to set up AI agent with MSAL authentication:", error);
+					console.error("Failed to set up AI agent with ZUMO authentication:", error);
 					console.error("Authentication options:");
 					console.error("1. Set OPENAI_API_KEY for OpenAI");
 					console.error("2. Set AZURE_OPENAI_MANUAL_TOKEN for manual Azure auth");
-					console.error("3. Configure Azure authentication (AZURE_CLIENT_ID, etc.)");
+					console.error("3. Ensure user is signed in for ZUMO authentication");
 				}
 			};
 
 			setupAgent().catch(console.error);
 		}
-	}, [branch]);
+	}, [branch, msalInstance]);
 
 	const handlePromptSubmit = async (prompt: string) => {
 		if (agent !== undefined) {
