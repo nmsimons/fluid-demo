@@ -939,11 +939,33 @@ export class InkBBox extends sf.object("InkBBox", {
 }) {}
 
 export class InkStroke extends sf.object("InkStroke", {
-	id: sf.string, // Stable stroke id (UUID) for diffing and selection.
-	points: sf.array([InkPoint]), // Raw input points in drawing order.
-	style: InkStyle, // Rendering style for this stroke.
-	bbox: InkBBox, // Cached bounding box for fast hit testing.
-	simplified: sf.optional(sf.array([InkPoint])), // Optional simplified/decimated point list for performance rendering.
+	id: sf.required(sf.string, {
+		metadata: {
+			description: "Stable stroke UUID for diffing, synchronization, and selection.",
+		},
+	}),
+	points: sf.required(sf.array([InkPoint]), {
+		metadata: {
+			description: "Ordered list of captured input points defining the stroke path.",
+		},
+	}),
+	style: sf.required(InkStyle, {
+		metadata: {
+			description:
+				"Rendering style (color, width, caps, joins, opacity) applied to this stroke.",
+		},
+	}),
+	bbox: sf.required(InkBBox, {
+		metadata: {
+			description: "Axis-aligned bounding box precomputed for hit testing and culling.",
+		},
+	}),
+	simplified: sf.optional(sf.array([InkPoint]), {
+		metadata: {
+			description:
+				"Optional reduced point set for faster rendering; falls back to 'points' when absent.",
+		},
+	}),
 }) {}
 
 export class App extends sf.object("App", {
