@@ -39,18 +39,23 @@ async function getZumoAuthToken(msalInstance: PublicClientApplication): Promise<
 	}
 
 	// Exchange the MSAL token for a ZUMO auth token
-	const authResponse = await fetch("https://mts-d6b6edexdtaqapg4.westus2-01.azurewebsites.net/.auth/login/aad", {
-		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
-		},
-		body: JSON.stringify({
-			access_token: msalToken,
-		}),
-	});
+	const authResponse = await fetch(
+		"https://mts-d6b6edexdtaqapg4.westus2-01.azurewebsites.net/.auth/login/aad",
+		{
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify({
+				access_token: msalToken,
+			}),
+		}
+	);
 
 	if (!authResponse.ok) {
-		throw new Error(`Failed to get ZUMO auth token: ${authResponse.status} ${authResponse.statusText}`);
+		throw new Error(
+			`Failed to get ZUMO auth token: ${authResponse.status} ${authResponse.statusText}`
+		);
 	}
 
 	const authResult = await authResponse.json();
@@ -143,7 +148,6 @@ export function TaskPane(props: {
 							console.log("Token provider called - returning manual token");
 							return manualToken;
 						};
-
 
 						const chatOpenAI = new AzureChatOpenAI({
 							azureADTokenProvider: azureADTokenProvider,
