@@ -45,12 +45,14 @@ export default defineConfig(({ mode }) => {
 			"process.env.NODE_ENV": JSON.stringify(env.NODE_ENV || mode),
 			// Azure OpenAI environment variables
 			"process.env.AZURE_OPENAI_API_KEY": JSON.stringify(env.AZURE_OPENAI_API_KEY),
+			"process.env.AZURE_OPENAI_API_INSTANCE_NAME": JSON.stringify(env.AZURE_OPENAI_API_INSTANCE_NAME),
 			"process.env.AZURE_OPENAI_API_DEPLOYMENT_NAME": JSON.stringify(
 				env.AZURE_OPENAI_API_DEPLOYMENT_NAME
 			),
 			"process.env.AZURE_OPENAI_API_VERSION": JSON.stringify(env.AZURE_OPENAI_API_VERSION),
 			"process.env.AZURE_OPENAI_BASE_PATH": JSON.stringify(env.AZURE_OPENAI_BASE_PATH),
 			"process.env.OPENAI_API_KEY": JSON.stringify(env.OPENAI_API_KEY),
+			"process.env.OPENAI_MODEL": JSON.stringify(env.OPENAI_MODEL),
 			"process.env.AZURE_OPENAI_MANUAL_TOKEN": JSON.stringify(env.AZURE_OPENAI_MANUAL_TOKEN),
 			"process.env.AUTHORITY": JSON.stringify(env.AUTHORITY),
 		},

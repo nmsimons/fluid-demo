@@ -7,7 +7,8 @@ import { TreeViewAlpha } from "@fluidframework/tree/alpha";
 // import the function, not the type
 import { SharedTreeSemanticAgent, createSemanticAgent } from "@fluidframework/tree-agent/alpha";
 import { App } from "../../../schema/appSchema.js";
-import { AzureChatOpenAI } from "@langchain/openai";
+import { AzureChatOpenAI, ChatOpenAI } from "@langchain/openai";
+import { authHelper } from "../../../infra/auth.js";
 
 export function TaskPane(props: {
 	hidden: boolean;
@@ -40,35 +41,135 @@ export function TaskPane(props: {
 	useEffect(() => {
 		if (branch !== undefined) {
 			const setupAgent = async () => {
-				console.log("Setting up AI agent with manual token...");
+				console.log("Setting up AI agent...");
 
-				const manualToken = process.env.AZURE_OPENAI_MANUAL_TOKEN;
+				// Check for OpenAI API key first
+				const openaiApiKey = process.env.OPENAI_API_KEY;
+				if (openaiApiKey) {
+					console.log("Using OpenAI with API key");
+					try {
+						const chatOpenAI = new ChatOpenAI({
+							apiKey: openaiApiKey,
+							model: process.env.OPENAI_MODEL || "gpt-4",
+						});
 
-				if (!manualToken) {
-					console.error(
-						"No manual token found. Please add AZURE_OPENAI_MANUAL_TOKEN to your .env file"
-					);
-					console.error(
-						"Get token with: az account get-access-token --resource https://cognitiveservices.azure.com --query accessToken --output tsv"
-					);
-					return;
+						setAgent(
+							createSemanticAgent(chatOpenAI, branch, {
+								log: (msg) => console.log(msg),
+								domainHints,
+							})
+						);
+
+						console.log("AI agent successfully created with OpenAI");
+						return;
+					} catch (error) {
+						console.error("Failed to set up OpenAI agent:", error);
+						// Continue to Azure fallback
+					}
 				}
 
-				try {
-					console.log("Using manual token for Azure OpenAI authentication");
+				// Fallback to Azure OpenAI
+				console.log("Using Azure OpenAI...");
+				
+				// Validate Azure configuration
+				const azureInstanceName = process.env.AZURE_OPENAI_API_INSTANCE_NAME;
+				const azureDeploymentName = process.env.AZURE_OPENAI_API_DEPLOYMENT_NAME;
+				const azureApiVersion = process.env.AZURE_OPENAI_API_VERSION;
 
-					// Create a simple token provider that returns your manual token
+				if (!azureInstanceName || !azureDeploymentName || !azureApiVersion) {
+					console.error("Missing Azure OpenAI configuration. Required environment variables:");
+					console.error("- AZURE_OPENAI_API_INSTANCE_NAME");
+					console.error("- AZURE_OPENAI_API_DEPLOYMENT_NAME");
+					console.error("- AZURE_OPENAI_API_VERSION");
+					return;
+				}
+				
+				// Try manual token first
+				const manualToken = process.env.AZURE_OPENAI_MANUAL_TOKEN;
+				if (manualToken) {
+					console.log("Using manual token for Azure OpenAI authentication");
+					try {
+						const azureADTokenProvider = async () => {
+							console.log("Token provider called - returning manual token");
+							return manualToken;
+						};
+
+						const chatOpenAI = new AzureChatOpenAI({
+							azureADTokenProvider: azureADTokenProvider,
+							model: "gpt-5",
+							azureOpenAIApiInstanceName: azureInstanceName,
+							azureOpenAIApiDeploymentName: azureDeploymentName,
+							azureOpenAIApiVersion: azureApiVersion,
+						});
+
+						setAgent(
+							createSemanticAgent(chatOpenAI, branch, {
+								log: (msg) => console.log(msg),
+								domainHints,
+							})
+						);
+
+						console.log("AI agent successfully created with manual token");
+						return;
+					} catch (error) {
+						console.error("Failed to set up AI agent with manual token:", error);
+						// Continue to standard auth
+					}
+				}
+
+				// Standard Azure auth flow using MSAL
+				console.log("Attempting standard Azure authentication...");
+				try {
+					const msalInstance = await authHelper();
+					
+					// Get or acquire token silently
+					const accounts = msalInstance.getAllAccounts();
+					let token: string;
+
+					if (accounts.length > 0) {
+						// Try to get token silently first
+						try {
+							const silentRequest = {
+								scopes: ["https://cognitiveservices.azure.com/.default"],
+								account: accounts[0],
+							};
+							const silentResult = await msalInstance.acquireTokenSilent(silentRequest);
+							token = silentResult.accessToken;
+							console.log("Token acquired silently");
+						} catch (silentError) {
+							console.log("Silent token acquisition failed:", silentError);
+							console.log("Trying interactive token acquisition...");
+							// Fall back to interactive token acquisition
+							const interactiveRequest = {
+								scopes: ["https://cognitiveservices.azure.com/.default"],
+							};
+							const interactiveResult = await msalInstance.acquireTokenPopup(interactiveRequest);
+							token = interactiveResult.accessToken;
+							console.log("Token acquired interactively");
+						}
+					} else {
+						// No accounts, need to sign in first
+						console.log("No accounts found, signing in...");
+						const loginRequest = {
+							scopes: ["https://cognitiveservices.azure.com/.default"],
+						};
+						const loginResult = await msalInstance.loginPopup(loginRequest);
+						token = loginResult.accessToken;
+						console.log("Signed in and token acquired");
+					}
+
+					// Create Azure token provider
 					const azureADTokenProvider = async () => {
-						console.log("Token provider called - returning manual token");
-						return manualToken;
+						console.log("Token provider called - returning MSAL token");
+						return token;
 					};
 
 					const chatOpenAI = new AzureChatOpenAI({
 						azureADTokenProvider: azureADTokenProvider,
 						model: "gpt-5",
-						azureOpenAIApiInstanceName: process.env.AZURE_OPENAI_API_INSTANCE_NAME,
-						azureOpenAIApiDeploymentName: process.env.AZURE_OPENAI_API_DEPLOYMENT_NAME,
-						azureOpenAIApiVersion: process.env.AZURE_OPENAI_API_VERSION,
+						azureOpenAIApiInstanceName: azureInstanceName,
+						azureOpenAIApiDeploymentName: azureDeploymentName,
+						azureOpenAIApiVersion: azureApiVersion,
 					});
 
 					setAgent(
@@ -78,10 +179,13 @@ export function TaskPane(props: {
 						})
 					);
 
-					console.log("AI agent successfully created with manual token");
+					console.log("AI agent successfully created with MSAL authentication");
 				} catch (error) {
-					console.error("Failed to set up AI agent:", error);
-					console.error("Check if your token is valid and has the correct permissions");
+					console.error("Failed to set up AI agent with MSAL authentication:", error);
+					console.error("Authentication options:");
+					console.error("1. Set OPENAI_API_KEY for OpenAI");
+					console.error("2. Set AZURE_OPENAI_MANUAL_TOKEN for manual Azure auth");
+					console.error("3. Configure Azure authentication (AZURE_CLIENT_ID, etc.)");
 				}
 			};
 
