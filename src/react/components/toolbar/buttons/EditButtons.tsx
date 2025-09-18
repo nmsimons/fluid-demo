@@ -11,12 +11,14 @@ import {
 	ThumbLikeRegular,
 	CommentFilled,
 	CommentRegular,
+	BotRegular,
 } from "@fluentui/react-icons";
 import { TooltipButton } from "../../forms/Button.js";
 import { useTree } from "../../../hooks/useTree.js";
 import { PresenceContext } from "../../../contexts/PresenceContext.js";
 import { CommentPaneContext } from "../../app/App.js";
-import { Vote, Item } from "../../../../schema/appSchema.js";
+import { Vote, Item, App, Comment, Job, DateTime } from "../../../../schema/appSchema.js";
+import { skipNextUndoRedo } from "../../../../undo/undo.js";
 
 // Basic actions
 export function DeleteButton(props: { delete: () => void; count?: number }): JSX.Element {
@@ -80,6 +82,33 @@ export function CommentButton(props: { item: Item }): JSX.Element {
 			icon={count > 0 ? <CommentFilled /> : <CommentRegular />}
 			tooltip={count > 0 ? `View comments (${count})` : "Add a comment"}
 			keyboardShortcut="Ctrl+/"
+		/>
+	);
+}
+
+export function JobButton(props: { comment: Comment; app: App }): JSX.Element {
+	const { comment, app } = props;
+
+	return (
+		<TooltipButton
+			onClick={(e) => {
+				e.stopPropagation();
+
+				const job = new Job({
+					id: crypto.randomUUID(),
+					branch: "main",
+					target: comment.id,
+					description: `Process comment: "${comment.text}"`,
+					status: "PENDING",
+					created: new DateTime({ ms: Date.now() }),
+					completed: undefined,
+				});
+
+				skipNextUndoRedo(); // Stops the next change from going on the undo/redo stack.
+				app.jobs.insertAtEnd(job);
+			}}
+			icon={<BotRegular />}
+			tooltip="Create Job"
 		/>
 	);
 }

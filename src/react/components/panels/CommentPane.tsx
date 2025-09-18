@@ -16,7 +16,7 @@ import { Pane } from "./Pane.js";
 import { useTree } from "../../hooks/useTree.js";
 import { getContentHandler } from "../../../utils/contentHandlers.js";
 import { PresenceContext } from "../../contexts/PresenceContext.js";
-import { VoteButton } from "../toolbar/buttons/EditButtons.js";
+import { JobButton, VoteButton } from "../toolbar/buttons/EditButtons.js";
 
 export interface CommentPaneRef {
 	focusInput: () => void;
@@ -64,7 +64,7 @@ export const CommentPane = forwardRef<
 
 	return (
 		<Pane hidden={hidden} setHidden={setHidden} title={title}>
-			<CommentList comments={item.comments} />
+			<CommentList comments={item.comments} app={app} />
 			<CommentInput ref={commentInputRef} callback={(comment) => handleAddComment(comment)} />
 		</Pane>
 	);
@@ -72,8 +72,8 @@ export const CommentPane = forwardRef<
 
 CommentPane.displayName = "CommentPane";
 
-export function CommentList(props: { comments: Comments }): JSX.Element {
-	const { comments } = props;
+export function CommentList(props: { comments: Comments; app: App }): JSX.Element {
+	const { comments, app } = props;
 	useTree(comments);
 	return (
 		<div className="relative flex flex-col grow space-y-2 overflow-y-auto">
@@ -83,14 +83,14 @@ export function CommentList(props: { comments: Comments }): JSX.Element {
 				<CommentRegular className="h-full w-full opacity-10" />
 			</div>
 			{comments.map((comment) => (
-				<CommentView key={comment.id} comment={comment} />
+				<CommentView key={comment.id} comment={comment} app={app} />
 			))}
 		</div>
 	);
 }
 
-export function CommentView(props: { comment: Comment }): JSX.Element {
-	const { comment } = props;
+export function CommentView(props: { comment: Comment; app: App }): JSX.Element {
+	const { comment, app } = props;
 	useTree(comment, true);
 	const presence = useContext(PresenceContext);
 	const isMyComment = comment.userId === presence.users.getMyself().value.id;
@@ -111,8 +111,9 @@ export function CommentView(props: { comment: Comment }): JSX.Element {
 				<div className="">{comment.text}</div>
 				<div className="flex items-center justify-between">
 					<div className="text-xs text-gray-500">{comment.votes.votes.length} votes</div>
-					<div className="flex items-center">
+					<div className="flex items-center space-x-1">
 						<VoteButton vote={comment.votes} />
+						<JobButton comment={comment} app={app} />
 					</div>
 				</div>
 			</SpeechBubble>
