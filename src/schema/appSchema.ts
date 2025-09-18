@@ -38,27 +38,6 @@ export const hintValues = {
 // As this schema uses a recursive type, the beta SchemaFactoryRecursive is used instead of just SchemaFactory.
 const sf = new SchemaFactoryAlpha("fc1db2e8-0a00-11ee-be56-0242ac120002");
 
-export class Shape extends sf.object("Shape", {
-	size: sf.required(sf.number, {
-		metadata: {
-			description:
-				"Uniform size of the shape in canvas pixels. Must be within [{SHAPE_MIN_SIZE}, {SHAPE_MAX_SIZE}] inclusive.",
-		},
-	}),
-	color: sf.required(sf.string, {
-		metadata: {
-			description:
-				"Color fill of the shape as 7-character hex string (#RRGGBB) including leading '#'. Validated against /^#([0-9A-Fa-f]{6})$/.",
-		},
-	}),
-	type: sf.required(sf.string, {
-		metadata: {
-			description:
-				"Shape variant discriminator. Must be exactly one of: 'circle' | 'square' | 'triangle' | 'star'.",
-		},
-	}),
-}) {} // The size is a number that represents the size of the shape
-
 /**
  * A SharedTree object date-time
  */
@@ -88,6 +67,69 @@ export class DateTime extends sf.object("DateTime", {
 		this.ms = value.getTime();
 	}
 }
+
+export class Job extends sf.object("Job", {
+	id: sf.required(sf.string, {
+		metadata: {
+			description: "Stable UUID for this Job; never reuse for a different Job.",
+		},
+	}),
+	branch: sf.required(sf.string, {
+		metadata: {
+			description: "The id of a branch where an agent can complete work.",
+		},
+	}),
+	target: sf.required(sf.string, {
+		metadata: {
+			description:
+				"The id of the node that contains the instructions/context for this job. Currently this will always be a comment but in principal it could be anything",
+		},
+	}),
+	description: sf.optional(sf.string, {
+		metadata: {
+			description: "Additional context for the agent working on this job.",
+		},
+	}),
+	status: sf.required(sf.string, {
+		metadata: {
+			description:
+				"The status of a job for an AI agent. This can be PENDING, IN-PROGRESS, or DONE.",
+		},
+	}),
+	created: sf.required(DateTime, {
+		metadata: {
+			description: "The precise time the job was created.",
+		},
+	}),
+	completed: sf.optional(DateTime, {
+		metadata: {
+			description: "The precise time the job was completed.",
+		},
+	}),
+}) {}
+
+export class Jobs extends sf.array("Jobs", [Job]) {}
+
+export class Shape extends sf.object("Shape", {
+	size: sf.required(sf.number, {
+		metadata: {
+			description:
+				"Uniform size of the shape in canvas pixels. Must be within [{SHAPE_MIN_SIZE}, {SHAPE_MAX_SIZE}] inclusive.",
+		},
+	}),
+	color: sf.required(sf.string, {
+		metadata: {
+			description:
+				"Color fill of the shape as 7-character hex string (#RRGGBB) including leading '#'. Validated against /^#([0-9A-Fa-f]{6})$/.",
+		},
+	}),
+	type: sf.required(sf.string, {
+		metadata: {
+			description:
+				"Shape variant discriminator. Must be exactly one of: 'circle' | 'square' | 'triangle' | 'star'.",
+		},
+	}),
+}) {} // The size is a number that represents the size of the shape
 
 /**
  * A SharedTree object representing a change or action by a user
@@ -1199,10 +1241,13 @@ export class InkStroke extends sf.object("InkStroke", {
 	}),
 }) {}
 
+export class Inks extends sf.array("Inks", [InkStroke]) {}
+
 export class App extends sf.object("App", {
 	items: Items,
 	comments: Comments,
-	inks: sf.array([InkStroke]),
+	inks: Inks,
+	jobs: Jobs,
 }) {}
 
 export type FluidRow = InstanceType<typeof FluidRowSchema>;

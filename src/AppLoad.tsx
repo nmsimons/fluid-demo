@@ -69,7 +69,7 @@ export async function loadApp(props: {
 			container.initialObjects.appData.viewWith(appTreeConfiguration)
 		);
 		if (appTree.compatibility.canInitialize) {
-			appTree.initialize(new App({ items: [], comments: [], inks: [] }));
+			appTree.initialize(new App({ items: [], comments: [], inks: [], jobs: [] }));
 		}
 
 		// Get the Presence data object from the container

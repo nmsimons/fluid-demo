@@ -7,6 +7,12 @@ import {
 	TreeViewEvents,
 } from "fluid-framework";
 
+let skipUndoRedo = false;
+
+export function skipNextUndoRedo() {
+	skipUndoRedo = true;
+}
+
 /**
  * Create undo and redo stacks for a tree view. The stacks are populated with revertible objects.
  * You can manage the stacks by calling `undo` and `redo`. The redo stack is cleared when a new commit is made.
@@ -19,6 +25,10 @@ export function createUndoRedoStacks(events: Listenable<TreeViewEvents>): undoRe
 
 	// Manage the stacks when a new commit is made
 	function onNewCommit(commit: CommitMetadata, getRevertible?: RevertibleFactory): void {
+		if (skipUndoRedo) {
+			skipUndoRedo = false;
+			return;
+		}
 		if (getRevertible === undefined) {
 			return;
 		}
