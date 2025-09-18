@@ -108,7 +108,7 @@ export class Job extends sf.object("Job", {
 	}),
 }) {}
 
-export class Jobs extends sf.array("Jobs", [Job]) {}
+export class Jobs extends sf.map("Jobs", Job) {}
 
 export class Shape extends sf.object("Shape", {
 	size: sf.required(sf.number, {

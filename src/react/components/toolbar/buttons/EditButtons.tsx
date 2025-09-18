@@ -12,6 +12,7 @@ import {
 	CommentFilled,
 	CommentRegular,
 	BotRegular,
+	BotFilled,
 } from "@fluentui/react-icons";
 import { TooltipButton } from "../../forms/Button.js";
 import { useTree } from "../../../hooks/useTree.js";
@@ -88,27 +89,51 @@ export function CommentButton(props: { item: Item }): JSX.Element {
 
 export function JobButton(props: { comment: Comment; app: App }): JSX.Element {
 	const { comment, app } = props;
+	useTree(app.jobs);
+
+	const existingJob = app.jobs.get(comment.id);
+	const hasJob = existingJob !== undefined;
+	const isPending = existingJob?.status === "PENDING";
+
+	const iconStyle = isPending ? { animation: "spin 2s linear infinite" } : {};
 
 	return (
-		<TooltipButton
-			onClick={(e) => {
-				e.stopPropagation();
+		<>
+			<style>
+				{`
+				@keyframes spin {
+					from { transform: rotate(0deg); }
+					to { transform: rotate(360deg); }
+				}
+				`}
+			</style>
+			<TooltipButton
+				onClick={(e) => {
+					e.stopPropagation();
 
-				const job = new Job({
-					id: crypto.randomUUID(),
-					branch: "main",
-					target: comment.id,
-					description: `Process comment: "${comment.text}"`,
-					status: "PENDING",
-					created: new DateTime({ ms: Date.now() }),
-					completed: undefined,
-				});
+					if (hasJob) {
+						// If job already exists, remove it
+						skipNextUndoRedo();
+						app.jobs.delete(comment.id);
+					} else {
+						// Create new job
+						const job = new Job({
+							id: crypto.randomUUID(),
+							branch: "main",
+							target: comment.id,
+							description: `Process comment: "${comment.text}"`,
+							status: "PENDING",
+							created: new DateTime({ ms: Date.now() }),
+							completed: undefined,
+						});
 
-				skipNextUndoRedo(); // Stops the next change from going on the undo/redo stack.
-				app.jobs.insertAtEnd(job);
-			}}
-			icon={<BotRegular />}
-			tooltip="Create Job"
-		/>
+						skipNextUndoRedo(); // Stops the next change from going on the undo/redo stack.
+						app.jobs.set(comment.id, job);
+					}
+				}}
+				icon={<div style={iconStyle}>{hasJob ? <BotFilled /> : <BotRegular />}</div>}
+				tooltip={hasJob ? `Remove Job (${existingJob.status})` : "Create Job"}
+			/>
+		</>
 	);
 }
