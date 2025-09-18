@@ -9,12 +9,18 @@ import {
 	TreeViewConfigurationAlpha,
 } from "@fluidframework/tree/alpha";
 import {
+	buildFunc,
+	exposeMethodsSymbol,
+	type ExposedMethods,
+} from "@fluidframework/tree-agent/alpha";
+import {
 	SHAPE_MIN_SIZE,
 	SHAPE_MAX_SIZE,
 	SHAPE_SPAWN_MIN_SIZE,
 	SHAPE_SPAWN_MAX_SIZE,
 } from "../constants/shape.js";
 import { Tree, TreeNodeFromImplicitAllowedTypes, TreeStatus } from "fluid-framework";
+import z from "zod";
 
 export type HintValues = (typeof hintValues)[keyof typeof hintValues];
 export const hintValues = {
@@ -34,15 +40,22 @@ const sf = new SchemaFactoryAlpha("fc1db2e8-0a00-11ee-be56-0242ac120002");
 
 export class Shape extends sf.object("Shape", {
 	size: sf.required(sf.number, {
-		metadata: { description: "The width and height of the shape" },
+		metadata: {
+			description:
+				"Uniform size of the shape in canvas pixels. Must be within [{SHAPE_MIN_SIZE}, {SHAPE_MAX_SIZE}] inclusive.",
+		},
 	}),
 	color: sf.required(sf.string, {
 		metadata: {
-			description: `The color of this shape, as a hexadecimal RGB string, e.g. "#00FF00" for bright green`,
+			description:
+				"Color fill of the shape as 7-character hex string (#RRGGBB) including leading '#'. Validated against /^#([0-9A-Fa-f]{6})$/.",
 		},
 	}),
 	type: sf.required(sf.string, {
-		metadata: { description: `One of "circle", "square", "triangle", or "star"` },
+		metadata: {
+			description:
+				"Shape variant discriminator. Must be exactly one of: 'circle' | 'square' | 'triangle' | 'star'.",
+		},
 	}),
 }) {} // The size is a number that represents the size of the shape
 
@@ -51,7 +64,10 @@ export class Shape extends sf.object("Shape", {
  */
 export class DateTime extends sf.object("DateTime", {
 	ms: sf.required(sf.number, {
-		metadata: { description: "The number of milliseconds since the epoch" },
+		metadata: {
+			description:
+				"UTC timestamp in milliseconds since Unix epoch (1970-01-01T00:00:00Z). Must represent a valid Date (Number.isFinite and >= 0).",
+		},
 	}),
 }) {
 	/**
@@ -96,14 +112,14 @@ export class Change extends sf.object("Change", {
  * A SharedTree object that allows users to vote
  */
 export class Vote extends sf.object(hintValues.vote, {
-	votes: sf.array(sf.string), // Map of votes
+	votes: sf.array(sf.string), // Set of unique userId strings representing affirmative votes.
 }) {
 	/**
 	 * Add a vote to the map of votes
 	 * The key is the user id and the value is irrelevant
 	 * @param vote The vote to add
 	 */
-	addVote(vote: string): void {
+	private addVote(vote: string): void {
 		if (this.votes.includes(vote)) {
 			return;
 		}
@@ -114,7 +130,7 @@ export class Vote extends sf.object(hintValues.vote, {
 	 * Remove a vote from the map of votes
 	 * @param vote The vote to remove
 	 */
-	removeVote(vote: string): void {
+	private removeVote(vote: string): void {
 		if (!this.votes.includes(vote)) {
 			return;
 		}
@@ -125,7 +141,7 @@ export class Vote extends sf.object(hintValues.vote, {
 	/**
 	 * Toggle a vote in the map of votes
 	 */
-	toggleVote(vote: string): void {
+	public toggleVote(vote: string): void {
 		if (this.votes.includes(vote)) {
 			this.removeVote(vote);
 		} else {
@@ -146,13 +162,50 @@ export class Vote extends sf.object(hintValues.vote, {
 	 * @param userId The user id
 	 * @return Whether the user has voted
 	 */
-	hasVoted(userId: string): boolean {
+	public hasVoted(userId: string): boolean {
 		return this.votes.includes(userId);
 	}
+
+	public static [exposeMethodsSymbol](methods: ExposedMethods): void {
+		methods.expose(
+			Vote,
+			"toggleVote",
+			buildFunc(
+				{
+					description:
+						"Toggles the user's vote. If the user has voted, it removes the vote; otherwise, it adds the vote.",
+					returns: z.void(),
+				},
+				["userId", z.string()]
+			)
+		);
+		methods.expose(
+			Vote,
+			"hasVoted",
+			buildFunc(
+				{
+					description: "Checks if the user has voted.",
+					returns: z.boolean(),
+				},
+				["userId", z.string()]
+			)
+		);
+	}
 }
+
 export class Comment extends sf.object("Comment", {
-	id: sf.string,
-	text: sf.string,
+	id: sf.required(sf.string, {
+		metadata: {
+			description:
+				"Stable UUID for this comment; never reused for a different logical comment.",
+		},
+	}),
+	text: sf.required(sf.string, {
+		metadata: {
+			description:
+				"User-authored plain text body. May start empty then be updated. No markup expected.",
+		},
+	}),
 	userId: sf.required(sf.string, {
 		metadata: {
 			description: `A unique user id for the author of the node, or "AI Agent" if created by an agent`,
@@ -163,14 +216,32 @@ export class Comment extends sf.object("Comment", {
 			description: `A user-friendly name for the author of the node (e.g. "Alex Pardes"), or "AI Agent" if created by an agent`,
 		},
 	}),
-	votes: Vote,
-	createdAt: DateTime,
+	votes: sf.required(Vote, {
+		metadata: { description: "Set of userIds that endorsed this comment." },
+	}),
+	createdAt: sf.required(DateTime, {
+		metadata: { description: "UTC creation timestamp. Immutable after initial assignment." },
+	}),
 }) {
 	delete(): void {
 		const parent = Tree.parent(this);
 		if (Tree.is(parent, Comments)) {
 			parent.removeAt(parent.indexOf(this));
 		}
+	}
+
+	public static [exposeMethodsSymbol](methods: ExposedMethods): void {
+		methods.expose(
+			Comment,
+			"delete",
+			buildFunc(
+				{
+					description: "Deletes the comment in the parent array.",
+					returns: z.void(),
+				},
+				["userId", z.string()]
+			)
+		);
 	}
 }
 
@@ -182,6 +253,21 @@ export class Changes extends sf.array("Changes", [Change]) {
 			datetime: new DateTime({ ms: Date.now() }),
 		});
 		this.insertAtEnd(change);
+	}
+
+	public static [exposeMethodsSymbol](methods: ExposedMethods): void {
+		methods.expose(
+			Changes,
+			"addChange",
+			buildFunc(
+				{
+					description: "Appends a new change record with current timestamp.",
+					returns: z.void(),
+				},
+				["userId", z.string()],
+				["username", z.string()]
+			)
+		);
 	}
 }
 
@@ -197,22 +283,37 @@ export class Comments extends sf.array("Comments", [Comment]) {
 		});
 		this.insertAtEnd(comment);
 	}
+
+	public static [exposeMethodsSymbol](methods: ExposedMethods): void {
+		methods.expose(
+			Comments,
+			"addComment",
+			buildFunc(
+				{
+					description: "Appends a new comment with provided text and author identifiers.",
+					returns: z.void(),
+				},
+				["text", z.string()],
+				["userId", z.string()],
+				["username", z.string()]
+			)
+		);
+	}
 }
 
-export class Note extends sf.object(
-	"Note",
-	// Fields for Notes which SharedTree will store and synchronize across clients.
-	// These fields are exposed as members of instances of the Note class.
-	{
-		id: sf.string,
-		text: sf.string,
-		author: sf.required(sf.string, {
-			metadata: {
-				description: `A unique user id for author of the node, or "AI Agent" if created by an agent`,
-			},
-		}),
-	}
-) {}
+export class Note extends sf.object("Note", {
+	id: sf.required(sf.string, {
+		metadata: { description: "Stable UUID for this note; unique within the document." },
+	}),
+	text: sf.required(sf.string, {
+		metadata: { description: "Plain text body of the note; may be empty when created." },
+	}),
+	author: sf.required(sf.string, {
+		metadata: {
+			description: `A unique user id for author of the node, or "AI Agent" if created by an agent`,
+		},
+	}),
+}) {}
 
 export type typeDefinition = TreeNodeFromImplicitAllowedTypes<typeof schemaTypes>;
 const schemaTypes = [sf.string, sf.number, sf.boolean, DateTime, Vote] as const;
@@ -222,24 +323,149 @@ export const FluidColumnSchema = TableSchema.column({
 	schemaFactory: sf,
 	cell: schemaTypes,
 	props: sf.object("ColumnProps", {
-		name: sf.string,
-		hint: sf.optional(sf.string),
+		name: sf.required(sf.string, {
+			metadata: {
+				description:
+					"Human-readable column header label (<=40 chars). Renaming does not alter existing cell values.",
+			},
+		}),
+		hint: sf.optional(sf.string, {
+			metadata: {
+				description: `Semantic data kind for cells in this column. Must remain one of ${Object.values(
+					hintValues
+				).join(", ")}.`,
+			},
+		}),
 	}),
 });
 
-// Create row schema
 export const FluidRowSchema = TableSchema.row({
 	schemaFactory: sf,
 	cell: schemaTypes,
 });
 
-// Create the built-in table schema
 export class FluidTable extends TableSchema.table({
 	schemaFactory: sf,
 	cell: schemaTypes,
 	column: FluidColumnSchema,
 	row: FluidRowSchema,
 }) {
+	public static [exposeMethodsSymbol](methods: ExposedMethods): void {
+		methods.expose(
+			FluidTable,
+			"createDetachedRow",
+			buildFunc(
+				{
+					description: "Creates a new row without inserting it into the table.",
+					returns: z.instanceof(FluidRowSchema),
+				},
+				["userId", z.string()]
+			)
+		);
+		methods.expose(
+			FluidTable,
+			"deleteColumn",
+			buildFunc(
+				{
+					description: "Deletes a column and all of its cells from the table.",
+					returns: z.void(),
+				},
+				["column", z.instanceof(FluidColumnSchema)]
+			)
+		);
+		methods.expose(
+			FluidTable,
+			"getColumnByCellId",
+			buildFunc(
+				{
+					description:
+						"Finds a column by a cell id formatted as 'columnId_rowId'. Returns undefined if not found.",
+					returns: z.instanceof(FluidColumnSchema).optional(),
+				},
+				["cellId", z.string()]
+			)
+		);
+		methods.expose(
+			FluidTable,
+			"addColumn",
+			buildFunc(
+				{
+					description: "Appends a new column to the end of the table.",
+					returns: z.void(),
+				},
+				["userId", z.string()]
+			)
+		);
+		methods.expose(
+			FluidTable,
+			"addRow",
+			buildFunc(
+				{
+					description: "Appends a new empty row to the table.",
+					returns: z.void(),
+				},
+				["userId", z.string()]
+			)
+		);
+		methods.expose(
+			FluidTable,
+			"moveColumnLeft",
+			buildFunc(
+				{
+					description: "Moves the specified column one position to the left if possible.",
+					returns: z.boolean(),
+				},
+				["column", z.instanceof(FluidColumnSchema)]
+			)
+		);
+		methods.expose(
+			FluidTable,
+			"moveColumnRight",
+			buildFunc(
+				{
+					description:
+						"Moves the specified column one position to the right if possible.",
+					returns: z.boolean(),
+				},
+				["column", z.instanceof(FluidColumnSchema)]
+			)
+		);
+		methods.expose(
+			FluidTable,
+			"moveRowUp",
+			buildFunc(
+				{
+					description: "Moves the specified row one position up if possible.",
+					returns: z.boolean(),
+				},
+				["row", z.instanceof(FluidRowSchema)]
+			)
+		);
+		methods.expose(
+			FluidTable,
+			"moveRowDown",
+			buildFunc(
+				{
+					description: "Moves the specified row one position down if possible.",
+					returns: z.boolean(),
+				},
+				["row", z.instanceof(FluidRowSchema)]
+			)
+		);
+		methods.expose(
+			FluidTable,
+			"createRowWithValues",
+			buildFunc(
+				{
+					description:
+						"Creates a new row populated with random values based on each column's hint.",
+					returns: z.instanceof(FluidRowSchema),
+				},
+				["userId", z.string()]
+			)
+		);
+	}
+
 	/**
 	 * Create a Row before inserting it into the table
 	 * */
@@ -395,6 +621,7 @@ export class FluidTable extends TableSchema.table({
 		return new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime()));
 	}
 }
+
 export class Item extends sf.object("Item", {
 	id: sf.string,
 	x: sf.required(sf.number, {
@@ -411,7 +638,8 @@ export class Item extends sf.object("Item", {
 	}),
 	rotation: sf.required(sf.number, {
 		metadata: {
-			description: "The rotation of the shape in clockwise degrees",
+			description:
+				"Clockwise rotation in degrees (0–359). Values outside this range should be normalized mod 360 by clients when mutating.",
 		},
 	}),
 	comments: Comments,
@@ -430,10 +658,142 @@ export class Item extends sf.object("Item", {
 			parent.removeAt(parent.indexOf(this));
 		}
 	}
+
+	public static [exposeMethodsSymbol](methods: ExposedMethods): void {
+		methods.expose(
+			Item,
+			"delete",
+			buildFunc(
+				{
+					description: "Deletes this item from its parent Items array.",
+					returns: z.void(),
+				},
+				["userId", z.string()]
+			)
+		);
+	}
 }
 
 // Simple Items array containing only Item objects
 export class Items extends sf.array("Items", [Item]) {
+	public static [exposeMethodsSymbol](methods: ExposedMethods): void {
+		methods.expose(
+			Items,
+			"createShapeItem",
+			buildFunc(
+				{
+					description:
+						"Creates and inserts a new Shape item with randomized size, position, rotation and specified type & palette.",
+					returns: z.instanceof(Item),
+				},
+				["shapeType", z.enum(["circle", "square", "triangle", "star"])],
+				["canvasSize", z.object({ width: z.number(), height: z.number() })],
+				["shapeColors", z.array(z.string())],
+				["userId", z.string().optional()],
+				["username", z.string().optional()]
+			)
+		);
+		methods.expose(
+			Items,
+			"createNoteItem",
+			buildFunc(
+				{
+					description: "Creates and inserts a new empty Note item.",
+					returns: z.instanceof(Item),
+				},
+				["canvasSize", z.object({ width: z.number(), height: z.number() })],
+				["authorId", z.string()],
+				["userId", z.string()],
+				["username", z.string()]
+			)
+		);
+		methods.expose(
+			Items,
+			"createTableItem",
+			buildFunc(
+				{
+					description:
+						"Creates and inserts a new Table item with default columns and rows.",
+					returns: z.instanceof(Item),
+				},
+				["canvasSize", z.object({ width: z.number(), height: z.number() })],
+				["userId", z.string()],
+				["username", z.string()]
+			)
+		);
+		methods.expose(
+			Items,
+			"createDefaultTable",
+			buildFunc({
+				description:
+					"Creates a new detached FluidTable with standard starter columns and empty rows.",
+				returns: z.instanceof(FluidTable),
+			})
+		);
+		methods.expose(
+			Items,
+			"duplicateItem",
+			buildFunc(
+				{
+					description:
+						"Creates a shallow duplicate of an existing item with offset position and new identifiers.",
+					returns: z.instanceof(Item),
+				},
+				["item", z.instanceof(Item)],
+				["canvasSize", z.object({ width: z.number(), height: z.number() })],
+				["userId", z.string()],
+				["username", z.string()]
+			)
+		);
+		methods.expose(
+			Items,
+			"moveItemForward",
+			buildFunc(
+				{
+					description:
+						"Moves an item one index forward (higher z-order). Returns true if moved.",
+					returns: z.boolean(),
+				},
+				["item", z.instanceof(Item)]
+			)
+		);
+		methods.expose(
+			Items,
+			"moveItemBackward",
+			buildFunc(
+				{
+					description:
+						"Moves an item one index backward (lower z-order). Returns true if moved.",
+					returns: z.boolean(),
+				},
+				["item", z.instanceof(Item)]
+			)
+		);
+		methods.expose(
+			Items,
+			"bringItemToFront",
+			buildFunc(
+				{
+					description:
+						"Moves an item to the final index (front / top-most). Returns true if moved.",
+					returns: z.boolean(),
+				},
+				["item", z.instanceof(Item)]
+			)
+		);
+		methods.expose(
+			Items,
+			"sendItemToBack",
+			buildFunc(
+				{
+					description:
+						"Moves an item to index 0 (back / bottom-most). Returns true if moved.",
+					returns: z.boolean(),
+				},
+				["item", z.instanceof(Item)]
+			)
+		);
+	}
 	/**
 	 * Create a new shape item and add it to the items collection
 	 */
@@ -751,33 +1111,86 @@ export class Items extends sf.array("Items", [Item]) {
 
 // ---- Ink (extended vector) schema definitions ----
 export class InkPoint extends sf.object("InkPoint", {
-	x: sf.number,
-	y: sf.number,
-	t: sf.optional(sf.number), // timestamp (ms since epoch or stroke start)
-	p: sf.optional(sf.number), // pressure 0..1
+	x: sf.required(sf.number, {
+		metadata: {
+			description:
+				"X coordinate in canvas pixels relative to the stroke's local coordinate system.",
+		},
+	}),
+	y: sf.required(sf.number, {
+		metadata: {
+			description:
+				"Y coordinate in canvas pixels relative to the stroke's local coordinate system.",
+		},
+	}),
+	t: sf.optional(sf.number, {
+		metadata: {
+			description:
+				"Timestamp (ms). May be absolute epoch or relative; used only for ordering.",
+		},
+	}),
+	p: sf.optional(sf.number, {
+		metadata: { description: "Pointer pressure normalized to [0,1]; omitted if unsupported." },
+	}),
 }) {}
 
 export class InkStyle extends sf.object("InkStyle", {
-	strokeColor: sf.string,
-	strokeWidth: sf.number,
-	opacity: sf.number,
-	lineCap: sf.string, // e.g. round | butt | square
-	lineJoin: sf.string, // e.g. round | miter | bevel
+	strokeColor: sf.required(sf.string, {
+		metadata: { description: "Stroke color token (#RRGGBB or CSS named color)." },
+	}),
+	strokeWidth: sf.required(sf.number, {
+		metadata: { description: "Base stroke width in canvas pixels." },
+	}),
+	opacity: sf.required(sf.number, { metadata: { description: "Stroke alpha in range [0,1]." } }),
+	lineCap: sf.required(sf.string, {
+		metadata: { description: "Line cap style: 'round' | 'butt' | 'square'." },
+	}),
+	lineJoin: sf.required(sf.string, {
+		metadata: { description: "Line join style: 'round' | 'miter' | 'bevel'." },
+	}),
 }) {}
 
 export class InkBBox extends sf.object("InkBBox", {
-	x: sf.number,
-	y: sf.number,
-	w: sf.number,
-	h: sf.number,
+	x: sf.required(sf.number, {
+		metadata: { description: "Minimum x of stroke's axis-aligned bounding box." },
+	}),
+	y: sf.required(sf.number, {
+		metadata: { description: "Minimum y of stroke's axis-aligned bounding box." },
+	}),
+	w: sf.required(sf.number, { metadata: { description: "Bounding box width in pixels (>=0)." } }),
+	h: sf.required(sf.number, {
+		metadata: { description: "Bounding box height in pixels (>=0)." },
+	}),
 }) {}
 
 export class InkStroke extends sf.object("InkStroke", {
-	id: sf.string,
-	points: sf.array([InkPoint]),
-	style: InkStyle,
-	bbox: InkBBox,
-	simplified: sf.optional(sf.array([InkPoint])),
+	id: sf.required(sf.string, {
+		metadata: {
+			description: "Stable stroke UUID for diffing, synchronization, and selection.",
+		},
+	}),
+	points: sf.required(sf.array([InkPoint]), {
+		metadata: {
+			description: "Ordered list of captured input points defining the stroke path.",
+		},
+	}),
+	style: sf.required(InkStyle, {
+		metadata: {
+			description:
+				"Rendering style (color, width, caps, joins, opacity) applied to this stroke.",
+		},
+	}),
+	bbox: sf.required(InkBBox, {
+		metadata: {
+			description: "Axis-aligned bounding box precomputed for hit testing and culling.",
+		},
+	}),
+	simplified: sf.optional(sf.array([InkPoint]), {
+		metadata: {
+			description:
+				"Optional reduced point set for faster rendering; falls back to 'points' when absent.",
+		},
+	}),
 	created: sf.required(Change, {
 		metadata: { description: "Information about when and by whom this ink stroke was created" },
 	}),
