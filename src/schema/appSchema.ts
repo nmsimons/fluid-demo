@@ -645,6 +645,124 @@ export class Item extends sf.object("Item", {
 
 // Simple Items array containing only Item objects
 export class Items extends sf.array("Items", [Item]) {
+	public static [exposeMethodsSymbol](methods: ExposedMethods): void {
+		methods.expose(
+			Items,
+			"createShapeItem",
+			buildFunc(
+				{
+					description:
+						"Creates and inserts a new Shape item with randomized size, position, rotation and specified type & palette.",
+					returns: z.instanceof(Item),
+				},
+				["shapeType", z.enum(["circle", "square", "triangle", "star"])],
+				["canvasSize", z.object({ width: z.number(), height: z.number() })],
+				["shapeColors", z.array(z.string())],
+				["userId", z.string().optional()],
+				["username", z.string().optional()]
+			)
+		);
+		methods.expose(
+			Items,
+			"createNoteItem",
+			buildFunc(
+				{
+					description: "Creates and inserts a new empty Note item.",
+					returns: z.instanceof(Item),
+				},
+				["canvasSize", z.object({ width: z.number(), height: z.number() })],
+				["authorId", z.string()],
+				["userId", z.string()],
+				["username", z.string()]
+			)
+		);
+		methods.expose(
+			Items,
+			"createTableItem",
+			buildFunc(
+				{
+					description:
+						"Creates and inserts a new Table item with default columns and rows.",
+					returns: z.instanceof(Item),
+				},
+				["canvasSize", z.object({ width: z.number(), height: z.number() })],
+				["userId", z.string()],
+				["username", z.string()]
+			)
+		);
+		methods.expose(
+			Items,
+			"createDefaultTable",
+			buildFunc({
+				description:
+					"Creates a new detached FluidTable with standard starter columns and empty rows.",
+				returns: z.instanceof(FluidTable),
+			})
+		);
+		methods.expose(
+			Items,
+			"duplicateItem",
+			buildFunc(
+				{
+					description:
+						"Creates a shallow duplicate of an existing item with offset position and new identifiers.",
+					returns: z.instanceof(Item),
+				},
+				["item", z.instanceof(Item)],
+				["canvasSize", z.object({ width: z.number(), height: z.number() })],
+				["userId", z.string()],
+				["username", z.string()]
+			)
+		);
+		methods.expose(
+			Items,
+			"moveItemForward",
+			buildFunc(
+				{
+					description:
+						"Moves an item one index forward (higher z-order). Returns true if moved.",
+					returns: z.boolean(),
+				},
+				["item", z.instanceof(Item)]
+			)
+		);
+		methods.expose(
+			Items,
+			"moveItemBackward",
+			buildFunc(
+				{
+					description:
+						"Moves an item one index backward (lower z-order). Returns true if moved.",
+					returns: z.boolean(),
+				},
+				["item", z.instanceof(Item)]
+			)
+		);
+		methods.expose(
+			Items,
+			"bringItemToFront",
+			buildFunc(
+				{
+					description:
+						"Moves an item to the final index (front / top-most). Returns true if moved.",
+					returns: z.boolean(),
+				},
+				["item", z.instanceof(Item)]
+			)
+		);
+		methods.expose(
+			Items,
+			"sendItemToBack",
+			buildFunc(
+				{
+					description:
+						"Moves an item to index 0 (back / bottom-most). Returns true if moved.",
+					returns: z.boolean(),
+				},
+				["item", z.instanceof(Item)]
+			)
+		);
+	}
 	/**
 	 * Create a new shape item and add it to the items collection
 	 */
