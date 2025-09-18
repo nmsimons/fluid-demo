@@ -92,8 +92,41 @@ export function CommentList(props: { comments: Comments; app: App }): JSX.Elemen
 export function CommentView(props: { comment: Comment; app: App }): JSX.Element {
 	const { comment, app } = props;
 	useTree(comment, true);
+	useTree(app.jobs);
 	const presence = useContext(PresenceContext);
 	const isMyComment = comment.userId === presence.users.getMyself().value.id;
+
+	// Get current job and watch for changes
+	const currentJob = app.jobs.get(comment.id);
+
+	// Watch for job status changes
+	useEffect(() => {
+		if (currentJob) {
+			// Use useTree to watch the specific job for changes
+			useTree(currentJob);
+
+			console.log(`Job status for comment ${comment.id}: ${currentJob.status}`);
+
+			// This effect will re-run whenever the job status changes
+			// due to the SharedTree reactivity system
+		}
+	}, [currentJob?.status, comment.id, currentJob]);
+
+	// Also watch for when jobs are added or removed
+	useEffect(() => {
+		const hasJob = currentJob !== undefined;
+		console.log(`Job ${hasJob ? "exists" : "does not exist"} for comment ${comment.id}`);
+
+		if (hasJob && currentJob) {
+			console.log(`Current job status: ${currentJob.status}`);
+			// Here you can add logic for when a job is added or status changes:
+			// - Show notifications
+			// - Update local state
+			// - Trigger animations
+			// - Log analytics events
+		}
+	}, [currentJob, comment.id]);
+
 	return (
 		<div className={`z-100 ${isMyComment ? "ml-6" : "mr-6"} `}>
 			<div className={`flex items-center justify-between mb-2`}>
