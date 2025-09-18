@@ -254,6 +254,21 @@ export class Changes extends sf.array("Changes", [Change]) {
 		});
 		this.insertAtEnd(change);
 	}
+
+	public static [exposeMethodsSymbol](methods: ExposedMethods): void {
+		methods.expose(
+			Changes,
+			"addChange",
+			buildFunc(
+				{
+					description: "Appends a new change record with current timestamp.",
+					returns: z.void(),
+				},
+				["userId", z.string()],
+				["username", z.string()]
+			)
+		);
+	}
 }
 
 export class Comments extends sf.array("Comments", [Comment]) {
@@ -267,6 +282,22 @@ export class Comments extends sf.array("Comments", [Comment]) {
 			createdAt: new DateTime({ ms: Date.now() }),
 		});
 		this.insertAtEnd(comment);
+	}
+
+	public static [exposeMethodsSymbol](methods: ExposedMethods): void {
+		methods.expose(
+			Comments,
+			"addComment",
+			buildFunc(
+				{
+					description: "Appends a new comment with provided text and author identifiers.",
+					returns: z.void(),
+				},
+				["text", z.string()],
+				["userId", z.string()],
+				["username", z.string()]
+			)
+		);
 	}
 }
 
