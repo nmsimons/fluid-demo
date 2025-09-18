@@ -1,13 +1,71 @@
 // A pane for displaying and interacting with an LLM on the right side of the screen
 import { Button, Textarea } from "@fluentui/react-components";
 import { ArrowLeftFilled, BotRegular } from "@fluentui/react-icons";
-import React, { ReactNode, useEffect, useState, useRef } from "react";
+import React, { ReactNode, useEffect, useState, useRef, useContext } from "react";
 import { Pane } from "./Pane.js";
 import { TreeViewAlpha } from "@fluidframework/tree/alpha";
 // import the function, not the type
 import { SharedTreeSemanticAgent, createSemanticAgent } from "@fluidframework/tree-agent/alpha";
 import { App } from "../../../schema/appSchema.js";
-import { AzureChatOpenAI } from "@langchain/openai";
+import { AzureChatOpenAI, ChatOpenAI } from "@langchain/openai";
+import { AuthContext } from "../../contexts/AuthContext.js";
+import { PublicClientApplication } from "@azure/msal-browser";
+
+/**
+ * Helper function to get ZUMO auth token for Azure service calls
+ */
+async function getZumoAuthToken(msalInstance: PublicClientApplication): Promise<string> {
+	const accounts = msalInstance.getAllAccounts();
+	if (accounts.length === 0) {
+		throw new Error("No authenticated accounts found");
+	}
+
+	// Get token with the specific scope for the service
+	const tokenRequest = {
+		scopes: ["api://56bbaaea-f34d-4aee-9565-b37be2d84fa8/user_impersonation"],
+		account: accounts[0],
+	};
+
+	let msalToken: string;
+	let idToken: string;
+	try {
+		// Try silent token acquisition first
+		const silentResult = await msalInstance.acquireTokenSilent(tokenRequest);
+		msalToken = silentResult.accessToken;
+		idToken = silentResult.idToken;
+	} catch (silentError) {
+		console.log("Silent token acquisition failed, trying interactive:", silentError);
+		// Fall back to interactive token acquisition
+		const interactiveResult = await msalInstance.acquireTokenPopup(tokenRequest);
+		msalToken = interactiveResult.accessToken;
+		idToken = interactiveResult.idToken;
+	}
+
+	// Exchange the MSAL token for a ZUMO auth token
+	const authResponse = await fetch(
+		"https://mts-d6b6edexdtaqapg4.westus2-01.azurewebsites.net/.auth/login/aad",
+		{
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify({
+				access_token: msalToken,
+				id_token: idToken,
+			}),
+			credentials: "include",
+		}
+	);
+
+	if (!authResponse.ok) {
+		throw new Error(
+			`Failed to get ZUMO auth token: ${authResponse.status} ${authResponse.statusText}`
+		);
+	}
+
+	const authResult = await authResponse.json();
+	return authResult.authenticationToken;
+}
 
 export function TaskPane(props: {
 	hidden: boolean;
@@ -19,6 +77,7 @@ export function TaskPane(props: {
 	const [branch, setBranch] = useState<typeof main | undefined>(undefined);
 	const [chats, setChats] = useState<string[]>([]);
 	const [agent, setAgent] = useState<SharedTreeSemanticAgent | undefined>();
+	const { msalInstance } = useContext(AuthContext);
 
 	useEffect(() => {
 		if (hidden) {
@@ -40,35 +99,236 @@ export function TaskPane(props: {
 	useEffect(() => {
 		if (branch !== undefined) {
 			const setupAgent = async () => {
-				console.log("Setting up AI agent with manual token...");
+				console.log("Setting up AI agent...");
 
-				const manualToken = process.env.AZURE_OPENAI_MANUAL_TOKEN;
+				// Check for OpenAI API key first
+				const openaiApiKey = process.env.OPENAI_API_KEY;
+				if (openaiApiKey) {
+					console.log("Using OpenAI with API key");
+					try {
+						const chatOpenAI = new ChatOpenAI({
+							apiKey: openaiApiKey,
+							model: process.env.OPENAI_MODEL || "gpt-4",
+						});
 
-				if (!manualToken) {
+						setAgent(
+							createSemanticAgent(chatOpenAI, branch, {
+								log: (msg) => console.log(msg),
+								domainHints,
+							})
+						);
+
+						console.log("AI agent successfully created with OpenAI");
+						return;
+					} catch (error) {
+						console.error("Failed to set up OpenAI agent:", error);
+						// Continue to Azure fallback
+					}
+				}
+
+				const endpoint = import.meta.env.VITE_OPENAI_BASE_URL;
+				if (endpoint) {
+					console.log(`Using OpenAI at ${endpoint}`);
+					try {
+						if (!msalInstance) {
+							throw new Error("MSAL instance not available from context");
+						}
+
+						// Acquire a ZUMO auth token and ensure requests to the middle-tier include it
+						const zumoToken = await getZumoAuthToken(msalInstance);
+						console.log("ZUMO auth token acquired for middle-tier requests");
+
+						// Cache and refresh logic for the ZUMO token so the agent can run long-lived
+						// and recover from token expiration.
+						let cachedZumoToken: string | undefined = zumoToken;
+						let refreshInProgress: Promise<void> | null = null;
+
+						const ensureZumoToken = async (): Promise<string> => {
+							if (cachedZumoToken) {
+								return cachedZumoToken;
+							}
+							if (!refreshInProgress) {
+								refreshInProgress = (async () => {
+									cachedZumoToken = await getZumoAuthToken(msalInstance);
+								})();
+								try {
+									await refreshInProgress;
+									return cachedZumoToken!;
+								} finally {
+									refreshInProgress = null;
+								}
+							} else {
+								await refreshInProgress;
+								return cachedZumoToken!;
+							}
+						};
+
+						const refreshZumoToken = async (): Promise<string> => {
+							if (refreshInProgress) {
+								await refreshInProgress;
+								return cachedZumoToken!;
+							}
+							refreshInProgress = (async () => {
+								cachedZumoToken = await getZumoAuthToken(msalInstance);
+							})();
+							try {
+								await refreshInProgress;
+								return cachedZumoToken!;
+							} finally {
+								refreshInProgress = null;
+							}
+						};
+
+						const customFetch = async (
+							input: RequestInfo | URL,
+							init?: RequestInit
+						): Promise<Response> => {
+							let url: string;
+							if (typeof input === "string") {
+								url = input;
+							} else if (input instanceof Request) {
+								url = input.url;
+							} else if (input instanceof URL) {
+								url = input.toString();
+							} else {
+								url = String(input);
+							}
+
+							if (url.startsWith(endpoint)) {
+								// Ensure a ZUMO token is available
+								await ensureZumoToken();
+								let headers = new Headers(init?.headers || {});
+								headers.set("X-ZUMO-AUTH", cachedZumoToken!);
+								let response = await fetch(input, {
+									...init,
+									headers,
+								});
+
+								// If unauthorized, try refreshing the token and retry once
+								if (response.status === 401 || response.status === 403) {
+									try {
+										await refreshZumoToken();
+										headers = new Headers(init?.headers || {});
+										headers.set("X-ZUMO-AUTH", cachedZumoToken!);
+										response = await fetch(input, {
+											...init,
+											headers,
+										});
+									} catch (e) {
+										console.error("Failed to refresh ZUMO token:", e);
+									}
+								}
+
+								return response;
+							}
+
+							return fetch(input, init);
+						};
+
+						const chatOpenAI = new ChatOpenAI({
+							configuration: {
+								baseURL: endpoint,
+								fetch: customFetch,
+							},
+							apiKey: "not-used-due-to-custom-fetch-providing-auth",
+							model: process.env.OPENAI_MODEL || "gpt-5",
+						});
+
+						setAgent(
+							createSemanticAgent(chatOpenAI, branch, {
+								log: (msg) => console.log(msg),
+								domainHints,
+							})
+						);
+
+						console.log(
+							"AI agent successfully created with middle-tier OpenAI endpoint"
+						);
+						return;
+					} catch (error) {
+						console.error(
+							"Failed to set up OpenAI agent with middle-tier endpoint:",
+							error
+						);
+						// Continue to Azure fallback
+					}
+				}
+
+				// Fallback to Azure OpenAI
+				console.log("Using Azure OpenAI...");
+
+				// Validate Azure configuration
+				const azureInstanceName = process.env.AZURE_OPENAI_API_INSTANCE_NAME;
+				const azureDeploymentName = process.env.AZURE_OPENAI_API_DEPLOYMENT_NAME;
+				const azureApiVersion = process.env.AZURE_OPENAI_API_VERSION;
+
+				if (!azureInstanceName || !azureDeploymentName || !azureApiVersion) {
 					console.error(
-						"No manual token found. Please add AZURE_OPENAI_MANUAL_TOKEN to your .env file"
+						"Missing Azure OpenAI configuration. Required environment variables:"
 					);
-					console.error(
-						"Get token with: az account get-access-token --resource https://cognitiveservices.azure.com --query accessToken --output tsv"
-					);
+					console.error("- AZURE_OPENAI_API_INSTANCE_NAME");
+					console.error("- AZURE_OPENAI_API_DEPLOYMENT_NAME");
+					console.error("- AZURE_OPENAI_API_VERSION");
 					return;
 				}
 
-				try {
+				// Try manual token first
+				const manualToken = process.env.AZURE_OPENAI_MANUAL_TOKEN;
+				if (manualToken) {
 					console.log("Using manual token for Azure OpenAI authentication");
+					try {
+						const azureADTokenProvider = async () => {
+							console.log("Token provider called - returning manual token");
+							return manualToken;
+						};
 
-					// Create a simple token provider that returns your manual token
+						const chatOpenAI = new AzureChatOpenAI({
+							azureADTokenProvider: azureADTokenProvider,
+							model: "gpt-5",
+							azureOpenAIApiInstanceName: azureInstanceName,
+							azureOpenAIApiDeploymentName: azureDeploymentName,
+							azureOpenAIApiVersion: azureApiVersion,
+						});
+
+						setAgent(
+							createSemanticAgent(chatOpenAI, branch, {
+								log: (msg) => console.log(msg),
+								domainHints,
+							})
+						);
+
+						console.log("AI agent successfully created with manual token");
+						return;
+					} catch (error) {
+						console.error("Failed to set up AI agent with manual token:", error);
+						// Continue to standard auth
+					}
+				}
+
+				// Standard Azure auth flow using MSAL from context
+				console.log("Attempting standard Azure authentication...");
+				try {
+					if (!msalInstance) {
+						throw new Error("MSAL instance not available from context");
+					}
+
+					// Get ZUMO auth token for the service
+					const zumoToken = await getZumoAuthToken(msalInstance);
+					console.log("ZUMO auth token acquired successfully");
+
+					// Create Azure token provider that returns the ZUMO token
 					const azureADTokenProvider = async () => {
-						console.log("Token provider called - returning manual token");
-						return manualToken;
+						console.log("Token provider called - returning ZUMO token");
+						return zumoToken;
 					};
 
 					const chatOpenAI = new AzureChatOpenAI({
 						azureADTokenProvider: azureADTokenProvider,
 						model: "gpt-5",
-						azureOpenAIApiInstanceName: process.env.AZURE_OPENAI_API_INSTANCE_NAME,
-						azureOpenAIApiDeploymentName: process.env.AZURE_OPENAI_API_DEPLOYMENT_NAME,
-						azureOpenAIApiVersion: process.env.AZURE_OPENAI_API_VERSION,
+						azureOpenAIApiInstanceName: azureInstanceName,
+						azureOpenAIApiDeploymentName: azureDeploymentName,
+						azureOpenAIApiVersion: azureApiVersion,
+						azureOpenAIBasePath: endpoint,
 					});
 
 					setAgent(
@@ -78,16 +338,19 @@ export function TaskPane(props: {
 						})
 					);
 
-					console.log("AI agent successfully created with manual token");
+					console.log("AI agent successfully created with ZUMO authentication");
 				} catch (error) {
-					console.error("Failed to set up AI agent:", error);
-					console.error("Check if your token is valid and has the correct permissions");
+					console.error("Failed to set up AI agent with ZUMO authentication:", error);
+					console.error("Authentication options:");
+					console.error("1. Set OPENAI_API_KEY for OpenAI");
+					console.error("2. Set AZURE_OPENAI_MANUAL_TOKEN for manual Azure auth");
+					console.error("3. Ensure user is signed in for ZUMO authentication");
 				}
 			};
 
 			setupAgent().catch(console.error);
 		}
-	}, [branch]);
+	}, [branch, msalInstance]);
 
 	const handlePromptSubmit = async (prompt: string) => {
 		if (agent !== undefined) {

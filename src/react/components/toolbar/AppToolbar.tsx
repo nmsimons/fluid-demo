@@ -3,7 +3,7 @@
  * Licensed under the MIT License.
  */
 
-import React, { JSX } from "react";
+import React, { JSX, useContext } from "react";
 import { Tree } from "fluid-framework";
 import { TreeViewAlpha } from "@fluidframework/tree/alpha";
 import { App, Shape } from "../../../schema/appSchema.js";
@@ -41,9 +41,9 @@ import { CommentsPaneToggleButton, AIPaneToggleButton } from "./buttons/PaneButt
 import { ZoomMenu } from "./buttons/ViewButtons.js";
 import { DeleteSelectedRowsButton } from "./buttons/TableButtons.js";
 // All toolbar button UIs now componentized; direct TooltipButton usage removed.
-import { MessageBar, MessageBarBody, MessageBarTitle } from "@fluentui/react-message-bar";
 import { Toolbar, ToolbarDivider, ToolbarGroup } from "@fluentui/react-toolbar";
 import type { SelectionManager } from "../../../presence/Interfaces/SelectionManager.js";
+import { PresenceContext } from "../../contexts/PresenceContext.js";
 
 export interface AppToolbarProps {
 	view: TreeViewAlpha<typeof App>;
@@ -79,7 +79,7 @@ export interface AppToolbarProps {
 export function AppToolbar(props: AppToolbarProps): JSX.Element {
 	const {
 		view,
-		tree,
+		tree, // eslint-disable-line @typescript-eslint/no-unused-vars
 		canvasSize,
 		pan,
 		selectedItemId,
@@ -108,6 +108,7 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 		onShapeColorChange,
 	} = props;
 
+	const presence = useContext(PresenceContext);
 	// Zoom slider logic moved into ZoomMenu component.
 
 	return (
@@ -241,7 +242,10 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 														if (item) {
 															view.root.items.duplicateItem(
 																item,
-																canvasSize
+																canvasSize,
+																presence.users.getMyself().value.id,
+																presence.users.getMyself().value
+																	.name
 															);
 														}
 													});
@@ -339,24 +343,8 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 			</ToolbarGroup>
 			{/* Right side grouping (auto) */}
 			<ToolbarGroup style={{ marginLeft: "auto" }}>
-				{view !== tree && (
-					<div className="mr-4">
-						<MessageBarComponent message="While viewing an AI Task, others will not see your changes (and you will not see theirs) until you complete the task." />
-					</div>
-				)}
 				<ZoomMenu zoom={zoom} onZoomChange={onZoomChange} />
 			</ToolbarGroup>
 		</Toolbar>
-	);
-}
-
-function MessageBarComponent(props: { message: string }): JSX.Element {
-	const { message } = props;
-	return (
-		<MessageBar>
-			<MessageBarBody>
-				<MessageBarTitle>{message}</MessageBarTitle>
-			</MessageBarBody>
-		</MessageBar>
 	);
 }

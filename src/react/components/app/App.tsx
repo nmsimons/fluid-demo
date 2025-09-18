@@ -281,6 +281,7 @@ export function ReactApp(props: {
 								eraserActive={eraserActive}
 								inkColor={inkColor}
 								inkWidth={inkWidth}
+								showBranchMessage={view !== tree}
 							/>
 						</PaneContext.Provider>
 						<CommentPane

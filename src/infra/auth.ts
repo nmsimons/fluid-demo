@@ -6,6 +6,7 @@ export async function authHelper(): Promise<PublicClientApplication> {
 	const clientId = process.env.AZURE_CLIENT_ID;
 	const redirectUri = process.env.AZURE_REDIRECT_URI;
 	const fluidClient = process.env.FLUID_CLIENT;
+	const authority = process.env.AUTHORITY || "https://login.microsoftonline.com/common/";
 
 	if (!clientId) {
 		throw new Error("AZURE_CLIENT_ID is not defined");
@@ -24,7 +25,7 @@ export async function authHelper(): Promise<PublicClientApplication> {
 		auth: {
 			clientId,
 			redirectUri,
-			authority: "https://login.microsoftonline.com/common/",
+			authority,
 		},
 		cache: {
 			cacheLocation: "localStorage",

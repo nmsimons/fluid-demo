@@ -116,7 +116,13 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 			action: () => {
 				// Use the specific color or fallback to random selection (same logic as buttons)
 				const colors = shapeColor ? [shapeColor] : SHAPE_COLORS;
-				view.root.items.createShapeItem("circle", canvasSize, colors);
+				view.root.items.createShapeItem(
+					"circle",
+					canvasSize,
+					colors,
+					users.getMyself().value.id,
+					users.getMyself().value.name
+				);
 				centerLastItem(view.root.items, pan, zoom, props.canvasSize, 120, 120, true);
 			},
 		},
@@ -125,7 +131,13 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 			action: () => {
 				// Use the specific color or fallback to random selection (same logic as buttons)
 				const colors = shapeColor ? [shapeColor] : SHAPE_COLORS;
-				view.root.items.createShapeItem("square", canvasSize, colors);
+				view.root.items.createShapeItem(
+					"square",
+					canvasSize,
+					colors,
+					users.getMyself().value.id,
+					users.getMyself().value.name
+				);
 				centerLastItem(view.root.items, pan, zoom, props.canvasSize, 120, 120, true);
 			},
 		},
@@ -134,7 +146,13 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 			action: () => {
 				// Use the specific color or fallback to random selection (same logic as buttons)
 				const colors = shapeColor ? [shapeColor] : SHAPE_COLORS;
-				view.root.items.createShapeItem("triangle", canvasSize, colors);
+				view.root.items.createShapeItem(
+					"triangle",
+					canvasSize,
+					colors,
+					users.getMyself().value.id,
+					users.getMyself().value.name
+				);
 				centerLastItem(view.root.items, pan, zoom, props.canvasSize, 120, 120, true);
 			},
 		},
@@ -143,21 +161,36 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 			action: () => {
 				// Use the specific color or fallback to random selection (same logic as buttons)
 				const colors = shapeColor ? [shapeColor] : SHAPE_COLORS;
-				view.root.items.createShapeItem("star", canvasSize, colors);
+				view.root.items.createShapeItem(
+					"star",
+					canvasSize,
+					colors,
+					users.getMyself().value.id,
+					users.getMyself().value.name
+				);
 				centerLastItem(view.root.items, pan, zoom, props.canvasSize, 120, 120, true);
 			},
 		},
 		{
 			key: "n",
 			action: () => {
-				view.root.items.createNoteItem(canvasSize, users.getMyself().value.id);
+				view.root.items.createNoteItem(
+					canvasSize,
+					users.getMyself().value.id,
+					users.getMyself().value.id,
+					users.getMyself().value.name
+				);
 				centerLastItem(view.root.items, pan, zoom, props.canvasSize, 180, 120, true);
 			},
 		},
 		{
 			key: "b",
 			action: () => {
-				view.root.items.createTableItem(canvasSize);
+				view.root.items.createTableItem(
+					canvasSize,
+					users.getMyself().value.id,
+					users.getMyself().value.name
+				);
 				centerLastItem(view.root.items, pan, zoom, props.canvasSize, 240, 160, true);
 			},
 		},
@@ -188,7 +221,12 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 
 					// Then duplicate each item
 					itemsToDuplicate.forEach((selectedItem) => {
-						view.root.items.duplicateItem(selectedItem, canvasSize);
+						view.root.items.duplicateItem(
+							selectedItem,
+							canvasSize,
+							users.getMyself().value.id,
+							users.getMyself().value.name
+						);
 					});
 				});
 			},
