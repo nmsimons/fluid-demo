@@ -5,6 +5,8 @@
 		"target": "es6",
 		"module": "Node16",
 		"sourceMap": true,
+		"declaration": true,
+		"declarationMap": true,
 		// Set your preferences here for TypeScript
 		"strict": true,
 		"jsx": "react",

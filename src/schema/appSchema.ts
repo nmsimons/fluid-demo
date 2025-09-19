@@ -7,6 +7,13 @@ import {
 	TableSchema,
 	SchemaFactoryAlpha,
 	TreeViewConfigurationAlpha,
+	// Importing these types reduces the size of generated .d.ts files.
+	type FieldSchemaAlpha,
+	type FieldKind,
+	type TreeNodeSchemaClass,
+	type LeafSchema,
+	type NodeKind,
+	type FieldSchema,
 } from "@fluidframework/tree/alpha";
 import {
 	buildFunc,
@@ -360,31 +367,33 @@ export class Note extends sf.object("Note", {
 export type typeDefinition = TreeNodeFromImplicitAllowedTypes<typeof schemaTypes>;
 const schemaTypes = [sf.string, sf.number, sf.boolean, DateTime, Vote] as const;
 
-// Create column schema with properties for hint and name
-export const FluidColumnSchema = TableSchema.column({
-	schemaFactory: sf,
-	cell: schemaTypes,
-	props: sf.object("ColumnProps", {
-		name: sf.required(sf.string, {
-			metadata: {
-				description:
-					"Human-readable column header label (<=40 chars). Renaming does not alter existing cell values.",
-			},
-		}),
-		hint: sf.optional(sf.string, {
-			metadata: {
-				description: `Semantic data kind for cells in this column. Must remain one of ${Object.values(
-					hintValues
-				).join(", ")}.`,
-			},
-		}),
+export class ColumnProps extends sf.object("ColumnProps", {
+	name: sf.required(sf.string, {
+		metadata: {
+			description:
+				"Human-readable column header label (<=40 chars). Renaming does not alter existing cell values.",
+		},
 	}),
-});
+	hint: sf.optional(sf.string, {
+		metadata: {
+			description: `Semantic data kind for cells in this column. Must remain one of ${Object.values(
+				hintValues
+			).join(", ")}.`,
+		},
+	}),
+}) {}
 
-export const FluidRowSchema = TableSchema.row({
+// Create column schema with properties for hint and name
+export class FluidColumnSchema extends TableSchema.column({
 	schemaFactory: sf,
 	cell: schemaTypes,
-});
+	props: ColumnProps,
+}) {}
+
+export class FluidRowSchema extends TableSchema.row({
+	schemaFactory: sf,
+	cell: schemaTypes,
+}) {}
 
 export class FluidTable extends TableSchema.table({
 	schemaFactory: sf,
