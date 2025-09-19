@@ -325,12 +325,12 @@ export function Canvas(props: {
 		const rect = svgRef.current?.getBoundingClientRect();
 		if (!rect) return;
 		setCursor({ x: e.clientX - rect.left, y: e.clientY - rect.top, visible: true });
-		
+
 		// Update collaborative cursor position
 		const logicalX = (e.clientX - rect.left - pan.x) / zoom;
 		const logicalY = (e.clientY - rect.top - pan.y) / zoom;
 		presence.cursor?.setCursorPosition(logicalX, logicalY);
-		
+
 		// If erasing, update hover or scrub
 		if (eraserActive && root?.inks) {
 			const pLogical = toLogical(e.clientX, e.clientY);
@@ -398,11 +398,11 @@ export function Canvas(props: {
 		const handleMove = (ev: PointerEvent) => {
 			// Skip events from other concurrent pointers (multi-touch scenarios)
 			if (pointerIdRef.current !== null && ev.pointerId !== pointerIdRef.current) return;
-			
+
 			// Update cursor position for collaborative cursors
 			const logicalPos = toLogical(ev.clientX, ev.clientY);
 			presence.cursor?.setCursorPosition(logicalPos.x, logicalPos.y);
-			
+
 			// Use coalesced events for smoother touch / pen input when available
 			const hasCoalesced = (
 				e: PointerEvent
