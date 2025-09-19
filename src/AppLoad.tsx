@@ -50,6 +50,7 @@ import { createDragManager } from "./presence/drag.js";
 import { createResizeManager } from "./presence/resize.js";
 import { createInkPresenceManager } from "./presence/ink.js";
 import { asTreeViewAlpha } from "@fluidframework/tree/alpha";
+import { createCursorManager } from "./presence/cursor.js";
 
 export async function loadApp(props: {
 	client: AzureClient;
@@ -119,6 +120,11 @@ export async function loadApp(props: {
 			workspace,
 		});
 
+		const cursor = createCursorManager({
+			name: "cursor:main",
+			workspace,
+		});
+
 		// create the root element for React
 		const app = document.createElement("div");
 		app.id = "app";
@@ -142,6 +148,7 @@ export async function loadApp(props: {
 							drag={drag}
 							resize={resize}
 							ink={ink}
+							cursor={cursor}
 							users={users}
 							container={container}
 							undoRedo={undoRedo}

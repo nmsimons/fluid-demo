@@ -38,6 +38,7 @@ import { signOutHelper, switchAccountHelper } from "../../../infra/auth.js";
 import { DragManager } from "../../../presence/Interfaces/DragManager.js";
 import { ResizeManager } from "../../../presence/Interfaces/ResizeManager.js";
 import { ResizePackage } from "../../../presence/Interfaces/ResizeManager.js";
+import { CursorManager } from "../../../presence/Interfaces/CursorManager.js";
 import { CommentPane, CommentPaneRef } from "../panels/CommentPane.js";
 import { TaskPane } from "../panels/AIPane.js";
 import { useTree } from "../../hooks/useTree.js";
@@ -62,10 +63,21 @@ export function ReactApp(props: {
 	undoRedo: undoRedo;
 	drag: DragManager<DragAndRotatePackage | null>;
 	resize: ResizeManager<ResizePackage | null>;
+	cursor: CursorManager;
 	ink?: InkPresenceManager;
 }): JSX.Element {
-	const { tree, itemSelection, tableSelection, users, container, undoRedo, drag, resize, ink } =
-		props;
+	const {
+		tree,
+		itemSelection,
+		tableSelection,
+		users,
+		container,
+		undoRedo,
+		drag,
+		resize,
+		cursor,
+		ink,
+	} = props;
 	const [connectionState, setConnectionState] = useState("");
 	const [saved, setSaved] = useState(false);
 	const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
@@ -222,6 +234,7 @@ export function ReactApp(props: {
 				tableSelection: tableSelection,
 				drag: drag,
 				resize: resize,
+				cursor: cursor,
 				branch: view !== tree ? localBranchId.current : "main",
 				ink: ink,
 			}}
