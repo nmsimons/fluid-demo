@@ -102,13 +102,10 @@ export function CommentView(props: { comment: Comment; app: App }): JSX.Element 
 	// Watch for job status changes
 	useEffect(() => {
 		if (currentJob) {
-			// Use useTree to watch the specific job for changes
-			useTree(currentJob);
-
 			console.log(`Job status for comment ${comment.id}: ${currentJob.status}`);
 
 			// This effect will re-run whenever the job status changes
-			// due to the SharedTree reactivity system
+			// due to the SharedTree reactivity system from useTree(app.jobs) above
 		}
 	}, [currentJob?.status, comment.id, currentJob]);
 
