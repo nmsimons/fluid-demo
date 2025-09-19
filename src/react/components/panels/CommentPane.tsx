@@ -29,9 +29,10 @@ export const CommentPane = forwardRef<
 		setHidden: (hidden: boolean) => void;
 		itemId: string;
 		app: App;
+		containerId: string;
 	}
 >((props, ref) => {
-	const { hidden, setHidden, app } = props;
+	const { hidden, setHidden, app, containerId } = props;
 	const presence = useContext(PresenceContext);
 	const [title, setTitle] = useState("Comments");
 	const commentInputRef = useRef<CommentInputRef>(null);
@@ -64,7 +65,7 @@ export const CommentPane = forwardRef<
 
 	return (
 		<Pane hidden={hidden} setHidden={setHidden} title={title}>
-			<CommentList comments={item.comments} app={app} />
+			<CommentList comments={item.comments} app={app} containerId={containerId} />
 			<CommentInput ref={commentInputRef} callback={(comment) => handleAddComment(comment)} />
 		</Pane>
 	);
@@ -72,8 +73,8 @@ export const CommentPane = forwardRef<
 
 CommentPane.displayName = "CommentPane";
 
-export function CommentList(props: { comments: Comments; app: App }): JSX.Element {
-	const { comments, app } = props;
+export function CommentList(props: { comments: Comments; app: App; containerId: string }): JSX.Element {
+	const { comments, app, containerId } = props;
 	useTree(comments);
 	return (
 		<div className="relative flex flex-col grow space-y-2 overflow-y-auto">
@@ -83,14 +84,14 @@ export function CommentList(props: { comments: Comments; app: App }): JSX.Elemen
 				<CommentRegular className="h-full w-full opacity-10" />
 			</div>
 			{comments.map((comment) => (
-				<CommentView key={comment.id} comment={comment} app={app} />
+				<CommentView key={comment.id} comment={comment} app={app} containerId={containerId} />
 			))}
 		</div>
 	);
 }
 
-export function CommentView(props: { comment: Comment; app: App }): JSX.Element {
-	const { comment, app } = props;
+export function CommentView(props: { comment: Comment; app: App; containerId: string }): JSX.Element {
+	const { comment, app, containerId } = props;
 	useTree(comment, true);
 	useTree(app.jobs);
 	const presence = useContext(PresenceContext);
@@ -143,7 +144,7 @@ export function CommentView(props: { comment: Comment; app: App }): JSX.Element 
 					<div className="text-xs text-gray-500">{comment.votes.votes.length} votes</div>
 					<div className="flex items-center space-x-1">
 						<VoteButton vote={comment.votes} />
-						<JobButton comment={comment} app={app} />
+						<JobButton comment={comment} app={app} containerId={containerId} />
 					</div>
 				</div>
 			</SpeechBubble>

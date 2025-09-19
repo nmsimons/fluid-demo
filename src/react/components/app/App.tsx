@@ -60,6 +60,7 @@ export function ReactApp(props: {
 	tableSelection: SelectionManager<TypedSelection>;
 	users: UsersManager;
 	container: IFluidContainer;
+	containerId: string;
 	undoRedo: undoRedo;
 	drag: DragManager<DragAndRotatePackage | null>;
 	resize: ResizeManager<ResizePackage | null>;
@@ -72,6 +73,7 @@ export function ReactApp(props: {
 		tableSelection,
 		users,
 		container,
+		containerId,
 		undoRedo,
 		drag,
 		resize,
@@ -303,6 +305,7 @@ export function ReactApp(props: {
 							setHidden={setCommentPaneHidden}
 							itemId={selectedItemId}
 							app={view.root}
+							containerId={containerId}
 						/>
 						<TaskPane
 							hidden={aiTaskPaneHidden}

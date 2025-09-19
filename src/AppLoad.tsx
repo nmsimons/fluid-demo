@@ -151,6 +151,7 @@ export async function loadApp(props: {
 							cursor={cursor}
 							users={users}
 							container={container}
+							containerId={containerId}
 							undoRedo={undoRedo}
 						/>
 					</Suspense>
