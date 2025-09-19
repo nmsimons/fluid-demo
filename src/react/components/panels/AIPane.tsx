@@ -68,7 +68,7 @@ export function TaskPane(props: {
 	const logDirtyNodes = () => {
 		console.log("=== Current Dirty Nodes ===");
 		console.log(`Total dirty nodes: ${dirtyMap.size}`);
-		
+
 		if (dirtyMap.size === 0) {
 			console.log("No dirty nodes found.");
 		} else {
@@ -81,16 +81,18 @@ export function TaskPane(props: {
 				console.log(`      Node constructor:`, node?.constructor?.name);
 				// Try to get some identifying information about the node
 				try {
-					if (node && typeof node === 'object') {
+					if (node && typeof node === "object") {
 						const nodeInfo = JSON.stringify(node, null, 2);
 						if (nodeInfo.length < 500) {
 							console.log(`      Node content:`, nodeInfo);
 						} else {
-							console.log(`      Node content: [Large object - ${nodeInfo.length} chars]`);
+							console.log(
+								`      Node content: [Large object - ${nodeInfo.length} chars]`
+							);
 						}
 					}
 				} catch (error) {
-					const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+					const errorMessage = error instanceof Error ? error.message : "Unknown error";
 					console.log(`      Node content: [Unable to serialize - ${errorMessage}]`);
 				}
 				index++;
