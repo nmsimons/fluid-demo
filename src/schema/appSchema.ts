@@ -402,19 +402,19 @@ export class FluidTable extends TableSchema.table({
 	column: FluidColumnSchema,
 	row: FluidRowSchema,
 }) {
-	public static [exposeMethodsSymbol](methods: ExposedMethods): void {
-		methods.expose(
+	public static [exposeMethodsSymbol](m: ExposedMethods): void {
+		m.expose(
 			FluidTable,
 			"createDetachedRow",
 			buildFunc(
 				{
 					description: "Creates a new row without inserting it into the table.",
-					returns: z.instanceof(FluidRowSchema),
+					returns: m.instanceOf(FluidRowSchema),
 				},
 				["userId", z.string()]
 			)
 		);
-		methods.expose(
+		m.expose(
 			FluidTable,
 			"deleteColumn",
 			buildFunc(
@@ -422,22 +422,22 @@ export class FluidTable extends TableSchema.table({
 					description: "Deletes a column and all of its cells from the table.",
 					returns: z.void(),
 				},
-				["column", z.instanceof(FluidColumnSchema)]
+				["column", m.instanceOf(FluidColumnSchema)]
 			)
 		);
-		methods.expose(
+		m.expose(
 			FluidTable,
 			"getColumnByCellId",
 			buildFunc(
 				{
 					description:
 						"Finds a column by a cell id formatted as 'columnId_rowId'. Returns undefined if not found.",
-					returns: z.instanceof(FluidColumnSchema).optional(),
+					returns: m.instanceOf(FluidColumnSchema).optional(),
 				},
 				["cellId", z.string()]
 			)
 		);
-		methods.expose(
+		m.expose(
 			FluidTable,
 			"addColumn",
 			buildFunc(
@@ -448,7 +448,7 @@ export class FluidTable extends TableSchema.table({
 				["userId", z.string()]
 			)
 		);
-		methods.expose(
+		m.expose(
 			FluidTable,
 			"addRow",
 			buildFunc(
@@ -459,7 +459,7 @@ export class FluidTable extends TableSchema.table({
 				["userId", z.string()]
 			)
 		);
-		methods.expose(
+		m.expose(
 			FluidTable,
 			"moveColumnLeft",
 			buildFunc(
@@ -467,10 +467,10 @@ export class FluidTable extends TableSchema.table({
 					description: "Moves the specified column one position to the left if possible.",
 					returns: z.boolean(),
 				},
-				["column", z.instanceof(FluidColumnSchema)]
+				["column", m.instanceOf(FluidColumnSchema)]
 			)
 		);
-		methods.expose(
+		m.expose(
 			FluidTable,
 			"moveColumnRight",
 			buildFunc(
@@ -479,10 +479,10 @@ export class FluidTable extends TableSchema.table({
 						"Moves the specified column one position to the right if possible.",
 					returns: z.boolean(),
 				},
-				["column", z.instanceof(FluidColumnSchema)]
+				["column", m.instanceOf(FluidColumnSchema)]
 			)
 		);
-		methods.expose(
+		m.expose(
 			FluidTable,
 			"moveRowUp",
 			buildFunc(
@@ -490,10 +490,10 @@ export class FluidTable extends TableSchema.table({
 					description: "Moves the specified row one position up if possible.",
 					returns: z.boolean(),
 				},
-				["row", z.instanceof(FluidRowSchema)]
+				["row", m.instanceOf(FluidRowSchema)]
 			)
 		);
-		methods.expose(
+		m.expose(
 			FluidTable,
 			"moveRowDown",
 			buildFunc(
@@ -501,17 +501,17 @@ export class FluidTable extends TableSchema.table({
 					description: "Moves the specified row one position down if possible.",
 					returns: z.boolean(),
 				},
-				["row", z.instanceof(FluidRowSchema)]
+				["row", m.instanceOf(FluidRowSchema)]
 			)
 		);
-		methods.expose(
+		m.expose(
 			FluidTable,
 			"createRowWithValues",
 			buildFunc(
 				{
 					description:
 						"Creates a new row populated with random values based on each column's hint.",
-					returns: z.instanceof(FluidRowSchema),
+					returns: m.instanceOf(FluidRowSchema),
 				},
 				["userId", z.string()]
 			)
@@ -728,15 +728,15 @@ export class Item extends sf.object("Item", {
 
 // Simple Items array containing only Item objects
 export class Items extends sf.array("Items", [Item]) {
-	public static [exposeMethodsSymbol](methods: ExposedMethods): void {
-		methods.expose(
+	public static [exposeMethodsSymbol](m: ExposedMethods): void {
+		m.expose(
 			Items,
 			"createShapeItem",
 			buildFunc(
 				{
 					description:
 						"Creates and inserts a new Shape item with randomized size, position, rotation and specified type & palette.",
-					returns: z.instanceof(Item),
+					returns: m.instanceOf(Item),
 				},
 				["shapeType", z.enum(["circle", "square", "triangle", "star"])],
 				["canvasSize", z.object({ width: z.number(), height: z.number() })],
@@ -745,13 +745,13 @@ export class Items extends sf.array("Items", [Item]) {
 				["username", z.string().optional()]
 			)
 		);
-		methods.expose(
+		m.expose(
 			Items,
 			"createNoteItem",
 			buildFunc(
 				{
 					description: "Creates and inserts a new empty Note item.",
-					returns: z.instanceof(Item),
+					returns: m.instanceOf(Item),
 				},
 				["canvasSize", z.object({ width: z.number(), height: z.number() })],
 				["authorId", z.string()],
@@ -759,45 +759,45 @@ export class Items extends sf.array("Items", [Item]) {
 				["username", z.string()]
 			)
 		);
-		methods.expose(
+		m.expose(
 			Items,
 			"createTableItem",
 			buildFunc(
 				{
 					description:
 						"Creates and inserts a new Table item with default columns and rows.",
-					returns: z.instanceof(Item),
+					returns: m.instanceOf(Item),
 				},
 				["canvasSize", z.object({ width: z.number(), height: z.number() })],
 				["userId", z.string()],
 				["username", z.string()]
 			)
 		);
-		methods.expose(
+		m.expose(
 			Items,
 			"createDefaultTable",
 			buildFunc({
 				description:
 					"Creates a new detached FluidTable with standard starter columns and empty rows.",
-				returns: z.instanceof(FluidTable),
+				returns: m.instanceOf(FluidTable),
 			})
 		);
-		methods.expose(
+		m.expose(
 			Items,
 			"duplicateItem",
 			buildFunc(
 				{
 					description:
 						"Creates a shallow duplicate of an existing item with offset position and new identifiers.",
-					returns: z.instanceof(Item),
+					returns: m.instanceOf(Item),
 				},
-				["item", z.instanceof(Item)],
+				["item", m.instanceOf(Item)],
 				["canvasSize", z.object({ width: z.number(), height: z.number() })],
 				["userId", z.string()],
 				["username", z.string()]
 			)
 		);
-		methods.expose(
+		m.expose(
 			Items,
 			"moveItemForward",
 			buildFunc(
@@ -806,10 +806,10 @@ export class Items extends sf.array("Items", [Item]) {
 						"Moves an item one index forward (higher z-order). Returns true if moved.",
 					returns: z.boolean(),
 				},
-				["item", z.instanceof(Item)]
+				["item", m.instanceOf(Item)]
 			)
 		);
-		methods.expose(
+		m.expose(
 			Items,
 			"moveItemBackward",
 			buildFunc(
@@ -818,10 +818,10 @@ export class Items extends sf.array("Items", [Item]) {
 						"Moves an item one index backward (lower z-order). Returns true if moved.",
 					returns: z.boolean(),
 				},
-				["item", z.instanceof(Item)]
+				["item", m.instanceOf(Item)]
 			)
 		);
-		methods.expose(
+		m.expose(
 			Items,
 			"bringItemToFront",
 			buildFunc(
@@ -830,10 +830,10 @@ export class Items extends sf.array("Items", [Item]) {
 						"Moves an item to the final index (front / top-most). Returns true if moved.",
 					returns: z.boolean(),
 				},
-				["item", z.instanceof(Item)]
+				["item", m.instanceOf(Item)]
 			)
 		);
-		methods.expose(
+		m.expose(
 			Items,
 			"sendItemToBack",
 			buildFunc(
@@ -842,7 +842,7 @@ export class Items extends sf.array("Items", [Item]) {
 						"Moves an item to index 0 (back / bottom-most). Returns true if moved.",
 					returns: z.boolean(),
 				},
-				["item", z.instanceof(Item)]
+				["item", m.instanceOf(Item)]
 			)
 		);
 	}

@@ -3,7 +3,7 @@ import { Button, Textarea } from "@fluentui/react-components";
 import { ArrowLeftFilled, BotRegular } from "@fluentui/react-icons";
 import React, { ReactNode, useEffect, useState, useRef, useContext } from "react";
 import { Pane } from "./Pane.js";
-import { TreeViewAlpha } from "@fluidframework/tree/alpha";
+import { ImplicitFieldSchema, TreeViewAlpha, trackDirtyNodes } from "@fluidframework/tree/alpha";
 // import the function, not the type
 import { SharedTreeSemanticAgent, createSemanticAgent } from "@fluidframework/tree-agent/alpha";
 import { App } from "../../../schema/appSchema.js";
@@ -23,10 +23,19 @@ export function TaskPane(props: {
 	const [agent, setAgent] = useState<SharedTreeSemanticAgent | undefined>();
 	const { msalInstance } = useContext(AuthContext);
 
+	// Dirty tracking state - tracks nodes that have been modified by AI operations
+	// Using the pattern from the example: const dirty = new WeakMap<TreeNode, DirtyTreeStatus>();
+	const [dirtyMap] = useState(() => new Map());
+	const [trackedView, setTrackedView] = useState<TreeViewAlpha<typeof App> | undefined>(
+		undefined
+	);
+
 	useEffect(() => {
 		if (hidden) {
 			setRenderView(main);
+			setTrackedView(undefined);
 		} else {
+			console.log("🎯 AI Pane opened - preparing dirty tracking...");
 			if (branch === undefined) {
 				const b = main.fork();
 				setBranch((prev) => {
@@ -34,11 +43,73 @@ export function TaskPane(props: {
 					return b;
 				});
 				setRenderView(b);
+				setTrackedView(b);
 			} else {
 				setRenderView(branch);
+				setTrackedView(branch);
 			}
 		}
 	}, [main, hidden, branch, setRenderView]);
+
+	// Set up dirty tracking when we have a view to track
+	useEffect(() => {
+		if (trackedView) {
+			console.log("Setting up dirty tracking for AI operations");
+			// Set up dirty tracking on the view
+			// Note: trackDirtyNodes expects untyped TreeView, cast through unknown to avoid type conflicts
+			trackDirtyNodes(trackedView as unknown as TreeViewAlpha<ImplicitFieldSchema>, dirtyMap);
+
+			// Log the initial state
+			console.log("Dirty tracking initialized for view:", trackedView);
+		}
+	}, [trackedView, dirtyMap]);
+
+	// Function to log dirty nodes for debugging
+	const logDirtyNodes = () => {
+		console.log("=== Current Dirty Nodes ===");
+		console.log(`Total dirty nodes: ${dirtyMap.size}`);
+		
+		if (dirtyMap.size === 0) {
+			console.log("No dirty nodes found.");
+		} else {
+			console.log("Iterating through dirty nodes:");
+			let index = 0;
+			for (const [node, status] of dirtyMap) {
+				console.log(`  [${index}] Node:`, node);
+				console.log(`      Status:`, status);
+				console.log(`      Node type:`, typeof node);
+				console.log(`      Node constructor:`, node?.constructor?.name);
+				// Try to get some identifying information about the node
+				try {
+					if (node && typeof node === 'object') {
+						const nodeInfo = JSON.stringify(node, null, 2);
+						if (nodeInfo.length < 500) {
+							console.log(`      Node content:`, nodeInfo);
+						} else {
+							console.log(`      Node content: [Large object - ${nodeInfo.length} chars]`);
+						}
+					}
+				} catch (error) {
+					const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+					console.log(`      Node content: [Unable to serialize - ${errorMessage}]`);
+				}
+				index++;
+			}
+		}
+		console.log("===========================");
+	};
+
+	// Function to check and log dirty state before AI operations
+	const checkDirtyStateBeforeAI = () => {
+		console.log("🤖 AI Operation Starting - Checking dirty state...");
+		logDirtyNodes();
+	};
+
+	// Function to check and log dirty state after AI operations
+	const checkDirtyStateAfterAI = () => {
+		console.log("🤖 AI Operation Completed - Checking dirty state...");
+		logDirtyNodes();
+	};
 
 	useEffect(() => {
 		if (branch !== undefined) {
@@ -58,7 +129,7 @@ export function TaskPane(props: {
 						setAgent(
 							createSemanticAgent(chatOpenAI, branch, {
 								log: (msg) => console.log(msg),
-								domainHints,
+								// domainHints temporarily removed to avoid zod schema issues
 							})
 						);
 
@@ -181,7 +252,7 @@ export function TaskPane(props: {
 						setAgent(
 							createSemanticAgent(chatOpenAI, branch, {
 								log: (msg) => console.log(msg),
-								domainHints,
+								// domainHints temporarily removed to avoid zod schema issues
 							})
 						);
 
@@ -237,7 +308,7 @@ export function TaskPane(props: {
 						setAgent(
 							createSemanticAgent(chatOpenAI, branch, {
 								log: (msg) => console.log(msg),
-								domainHints,
+								// domainHints temporarily removed to avoid zod schema issues
 							})
 						);
 
@@ -278,7 +349,7 @@ export function TaskPane(props: {
 					setAgent(
 						createSemanticAgent(chatOpenAI, branch, {
 							log: (msg) => console.log(msg),
-							domainHints,
+							// domainHints temporarily removed to avoid zod schema issues
 						})
 					);
 
@@ -298,8 +369,17 @@ export function TaskPane(props: {
 
 	const handlePromptSubmit = async (prompt: string) => {
 		if (agent !== undefined) {
+			// Check dirty state before AI operation
+			checkDirtyStateBeforeAI();
+
 			setChats([...chats, `${prompt}`, `.`]);
+
+			// Execute the AI query
 			const response = await agent.query(prompt);
+
+			// Check dirty state after AI operation
+			checkDirtyStateAfterAI();
+
 			setChats((prev) => [...prev.slice(0, -1), `${response ?? "LLM query failed!"}`]);
 		}
 	};
@@ -529,169 +609,4 @@ export function CancelResponseButton(props: { callback: () => void }): JSX.Eleme
 	);
 }
 
-const domainHints = `This is a 2D application that allows the user to position shapes on a canvas.
-The shapes can be moved, rotated, resized and have style properties changed.
-Each shape can have comments associated with it as well.
-
-Here's an example of a canvas with five shapes on it:
-
-\`\`\`JSON
-{
-  "items": [
-    {
-      // Index: 0,
-      "id": "c0115f64-c0c0-4248-b23d-4b66b5df5917",
-      "x": 1123,
-      "y": 575,
-      "rotation": 352,
-      "comments": [],
-      "votes": {
-        "votes": []
-      },
-      "content": {
-        "size": 118,
-        "color": "#A133FF",
-        "type": "star"
-      }
-    },
-    {
-      // Index: 1,
-      "id": "c0115f64-c0c0-4248-b23d-4b66b5df5919",
-      "x": 692,
-      "y": 231,
-      "rotation": 357,
-      "comments": [],
-      "votes": {
-        "votes": []
-      },
-      "content": {
-        "size": 111,
-        "color": "#FF3357",
-        "type": "triangle"
-      }
-    },
-    {
-      // Index: 2,
-      "id": "c0115f64-c0c0-4248-b23d-4b66b5df591b",
-      "x": 1228,
-      "y": 85,
-      "rotation": 12,
-      "comments": [],
-      "votes": {
-        "votes": []
-      },
-      "content": {
-        "size": 110,
-        "color": "#FF5733",
-        "type": "square"
-      }
-    },
-    {
-      // Index: 3,
-      "id": "c0115f64-c0c0-4248-b23d-4b66b5df591d",
-      "x": 228,
-      "y": 199,
-      "rotation": 353,
-      "comments": [],
-      "votes": {
-        "votes": []
-      },
-      "content": {
-        "size": 111,
-        "color": "#3357FF",
-        "type": "star"
-      }
-    },
-    {
-      // Index: 4,
-      "id": "c0115f64-c0c0-4248-b23d-4b66b5df591f",
-      "x": 588,
-      "y": 699,
-      "rotation": 355,
-      "comments": [],
-      "votes": {
-        "votes": []
-      },
-      "content": {
-        "size": 105,
-        "color": "#FF5733",
-        "type": "star"
-      }
-    }
-  ],
-  "comments": []
-}
-\`\`\`;
-
-Here's an example of a function that can be run by the tree editing tool which adds three now shapes to the canvas, groups items on the canvas by shape type and organizes them spatially, and then colors all shapes red:
-
-function editTree({ root, create }) {
-  // Add three new shapes: a star, a triangle, and a circle
-  const newStar = create.Item({
-    id: crypto.randomUUID(),
-    x: 100,
-    y: 400,
-    rotation: 0,
-    comments: [],
-    votes: create.Vote({ votes: [] }),
-    content: create.Shape({ size: 110, color: "#FF0000", type: "star" })
-  });
-  const newTriangle = create.Item({
-    id: crypto.randomUUID(),
-    x: 400,
-    y: 100,
-    rotation: 0,
-    comments: [],
-    votes: create.Vote({ votes: [] }),
-    content: create.Shape({ size: 110, color: "#FF0000", type: "triangle" })
-  });
-  const newCircle = create.Item({
-    id: crypto.randomUUID(),
-    x: 400,
-    y: 400,
-    rotation: 0,
-    comments: [],
-    votes: create.Vote({ votes: [] }),
-    content: create.Shape({ size: 110, color: "#FF0000", type: "circle" })
-  });
-  // Insert the new shapes at the end of the canvas
-  root.items.insertAt(root.items.length, newStar, newTriangle, newCircle);
-
-  // Group all shapes spatially by type and make them red
-  root.items.forEach(item => {
-    // Color everything red
-    if (item.content && item.content.color !== undefined) {
-      item.content.color = "#FF0000";
-    }
-    // Position by shape type
-    switch (item.content.type) {
-	  case "square":
-		item.x = 100;
-		item.y = 100;
-		break;
-      case "star":
-        item.x = 100;
-		item.y = 400;
-        break;
-      case "triangle":
-        item.x = 400;
-		item.y = 100;
-        break;
-      case "circle":
-        item.x = 400;
-		item.y = 400;
-        break;
-    }
-  });
-
-  // Spread the shapes in each group out a bit so they are more visible
-  root.items.forEach(item => {
-      item.x += Math.random() * 50 - 25;
-	  item.y += Math.random() * 50 - 25;
-  });
-}
-
-A common mistake in the generated function: data cannot be removed from the tree and then directly re-inserted. Instead, it must be cloned - i.e. create an equivalent new instance of that data - and then the new instance can be inserted.
-
-When responding to the user, YOU MUST NEVER reference technical details like "schema" or "data", "tree" or "pixels" - explain what has happened with high-level user-friendly language.
-`;
+// domainHints temporarily removed to avoid zod schema issues
