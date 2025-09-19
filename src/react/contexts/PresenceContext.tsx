@@ -24,6 +24,7 @@ import { type SelectionManager } from "../../presence/Interfaces/SelectionManage
 import { UsersManager } from "../../presence/Interfaces/UsersManager.js";
 import { DragManager } from "../../presence/Interfaces/DragManager.js";
 import { ResizeManager, ResizePackage } from "../../presence/Interfaces/ResizeManager.js";
+import { CursorManager } from "../../presence/Interfaces/CursorManager.js";
 import { DragAndRotatePackage } from "../../presence/drag.js";
 import { TypedSelection } from "../../presence/selection.js";
 import { InkPresenceManager } from "../../presence/Interfaces/InkManager.js";
@@ -48,6 +49,9 @@ interface PresenceContextType {
 	/** Manager for resize operations with real-time dimension tracking */
 	resize: ResizeManager<ResizePackage | null>;
 
+	/** Manager for collaborative cursor tracking and real-time mouse position sync */
+	cursor: CursorManager;
+
 	/** Boolean flag indicating if branch operations are enabled/active */
 	branch: boolean;
 
@@ -69,6 +73,7 @@ export const PresenceContext = createContext<PresenceContextType>({
 	tableSelection: {} as SelectionManager<TypedSelection>,
 	drag: {} as DragManager<DragAndRotatePackage | null>,
 	resize: {} as ResizeManager<ResizePackage | null>,
+	cursor: {} as CursorManager,
 	branch: false,
 	ink: undefined,
 });

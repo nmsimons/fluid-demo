@@ -61,6 +61,7 @@ import { LayoutContext } from "../../hooks/useLayoutManger.js";
 import { SelectionOverlay } from "../../overlays/SelectionOverlay.js";
 import { PresenceOverlay } from "../../overlays/PresenceOverlay.js";
 import { CommentOverlay } from "../../overlays/CommentOverlay.js";
+import { CursorOverlay } from "../../overlays/CursorOverlay.js";
 import { useCanvasNavigation } from "../../hooks/useCanvasNavigation.js";
 import { useOverlayRerenders } from "../../hooks/useOverlayRerenders.js";
 import { ItemsHtmlLayer } from "./ItemsHtmlLayer.js";
@@ -133,6 +134,50 @@ export function Canvas(props: {
 	});
 	// Hovered stroke (eraser preview)
 	const [eraserHoverId, setEraserHoverId] = useState<string | null>(null);
+
+	// Collaborative cursor tracking
+	useEffect(() => {
+		const svgElement = svgRef.current;
+		if (!svgElement) return;
+
+		const handleMouseMove = (event: MouseEvent) => {
+			// Convert screen coordinates to canvas coordinates
+			const rect = svgElement.getBoundingClientRect();
+			const canvasX = event.clientX - rect.left;
+			const canvasY = event.clientY - rect.top;
+
+			// Convert to logical coordinates (accounting for pan and zoom)
+			const logicalX = (canvasX - pan.x) / zoom;
+			const logicalY = (canvasY - pan.y) / zoom;
+
+			// Update collaborative cursor position
+			presence.cursor?.setCursorPosition(logicalX, logicalY);
+		};
+
+		const handleMouseEnter = () => {
+			// Show collaborative cursor when mouse enters canvas
+			presence.cursor?.showCursor();
+		};
+
+		const handleMouseLeave = () => {
+			// Hide collaborative cursor when mouse leaves canvas
+			presence.cursor?.hideCursor();
+		};
+
+		// Add event listeners
+		svgElement.addEventListener("mousemove", handleMouseMove);
+		svgElement.addEventListener("mouseenter", handleMouseEnter);
+		svgElement.addEventListener("mouseleave", handleMouseLeave);
+
+		return () => {
+			// Cleanup event listeners
+			svgElement.removeEventListener("mousemove", handleMouseMove);
+			svgElement.removeEventListener("mouseenter", handleMouseEnter);
+			svgElement.removeEventListener("mouseleave", handleMouseLeave);
+		};
+	}, [pan.x, pan.y, zoom, presence.cursor]);
+
+	// Hovered stroke (eraser preview)
 
 	// Helpers for presence indicator visuals
 	const getInitials = (name: string): string => {
@@ -280,6 +325,12 @@ export function Canvas(props: {
 		const rect = svgRef.current?.getBoundingClientRect();
 		if (!rect) return;
 		setCursor({ x: e.clientX - rect.left, y: e.clientY - rect.top, visible: true });
+		
+		// Update collaborative cursor position
+		const logicalX = (e.clientX - rect.left - pan.x) / zoom;
+		const logicalY = (e.clientY - rect.top - pan.y) / zoom;
+		presence.cursor?.setCursorPosition(logicalX, logicalY);
+		
 		// If erasing, update hover or scrub
 		if (eraserActive && root?.inks) {
 			const pLogical = toLogical(e.clientX, e.clientY);
@@ -347,6 +398,11 @@ export function Canvas(props: {
 		const handleMove = (ev: PointerEvent) => {
 			// Skip events from other concurrent pointers (multi-touch scenarios)
 			if (pointerIdRef.current !== null && ev.pointerId !== pointerIdRef.current) return;
+			
+			// Update cursor position for collaborative cursors
+			const logicalPos = toLogical(ev.clientX, ev.clientY);
+			presence.cursor?.setCursorPosition(logicalPos.x, logicalPos.y);
+			
 			// Use coalesced events for smoother touch / pen input when available
 			const hasCoalesced = (
 				e: PointerEvent
@@ -809,6 +865,19 @@ export function Canvas(props: {
 					</g>
 				)}
 			</svg>
+
+			{/* Collaborative cursor overlay - rendered at screen coordinates */}
+			{presence.cursor && (
+				<CursorOverlay
+					cursorManager={presence.cursor}
+					canvasPosition={svgRef.current?.getBoundingClientRect() || { left: 0, top: 0 }}
+					pan={pan}
+					zoom={zoom}
+					getInitials={getInitials}
+					getUserColor={getUserColor}
+					presence={presence}
+				/>
+			)}
 		</div>
 	);
 }
