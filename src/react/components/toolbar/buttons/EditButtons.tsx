@@ -37,22 +37,19 @@ async function createAgentJob(
 		const zumoToken = await getZumoAuthToken(msalInstance);
 		const baseUrl = import.meta.env.VITE_OPENAI_BASE_URL;
 
-		const response = await fetch(
-			`${baseUrl}/demoApp/agent/create`,
-			{
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-					"X-ZUMO-AUTH": zumoToken,
-				},
-				body: JSON.stringify({
-					model: "gpt-5",
-					messages: [{ role: "user", content: comment.text }],
-					containerId: containerId,
-					branchId: branchId,
-				}),
-			}
-		);
+		const response = await fetch(`${baseUrl}/demoApp/agent/create`, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				"X-ZUMO-AUTH": zumoToken,
+			},
+			body: JSON.stringify({
+				model: "gpt-5",
+				messages: [{ role: "user", content: comment.text }],
+				containerId: containerId,
+				branchId: branchId,
+			}),
+		});
 
 		if (!response.ok) {
 			throw new Error(`Agent API call failed: ${response.status} ${response.statusText}`);
@@ -179,7 +176,7 @@ export function JobButton(props: { comment: Comment; app: App; containerId: stri
 						try {
 							await createAgentJob(authContext.msalInstance!, comment, containerId);
 						} catch (error) {
-							console.error('Failed to create agent job:', error);
+							console.error("Failed to create agent job:", error);
 						}
 					}
 				}}

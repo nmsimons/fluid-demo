@@ -73,7 +73,11 @@ export const CommentPane = forwardRef<
 
 CommentPane.displayName = "CommentPane";
 
-export function CommentList(props: { comments: Comments; app: App; containerId: string }): JSX.Element {
+export function CommentList(props: {
+	comments: Comments;
+	app: App;
+	containerId: string;
+}): JSX.Element {
 	const { comments, app, containerId } = props;
 	useTree(comments);
 	return (
@@ -84,13 +88,22 @@ export function CommentList(props: { comments: Comments; app: App; containerId: 
 				<CommentRegular className="h-full w-full opacity-10" />
 			</div>
 			{comments.map((comment) => (
-				<CommentView key={comment.id} comment={comment} app={app} containerId={containerId} />
+				<CommentView
+					key={comment.id}
+					comment={comment}
+					app={app}
+					containerId={containerId}
+				/>
 			))}
 		</div>
 	);
 }
 
-export function CommentView(props: { comment: Comment; app: App; containerId: string }): JSX.Element {
+export function CommentView(props: {
+	comment: Comment;
+	app: App;
+	containerId: string;
+}): JSX.Element {
 	const { comment, app, containerId } = props;
 	useTree(comment, true);
 	useTree(app.jobs);
