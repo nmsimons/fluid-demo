@@ -41,7 +41,7 @@ export async function getZumoAuthToken(msalInstance: PublicClientApplication): P
 	const baseUrl = import.meta.env.VITE_OPENAI_BASE_URL;
 
 	// Exchange the MSAL token for a ZUMO auth token
-	const authResponse = await fetch(`${baseUrl.replace("/api/v1", "")}/.auth/login/aad`, {
+	const authResponse = await fetch(`${baseUrl}/.auth/login/aad`, {
 		method: "POST",
 		headers: {
 			"Content-Type": "application/json",

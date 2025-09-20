@@ -143,7 +143,7 @@ export function TaskPane(props: {
 					}
 				}
 
-				const endpoint = import.meta.env.VITE_OPENAI_BASE_URL;
+				const endpoint = `${import.meta.env.VITE_OPENAI_BASE_URL}/api/v1`;
 				if (endpoint) {
 					console.log(`Using OpenAI at ${endpoint}`);
 					try {

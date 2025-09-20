@@ -39,7 +39,7 @@ jobs:
                   AZURE_CLIENT_ID: 47b614f0-17b5-47b5-8422-828f595b2a6b
                   AZURE_REDIRECT_URI: https://polite-mushroom-039aac31e.2.azurestaticapps.net
                   AUTHORITY: https://login.microsoftonline.com/72f988bf-86f1-41af-91ab-2d7cd011db47
-                  VITE_OPENAI_BASE_URL: https://mts-d6b6edexdtaqapg4.westus2-01.azurewebsites.net/api/v1
+                  VITE_OPENAI_BASE_URL: https://mts-d6b6edexdtaqapg4.westus2-01.azurewebsites.net
                   ###### End of Repository/Build Configurations ######
 
     close_pull_request_job:

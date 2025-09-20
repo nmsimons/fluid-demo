@@ -37,7 +37,7 @@ async function createAgentJob(
 		const zumoToken = await getZumoAuthToken(msalInstance);
 		const baseUrl = import.meta.env.VITE_OPENAI_BASE_URL;
 
-		const response = await fetch(`${baseUrl}/demoApp/agent/create`, {
+		const response = await fetch(`${baseUrl}/api/demoApp/agent/create`, {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
