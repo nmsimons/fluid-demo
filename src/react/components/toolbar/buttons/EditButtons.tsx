@@ -18,49 +18,10 @@ import { TooltipButton } from "../../forms/Button.js";
 import { useTree } from "../../../hooks/useTree.js";
 import { PresenceContext } from "../../../contexts/PresenceContext.js";
 import { AuthContext } from "../../../contexts/AuthContext.js";
-import { getZumoAuthToken } from "../../../../utils/zumoAuth.js";
+import { createJob, invokeAgent } from "../../../../utils/agentService.js";
 import { CommentPaneContext } from "../../app/App.js";
-import { Vote, Item, App, Comment, Job, DateTime } from "../../../../schema/appSchema.js";
+import { Vote, Item, App, Comment } from "../../../../schema/appSchema.js";
 import { skipNextUndoRedo } from "../../../../undo/undo.js";
-import { PublicClientApplication } from "@azure/msal-browser";
-
-/**
- * Create a new AI agent job via API call
- */
-async function createAgentJob(
-	msalInstance: PublicClientApplication,
-	comment: Comment,
-	containerId: string,
-	branchId: string = "main"
-): Promise<void> {
-	try {
-		const zumoToken = await getZumoAuthToken(msalInstance);
-		const baseUrl = import.meta.env.VITE_OPENAI_BASE_URL;
-
-		const response = await fetch(`${baseUrl}/api/demoApp/agent/create`, {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-				"X-ZUMO-AUTH": zumoToken,
-			},
-			body: JSON.stringify({
-				model: "gpt-5",
-				messages: [{ role: "user", content: comment.text }],
-				containerId: containerId,
-				branchId: branchId,
-			}),
-		});
-
-		if (!response.ok) {
-			throw new Error(`Agent API call failed: ${response.status} ${response.statusText}`);
-		}
-
-		console.log("Successfully created AI agent job");
-	} catch (error) {
-		console.error("Failed to create AI agent job:", error);
-		throw error;
-	}
-}
 
 // Basic actions
 export function DeleteButton(props: { delete: () => void; count?: number }): JSX.Element {
@@ -159,22 +120,14 @@ export function JobButton(props: { comment: Comment; app: App; containerId: stri
 						app.jobs.delete(comment.id);
 					} else {
 						// Create new job
-						const job = new Job({
-							id: crypto.randomUUID(),
-							branch: "main",
-							target: comment.id,
-							description: `Process comment: "${comment.text}"`,
-							status: "PENDING",
-							created: new DateTime({ ms: Date.now() }),
-							completed: undefined,
-						});
+						const job = createJob(comment.id);
 
 						skipNextUndoRedo(); // Stops the next change from going on the undo/redo stack.
 						app.jobs.set(comment.id, job);
 
 						// Call the agent service
 						try {
-							await createAgentJob(authContext.msalInstance!, comment, containerId);
+							await invokeAgent(authContext.msalInstance!, job, containerId);
 						} catch (error) {
 							console.error("Failed to create agent job:", error);
 						}

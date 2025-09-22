@@ -93,15 +93,20 @@ export class Job extends sf.object("Job", {
 				"The id of the node that contains the instructions/context for this job. Currently this will always be a comment but in principal it could be anything",
 		},
 	}),
-	description: sf.optional(sf.string, {
+	request: sf.optional(sf.string, {
 		metadata: {
 			description: "Additional context for the agent working on this job.",
+		},
+	}),
+	response: sf.optional(sf.string, {
+		metadata: {
+			description: "A summary of the agent's response to the job provide by the agent.",
 		},
 	}),
 	status: sf.required(sf.string, {
 		metadata: {
 			description:
-				"The status of a job for an AI agent. This can be PENDING, IN-PROGRESS, or DONE.",
+				"The status of a job for an AI agent. This can be PENDING, IN-PROGRESS, SUCCESS, or FAILED.",
 		},
 	}),
 	created: sf.required(DateTime, {
