@@ -39,6 +39,10 @@ export async function getZumoAuthToken(msalInstance: PublicClientApplication): P
 
 	// Get the base URL from environment variable
 	const baseUrl = import.meta.env.VITE_OPENAI_BASE_URL;
+	if (baseUrl.startsWith("http://localhost")) {
+		// Azure functions run locally don't have their full auth stack and some of the endpoints fail.
+		return "mock token";
+	}
 
 	// Exchange the MSAL token for a ZUMO auth token
 	const authResponse = await fetch(`${baseUrl}/.auth/login/aad`, {

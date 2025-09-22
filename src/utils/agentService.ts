@@ -13,8 +13,7 @@ import { DateTime, Job } from "../schema/appSchema.js";
 export async function invokeAgent(
 	msalInstance: PublicClientApplication,
 	job: Job,
-	containerId: string,
-	branchId: string = "main"
+	containerId: string
 ): Promise<void> {
 	try {
 		const zumoToken = await getZumoAuthToken(msalInstance);
@@ -28,11 +27,8 @@ export async function invokeAgent(
 			},
 			body: JSON.stringify({
 				model: "gpt-5",
-				messages: [
-					{ role: "user", content: `Look at Job ${job.id} and process the Job.request.` },
-				],
 				containerId: containerId,
-				branchId: branchId,
+				jobId: job.target,
 			}),
 		});
 
