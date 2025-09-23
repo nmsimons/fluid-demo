@@ -132,7 +132,7 @@ export function TaskPane(props: {
 						setAgent(
 							createSemanticAgent(chatOpenAI, branch, {
 								log: (msg) => console.log(msg),
-								domainHints: domainHints,
+								domainHints,
 							})
 						);
 
@@ -255,7 +255,7 @@ export function TaskPane(props: {
 						setAgent(
 							createSemanticAgent(chatOpenAI, branch, {
 								log: (msg) => console.log(msg),
-								// domainHints temporarily removed to avoid zod schema issues
+								domainHints,
 							})
 						);
 
@@ -311,7 +311,7 @@ export function TaskPane(props: {
 						setAgent(
 							createSemanticAgent(chatOpenAI, branch, {
 								log: (msg) => console.log(msg),
-								// domainHints temporarily removed to avoid zod schema issues
+								domainHints,
 							})
 						);
 
@@ -352,7 +352,7 @@ export function TaskPane(props: {
 					setAgent(
 						createSemanticAgent(chatOpenAI, branch, {
 							log: (msg) => console.log(msg),
-							// domainHints temporarily removed to avoid zod schema issues
+							domainHints,
 						})
 					);
 
