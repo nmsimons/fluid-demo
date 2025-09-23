@@ -3,7 +3,8 @@ import { Button, Textarea } from "@fluentui/react-components";
 import { ArrowLeftFilled, BotRegular } from "@fluentui/react-icons";
 import React, { ReactNode, useEffect, useState, useRef, useContext } from "react";
 import { Pane } from "./Pane.js";
-import { ImplicitFieldSchema, TreeViewAlpha, trackDirtyNodes } from "@fluidframework/tree/alpha";
+import { ImplicitFieldSchema, TreeViewAlpha } from "@fluidframework/tree/alpha";
+import { OperationTracker } from "../../../utils/dirtyNodeTracker.js";
 // import the function, not the type
 import { SharedTreeSemanticAgent, createSemanticAgent } from "@fluidframework/tree-agent/alpha";
 import { App } from "../../../schema/appSchema.js";
@@ -25,8 +26,8 @@ export function TaskPane(props: {
 	const { msalInstance } = useContext(AuthContext);
 
 	// Dirty tracking state - tracks nodes that have been modified by AI operations
-	// Using the pattern from the example: const dirty = new WeakMap<TreeNode, DirtyTreeStatus>();
-	const [dirtyMap] = useState(() => new Map());
+	// Create operation tracker for dirty node tracking
+	const [operationTracker] = useState(() => new OperationTracker());
 	const [trackedView, setTrackedView] = useState<TreeViewAlpha<typeof App> | undefined>(
 		undefined
 	);
@@ -56,62 +57,21 @@ export function TaskPane(props: {
 	useEffect(() => {
 		if (trackedView) {
 			console.log("Setting up dirty tracking for AI operations");
-			// Set up dirty tracking on the view
-			// Note: trackDirtyNodes expects untyped TreeView, cast through unknown to avoid type conflicts
-			trackDirtyNodes(trackedView as unknown as TreeViewAlpha<ImplicitFieldSchema>, dirtyMap);
-
-			// Log the initial state
+			operationTracker.setupTracking(
+				trackedView as unknown as TreeViewAlpha<ImplicitFieldSchema>
+			);
 			console.log("Dirty tracking initialized for view:", trackedView);
 		}
-	}, [trackedView, dirtyMap]);
-
-	// Function to log dirty nodes for debugging
-	const logDirtyNodes = () => {
-		console.log("=== Current Dirty Nodes ===");
-		console.log(`Total dirty nodes: ${dirtyMap.size}`);
-
-		if (dirtyMap.size === 0) {
-			console.log("No dirty nodes found.");
-		} else {
-			console.log("Iterating through dirty nodes:");
-			let index = 0;
-			for (const [node, status] of dirtyMap) {
-				console.log(`  [${index}] Node:`, node);
-				console.log(`      Status:`, status);
-				console.log(`      Node type:`, typeof node);
-				console.log(`      Node constructor:`, node?.constructor?.name);
-				// Try to get some identifying information about the node
-				try {
-					if (node && typeof node === "object") {
-						const nodeInfo = JSON.stringify(node, null, 2);
-						if (nodeInfo.length < 500) {
-							console.log(`      Node content:`, nodeInfo);
-						} else {
-							console.log(
-								`      Node content: [Large object - ${nodeInfo.length} chars]`
-							);
-						}
-					}
-				} catch (error) {
-					const errorMessage = error instanceof Error ? error.message : "Unknown error";
-					console.log(`      Node content: [Unable to serialize - ${errorMessage}]`);
-				}
-				index++;
-			}
-		}
-		console.log("===========================");
-	};
+	}, [trackedView, operationTracker]);
 
 	// Function to check and log dirty state before AI operations
 	const checkDirtyStateBeforeAI = () => {
-		console.log("🤖 AI Operation Starting - Checking dirty state...");
-		logDirtyNodes();
+		operationTracker.checkDirtyStateBefore("AI Operation");
 	};
 
 	// Function to check and log dirty state after AI operations
 	const checkDirtyStateAfterAI = () => {
-		console.log("🤖 AI Operation Completed - Checking dirty state...");
-		logDirtyNodes();
+		operationTracker.checkDirtyStateAfter("AI Operation");
 	};
 
 	useEffect(() => {
