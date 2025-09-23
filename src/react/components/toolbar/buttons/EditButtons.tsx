@@ -92,13 +92,13 @@ export function CommentButton(props: { item: Item }): JSX.Element {
 export function JobButton(props: { comment: Comment; app: App; containerId: string }): JSX.Element {
 	const { comment, app, containerId } = props;
 	const authContext = useContext(AuthContext);
-	useTree(app.jobs);
+	useTree(app.jobs, true);
 
 	const existingJob = app.jobs.get(comment.id);
 	const hasJob = existingJob !== undefined;
-	const isPending = existingJob?.status === "PENDING";
+	const isInProgress = existingJob?.status === "PENDING" || existingJob?.status === "IN-PROGRESS";
 
-	const iconStyle = isPending ? { animation: "spin 2s linear infinite" } : {};
+	const iconStyle = isInProgress ? { animation: "spin 2s linear infinite" } : {};
 
 	return (
 		<>
@@ -116,8 +116,7 @@ export function JobButton(props: { comment: Comment; app: App; containerId: stri
 
 					if (hasJob) {
 						// If job already exists, remove it
-						skipNextUndoRedo();
-						app.jobs.delete(comment.id);
+						console.log(existingJob.response);
 					} else {
 						// Create new job
 						const job = createJob(comment.id);
@@ -134,7 +133,7 @@ export function JobButton(props: { comment: Comment; app: App; containerId: stri
 					}
 				}}
 				icon={<div style={iconStyle}>{hasJob ? <BotFilled /> : <BotRegular />}</div>}
-				tooltip={hasJob ? `Remove Job (${existingJob.status})` : "Create Job"}
+				tooltip={hasJob ? `${existingJob.status}` : "Create Job"}
 			/>
 		</>
 	);

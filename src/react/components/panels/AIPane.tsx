@@ -10,6 +10,7 @@ import { App } from "../../../schema/appSchema.js";
 import { AzureChatOpenAI, ChatOpenAI } from "@langchain/openai";
 import { AuthContext } from "../../contexts/AuthContext.js";
 import { getZumoAuthToken } from "../../../utils/zumoAuth.js";
+import { domainHints } from "../../../constants/domainHints.js";
 
 export function TaskPane(props: {
 	hidden: boolean;
@@ -131,7 +132,7 @@ export function TaskPane(props: {
 						setAgent(
 							createSemanticAgent(chatOpenAI, branch, {
 								log: (msg) => console.log(msg),
-								// domainHints temporarily removed to avoid zod schema issues
+								domainHints: domainHints,
 							})
 						);
 
@@ -610,5 +611,3 @@ export function CancelResponseButton(props: { callback: () => void }): JSX.Eleme
 		</Button>
 	);
 }
-
-// domainHints temporarily removed to avoid zod schema issues
