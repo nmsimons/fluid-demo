@@ -5,8 +5,9 @@
 
 import { PublicClientApplication } from "@azure/msal-browser";
 import { getZumoAuthToken } from "./zumoAuth.js";
-import { DateTime, Job } from "../schema/appSchema.js";
+import { DateTime, Job, Jobs } from "../schema/appSchema.js";
 import { ITreeAlpha } from "fluid-framework/alpha";
+import { skipNextUndoRedo } from "../undo/undo.js";
 
 /**
  * Create a new AI agent job via API call
@@ -44,19 +45,21 @@ export async function invokeAgent(
 	}
 }
 
-export function createJob(id: string, tree: ITreeAlpha): Job {
-	const branch = tree.createSharedBranch();
-
-	return new Job({
+export function createJob(targetId: string, tree: ITreeAlpha, jobs: Jobs): Job {
+	const branchId = tree.createSharedBranch();
+	const job = new Job({
 		id: crypto.randomUUID(),
-		branch: branch,
-		target: id,
+		branch: branchId,
+		target: targetId,
 		request:
-			`Process the comment at the target id of this Job. Pay attention to the other comments around the comment for additional context.` +
-			`When you are done, include a summary of what you did in the response field of the Job.` +
-			`If the Job is completed successfully, change the status to SUCCEEDED. If the job is not completed successfully, change the status to FAILED`,
+			`Process the comment with id ${targetId}. Pay attention to the other comments around the comment for additional context.` +
+			`When you are done, include a summary of what you did in a comment after the comment with id ${targetId}.`,
 		status: "PENDING",
 		created: new DateTime({ ms: Date.now() }),
 		completed: undefined,
 	});
+	skipNextUndoRedo(); // Stops the next change from going on the undo/redo stack.
+	// Create a job for the agent service
+	jobs.set(targetId, job);
+	return job;
 }

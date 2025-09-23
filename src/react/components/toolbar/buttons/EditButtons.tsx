@@ -21,7 +21,6 @@ import { AuthContext } from "../../../contexts/AuthContext.js";
 import { createJob, invokeAgent } from "../../../../utils/agentService.js";
 import { CommentPaneContext } from "../../app/App.js";
 import { Vote, Item, App, Comment, appTreeConfiguration } from "../../../../schema/appSchema.js";
-import { skipNextUndoRedo } from "../../../../undo/undo.js";
 import { ITreeAlpha, TreeAlpha, TreeBranch } from "fluid-framework/alpha";
 
 // Basic actions
@@ -118,11 +117,11 @@ export function JobButton(props: {
 				`}
 			</style>
 			<TooltipButton
-				disabled={containerId === ""}
+				disabled={containerId === "" || isInProgress}
 				onClick={async (e) => {
 					e.stopPropagation();
 
-					if (hasJob) {
+					if (hasJob && !isInProgress) {
 						console.log(existingJob.response);
 						const branchView = tree.viewSharedBranchWith(
 							existingJob.branch,
@@ -132,12 +131,9 @@ export function JobButton(props: {
 						main.merge(branch!);
 					} else if (containerId !== "") {
 						// Create new job
-						const job = createJob(comment.id, tree);
+						const job = createJob(comment.id, tree, app.jobs);
 
-						skipNextUndoRedo(); // Stops the next change from going on the undo/redo stack.
-						app.jobs.set(comment.id, job);
-
-						// Call the agent service
+						// Invoke the agent service to handle the job we just created
 						try {
 							await invokeAgent(authContext.msalInstance!, job, containerId);
 						} catch (error) {

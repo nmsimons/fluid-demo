@@ -100,7 +100,7 @@ export function CommentList(props: {
 export function CommentView(props: { comment: Comment; app: App; tree: ITreeAlpha }): JSX.Element {
 	const { comment, app, tree } = props;
 	useTree(comment, true);
-	useTree(app.jobs);
+	useTree(app.jobs, true);
 	const presence = useContext(PresenceContext);
 	const isMyComment = comment.userId === presence.users.getMyself().value.id;
 
