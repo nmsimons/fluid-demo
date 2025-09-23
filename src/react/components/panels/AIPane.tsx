@@ -13,14 +13,15 @@ import { AuthContext } from "../../contexts/AuthContext.js";
 import { getZumoAuthToken } from "../../../utils/zumoAuth.js";
 import { domainHints } from "../../../constants/domainHints.js";
 
-export function TaskPane(props: {
+export function AIPane(props: {
 	hidden: boolean;
 	setHidden: (hidden: boolean) => void;
 	main: TreeViewAlpha<typeof App>;
+	branch?: TreeViewAlpha<typeof App>;
 	setRenderView: (view: TreeViewAlpha<typeof App>) => void;
 }): JSX.Element {
-	const { hidden, setHidden, main, setRenderView } = props;
-	const [branch, setBranch] = useState<typeof main | undefined>(undefined);
+	const { hidden, setHidden, main, branch, setRenderView } = props;
+	const [localBranch, setLocalBranch] = useState<typeof main | undefined>(undefined);
 	const [chats, setChats] = useState<string[]>([]);
 	const [agent, setAgent] = useState<SharedTreeSemanticAgent | undefined>();
 	const { msalInstance } = useContext(AuthContext);
@@ -37,21 +38,25 @@ export function TaskPane(props: {
 			setRenderView(main);
 			setTrackedView(undefined);
 		} else {
-			console.log("🎯 AI Pane opened - preparing dirty tracking...");
-			if (branch === undefined) {
-				const b = main.fork();
-				setBranch((prev) => {
-					prev?.dispose();
-					return b;
-				});
-				setRenderView(b);
-				setTrackedView(b);
-			} else {
+			console.log("AI Pane opened - preparing dirty tracking...");
+			if (branch) {
 				setRenderView(branch);
-				setTrackedView(branch);
+			} else {
+				if (localBranch === undefined) {
+					const b = main.fork();
+					setLocalBranch((prev) => {
+						prev?.dispose();
+						return b;
+					});
+					setRenderView(b);
+					setTrackedView(b);
+				} else {
+					setRenderView(localBranch);
+					setTrackedView(localBranch);
+				}
 			}
 		}
-	}, [main, hidden, branch, setRenderView]);
+	}, [main, hidden, localBranch, setRenderView, branch]);
 
 	// Set up dirty tracking when we have a view to track
 	useEffect(() => {
@@ -75,7 +80,7 @@ export function TaskPane(props: {
 	};
 
 	useEffect(() => {
-		if (branch !== undefined) {
+		if (localBranch !== undefined) {
 			const setupAgent = async () => {
 				console.log("Setting up AI agent...");
 
@@ -90,7 +95,7 @@ export function TaskPane(props: {
 						});
 
 						setAgent(
-							createSemanticAgent(chatOpenAI, branch, {
+							createSemanticAgent(chatOpenAI, localBranch, {
 								log: (msg) => console.log(msg),
 								domainHints,
 							})
@@ -213,7 +218,7 @@ export function TaskPane(props: {
 						});
 
 						setAgent(
-							createSemanticAgent(chatOpenAI, branch, {
+							createSemanticAgent(chatOpenAI, localBranch, {
 								log: (msg) => console.log(msg),
 								domainHints,
 							})
@@ -269,7 +274,7 @@ export function TaskPane(props: {
 						});
 
 						setAgent(
-							createSemanticAgent(chatOpenAI, branch, {
+							createSemanticAgent(chatOpenAI, localBranch, {
 								log: (msg) => console.log(msg),
 								domainHints,
 							})
@@ -310,7 +315,7 @@ export function TaskPane(props: {
 					});
 
 					setAgent(
-						createSemanticAgent(chatOpenAI, branch, {
+						createSemanticAgent(chatOpenAI, localBranch, {
 							log: (msg) => console.log(msg),
 							domainHints,
 						})
@@ -328,7 +333,7 @@ export function TaskPane(props: {
 
 			setupAgent().catch(console.error);
 		}
-	}, [branch, msalInstance]);
+	}, [localBranch, msalInstance]);
 
 	const handlePromptSubmit = async (prompt: string) => {
 		if (agent !== undefined) {
@@ -382,18 +387,18 @@ export function TaskPane(props: {
 			<ChatLog chats={chats} />
 			<PromptCommitDiscardButtons
 				cancelCallback={() => {
-					if (branch !== undefined) {
-						setBranch(undefined);
+					if (localBranch !== undefined) {
+						setLocalBranch(undefined);
 					}
 					setChats([]);
 					setHidden(true);
 					setRenderView(main);
 				}}
 				commitCallback={() => {
-					if (branch !== undefined) {
-						main.merge(branch, false);
-						branch.dispose();
-						setBranch(undefined);
+					if (localBranch !== undefined) {
+						main.merge(localBranch, false);
+						localBranch.dispose();
+						setLocalBranch(undefined);
 					}
 					setChats([]);
 					setHidden(true);

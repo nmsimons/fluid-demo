@@ -40,7 +40,7 @@ import { ResizeManager } from "../../../presence/Interfaces/ResizeManager.js";
 import { ResizePackage } from "../../../presence/Interfaces/ResizeManager.js";
 import { CursorManager } from "../../../presence/Interfaces/CursorManager.js";
 import { CommentPane, CommentPaneRef } from "../panels/CommentPane.js";
-import { TaskPane } from "../panels/AIPane.js";
+import { AIPane } from "../panels/AIPane.js";
 import { useTree } from "../../hooks/useTree.js";
 import { useKeyboardShortcuts } from "../../hooks/useKeyboardShortcuts.js";
 import { useAppKeyboardShortcuts } from "../../hooks/useAppKeyboardShortcuts.js";
@@ -307,7 +307,7 @@ export function ReactApp(props: {
 							app={view.root}
 							containerId={containerId}
 						/>
-						<TaskPane
+						<AIPane
 							hidden={aiTaskPaneHidden}
 							setHidden={setAiTaskPaneHidden}
 							main={tree}
