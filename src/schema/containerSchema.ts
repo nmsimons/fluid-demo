@@ -3,10 +3,15 @@
  * Licensed under the MIT License.
  */
 import { ContainerSchema } from "fluid-framework";
-import { configuredSharedTree, FluidClientVersion } from "fluid-framework/alpha";
+import {
+	configuredSharedTree,
+	FluidClientVersion,
+	SharedTreeFormatVersion,
+} from "fluid-framework/alpha";
 
 const SharedTree = configuredSharedTree({
 	oldestCompatibleClient: FluidClientVersion.EnableUnstableFeatures,
+	formatVersion: SharedTreeFormatVersion.vSharedBranches,
 });
 
 // Define the schema of our Container. This includes the DDSes/DataObjects
