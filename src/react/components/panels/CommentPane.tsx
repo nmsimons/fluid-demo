@@ -18,7 +18,7 @@ import { getContentHandler } from "../../../utils/contentHandlers.js";
 import { PresenceContext } from "../../contexts/PresenceContext.js";
 import { JobButton, VoteButton } from "../toolbar/buttons/EditButtons.js";
 import { getContainerIdFromUrl } from "../../../utils/containerUtils.js";
-import { ITreeAlpha } from "@fluidframework/tree/alpha";
+import { ITreeAlpha, TreeAlpha } from "@fluidframework/tree/alpha";
 
 export interface CommentPaneRef {
 	focusInput: () => void;
@@ -156,6 +156,7 @@ export function CommentView(props: { comment: Comment; app: App; tree: ITreeAlph
 							app={app}
 							containerId={getContainerIdFromUrl()}
 							tree={tree}
+							main={TreeAlpha.branch(app)!}
 						/>
 					</div>
 				</div>

@@ -20,9 +20,9 @@ import { PresenceContext } from "../../../contexts/PresenceContext.js";
 import { AuthContext } from "../../../contexts/AuthContext.js";
 import { createJob, invokeAgent } from "../../../../utils/agentService.js";
 import { CommentPaneContext } from "../../app/App.js";
-import { Vote, Item, App, Comment } from "../../../../schema/appSchema.js";
+import { Vote, Item, App, Comment, appTreeConfiguration } from "../../../../schema/appSchema.js";
 import { skipNextUndoRedo } from "../../../../undo/undo.js";
-import { ITreeAlpha } from "fluid-framework/alpha";
+import { ITreeAlpha, TreeAlpha, TreeBranch } from "fluid-framework/alpha";
 
 // Basic actions
 export function DeleteButton(props: { delete: () => void; count?: number }): JSX.Element {
@@ -95,8 +95,9 @@ export function JobButton(props: {
 	app: App;
 	containerId: string;
 	tree: ITreeAlpha;
+	main: TreeBranch;
 }): JSX.Element {
-	const { comment, app, containerId, tree } = props;
+	const { comment, app, containerId, tree, main } = props;
 	const authContext = useContext(AuthContext);
 	useTree(app.jobs, true);
 
@@ -122,8 +123,13 @@ export function JobButton(props: {
 					e.stopPropagation();
 
 					if (hasJob) {
-						// If job already exists, remove it
 						console.log(existingJob.response);
+						const branchView = tree.viewSharedBranchWith(
+							existingJob.branch,
+							appTreeConfiguration
+						);
+						const branch = TreeAlpha.branch(branchView.root);
+						main.merge(branch!);
 					} else if (containerId !== "") {
 						// Create new job
 						const job = createJob(comment.id, tree);
