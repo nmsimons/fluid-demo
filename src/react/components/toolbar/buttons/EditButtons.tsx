@@ -111,13 +111,14 @@ export function JobButton(props: { comment: Comment; app: App; containerId: stri
 				`}
 			</style>
 			<TooltipButton
+				disabled={containerId === ""}
 				onClick={async (e) => {
 					e.stopPropagation();
 
 					if (hasJob) {
 						// If job already exists, remove it
 						console.log(existingJob.response);
-					} else {
+					} else if (containerId !== "") {
 						// Create new job
 						const job = createJob(comment.id);
 

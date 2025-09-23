@@ -238,6 +238,7 @@ export function ReactApp(props: {
 				resize: resize,
 				cursor: cursor,
 				branch: view !== tree ? localBranchId.current : "main",
+				containerId: containerId,
 				ink: ink,
 			}}
 		>

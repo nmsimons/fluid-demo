@@ -6,6 +6,7 @@ import { AccountInfo, PublicClientApplication } from "@azure/msal-browser";
 import { authHelper } from "../infra/auth.js";
 import { getGraphAccessToken, getUserProfilePicture } from "../utils/graphService.js";
 import { showErrorMessage } from "./ErrorMessage.js";
+import { getContainerIdFromUrl, updateUrlWithContainerId } from "../utils/containerUtils.js";
 
 export async function azureStart() {
 	try {
@@ -135,8 +136,7 @@ async function signedInAzureStart(msalInstance: PublicClientApplication, account
 
 		// Get the root container id from the URL
 		// The id is a parameter on the url
-		const urlParams = new URLSearchParams(window.location.search);
-		let containerId = urlParams.get("id") ?? "";
+		let containerId = getContainerIdFromUrl();
 
 		// Initialize Devtools logger if in development mode
 		const logger = undefined;
@@ -157,9 +157,7 @@ async function signedInAzureStart(msalInstance: PublicClientApplication, account
 		// This uploads the container to the service and connects to the collaboration session.
 		if (container.attachState === AttachState.Detached) {
 			containerId = await container.attach();
-			const newUrl = new URL(window.location.href);
-			newUrl.searchParams.set("id", containerId);
-			window.history.replaceState({}, "", newUrl.toString());
+			updateUrlWithContainerId(containerId);
 		}
 	} catch (error) {
 		console.error("Error loading Fluid app with Azure authentication:", error);

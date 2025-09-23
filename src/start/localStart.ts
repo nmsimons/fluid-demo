@@ -9,6 +9,7 @@ import { getClientProps } from "../infra/azure/azureClientProps.js";
 import { AttachState } from "fluid-framework";
 import type { PublicClientApplication } from "@azure/msal-browser";
 import { showErrorMessage } from "./ErrorMessage.js";
+import { getContainerIdFromUrl, updateUrlWithContainerId } from "../utils/containerUtils.js";
 
 // Mock user for local development - no authentication required
 const localUser = {
@@ -45,8 +46,7 @@ export async function localStart() {
 
 		// Get the root container id from the URL
 		// The id is a parameter on the url
-		const urlParams = new URLSearchParams(window.location.search);
-		let containerId = urlParams.get("id") ?? "";
+		let containerId = getContainerIdFromUrl();
 
 		// Load the app with local configuration
 		const container = await loadApp({
@@ -60,9 +60,7 @@ export async function localStart() {
 		// Update URL with container ID for collaboration
 		if (container.attachState === AttachState.Detached) {
 			containerId = await container.attach();
-			const newUrl = new URL(window.location.href);
-			newUrl.searchParams.set("id", containerId);
-			window.history.replaceState({}, "", newUrl.toString());
+			updateUrlWithContainerId(containerId);
 		}
 	} catch (error) {
 		console.error("Error starting local Fluid demo:", error);
