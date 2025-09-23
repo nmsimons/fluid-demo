@@ -1,6 +1,6 @@
-export const domainHints = `This is a 2D application that allows the user to position shapes on a canvas.
-The shapes can be moved, rotated, resized and have style properties changed.
-Each shape can have comments associated with it as well.
+export const domainHints = `This is a 2D application that allows the user to position shapes, notes, and tables on a canvas.
+The canvas also supports ink. The shapes can be moved, rotated, resized and have style properties changed.
+Each shape, note, and table can have comments associated with it as well.
 
 Here's an example of a canvas with five shapes on it:
 
