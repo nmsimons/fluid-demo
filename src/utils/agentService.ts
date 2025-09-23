@@ -6,6 +6,7 @@
 import { PublicClientApplication } from "@azure/msal-browser";
 import { getZumoAuthToken } from "./zumoAuth.js";
 import { DateTime, Job } from "../schema/appSchema.js";
+import { ITreeAlpha } from "fluid-framework/alpha";
 
 /**
  * Create a new AI agent job via API call
@@ -43,10 +44,12 @@ export async function invokeAgent(
 	}
 }
 
-export function createJob(id: string): Job {
+export function createJob(id: string, tree: ITreeAlpha): Job {
+	const branch = tree.createSharedBranch();
+
 	return new Job({
 		id: crypto.randomUUID(),
-		branch: "main",
+		branch: branch,
 		target: id,
 		request:
 			`Process the comment at the target id of this Job. Pay attention to the other comments around the comment for additional context.` +

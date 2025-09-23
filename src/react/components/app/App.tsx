@@ -11,7 +11,7 @@ import "../../../styles/ios-minimal.css";
 // import "../../../styles/ios-safari-fixes.css";
 // import { fixIOSZIndexIssues } from "../../../utils/iosZIndexFix.js";
 import { ConnectionState, IFluidContainer } from "fluid-framework";
-import { TreeViewAlpha } from "@fluidframework/tree/alpha";
+import { ITreeAlpha, TreeViewAlpha } from "@fluidframework/tree/alpha";
 import { Canvas } from "../canvas/Canvas.js";
 import type { SelectionManager } from "../../../presence/Interfaces/SelectionManager.js";
 import { undoRedo } from "../../../undo/undo.js";
@@ -306,6 +306,7 @@ export function ReactApp(props: {
 							itemId={selectedItemId}
 							app={view.root}
 							containerId={containerId}
+							tree={container.initialObjects.appData as ITreeAlpha}
 						/>
 						<AIPane
 							hidden={aiTaskPaneHidden}

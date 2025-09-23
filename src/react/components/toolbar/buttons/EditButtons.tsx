@@ -22,6 +22,7 @@ import { createJob, invokeAgent } from "../../../../utils/agentService.js";
 import { CommentPaneContext } from "../../app/App.js";
 import { Vote, Item, App, Comment } from "../../../../schema/appSchema.js";
 import { skipNextUndoRedo } from "../../../../undo/undo.js";
+import { ITreeAlpha } from "fluid-framework/alpha";
 
 // Basic actions
 export function DeleteButton(props: { delete: () => void; count?: number }): JSX.Element {
@@ -89,8 +90,13 @@ export function CommentButton(props: { item: Item }): JSX.Element {
 	);
 }
 
-export function JobButton(props: { comment: Comment; app: App; containerId: string }): JSX.Element {
-	const { comment, app, containerId } = props;
+export function JobButton(props: {
+	comment: Comment;
+	app: App;
+	containerId: string;
+	tree: ITreeAlpha;
+}): JSX.Element {
+	const { comment, app, containerId, tree } = props;
 	const authContext = useContext(AuthContext);
 	useTree(app.jobs, true);
 
@@ -120,7 +126,7 @@ export function JobButton(props: { comment: Comment; app: App; containerId: stri
 						console.log(existingJob.response);
 					} else if (containerId !== "") {
 						// Create new job
-						const job = createJob(comment.id);
+						const job = createJob(comment.id, tree);
 
 						skipNextUndoRedo(); // Stops the next change from going on the undo/redo stack.
 						app.jobs.set(comment.id, job);

@@ -18,6 +18,7 @@ import { getContentHandler } from "../../../utils/contentHandlers.js";
 import { PresenceContext } from "../../contexts/PresenceContext.js";
 import { JobButton, VoteButton } from "../toolbar/buttons/EditButtons.js";
 import { getContainerIdFromUrl } from "../../../utils/containerUtils.js";
+import { ITreeAlpha } from "@fluidframework/tree/alpha";
 
 export interface CommentPaneRef {
 	focusInput: () => void;
@@ -31,9 +32,10 @@ export const CommentPane = forwardRef<
 		itemId: string;
 		app: App;
 		containerId: string;
+		tree: ITreeAlpha;
 	}
 >((props, ref) => {
-	const { hidden, setHidden, app } = props;
+	const { hidden, setHidden, app, tree } = props;
 	const presence = useContext(PresenceContext);
 	const [title, setTitle] = useState("Comments");
 	const commentInputRef = useRef<CommentInputRef>(null);
@@ -66,7 +68,7 @@ export const CommentPane = forwardRef<
 
 	return (
 		<Pane hidden={hidden} setHidden={setHidden} title={title}>
-			<CommentList comments={item.comments} app={app} />
+			<CommentList comments={item.comments} app={app} tree={tree} />
 			<CommentInput ref={commentInputRef} callback={(comment) => handleAddComment(comment)} />
 		</Pane>
 	);
@@ -74,8 +76,12 @@ export const CommentPane = forwardRef<
 
 CommentPane.displayName = "CommentPane";
 
-export function CommentList(props: { comments: Comments; app: App }): JSX.Element {
-	const { comments, app } = props;
+export function CommentList(props: {
+	comments: Comments;
+	app: App;
+	tree: ITreeAlpha;
+}): JSX.Element {
+	const { comments, app, tree } = props;
 	useTree(comments);
 	return (
 		<div className="relative flex flex-col grow space-y-2 overflow-y-auto">
@@ -85,14 +91,14 @@ export function CommentList(props: { comments: Comments; app: App }): JSX.Elemen
 				<CommentRegular className="h-full w-full opacity-10" />
 			</div>
 			{comments.map((comment) => (
-				<CommentView key={comment.id} comment={comment} app={app} />
+				<CommentView key={comment.id} comment={comment} app={app} tree={tree} />
 			))}
 		</div>
 	);
 }
 
-export function CommentView(props: { comment: Comment; app: App }): JSX.Element {
-	const { comment, app } = props;
+export function CommentView(props: { comment: Comment; app: App; tree: ITreeAlpha }): JSX.Element {
+	const { comment, app, tree } = props;
 	useTree(comment, true);
 	useTree(app.jobs);
 	const presence = useContext(PresenceContext);
@@ -149,6 +155,7 @@ export function CommentView(props: { comment: Comment; app: App }): JSX.Element 
 							comment={comment}
 							app={app}
 							containerId={getContainerIdFromUrl()}
+							tree={tree}
 						/>
 					</div>
 				</div>
