@@ -5,6 +5,13 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# Other package manager files (using npm)
+yarn.lock
+pnpm-lock.yaml
+.yarn/
+.pnpm/
+.pnp.*
+
 # Build outputs
 dist/
 build/
