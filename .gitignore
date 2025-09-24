@@ -25,9 +25,12 @@ build/
 .env.production.local
 
 # IDE and editor files
-.vscode/settings.json
+# Keep .vscode/settings.json for project-specific VS Code settings
+# but ignore personal VS Code configurations
 .vscode/launch.json
+.vscode/tasks.json
 .vscode/.ropeproject
+.vscode/extensions.json
 .idea/
 *.swp
 *.swo
