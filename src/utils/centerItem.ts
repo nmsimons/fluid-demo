@@ -25,8 +25,7 @@ export function centerLastItem(
 	zoom: number | undefined,
 	canvas: { width: number; height: number },
 	estimatedWidth = 120,
-	estimatedHeight = 120,
-	useGetAllItems = false
+	estimatedHeight = 120
 ): void {
 	if (!pan) return;
 
@@ -34,7 +33,7 @@ export function centerLastItem(
 	const actualZoom = zoom ?? 1;
 
 	// Get all items, either directly or flattened
-	const allItems = useGetAllItems ? getAllItems(items) : Array.from(items);
+	const allItems = getAllItems(items);
 	if (allItems.length === 0) return;
 
 	const lastItem = allItems[allItems.length - 1];

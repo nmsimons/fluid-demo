@@ -1,7 +1,34 @@
-﻿import { Item, Items } from "../schema/appSchema.js";
+﻿import { Tree } from "fluid-framework";
+
+import { Group, Item, Items } from "../schema/appSchema.js";
+
+function findItemRecursive(items: Items, predicate: (item: Item) => boolean): Item | undefined {
+	for (const node of items) {
+		if (Tree.is(node.content, Group)) {
+			const match = findItemRecursive(node.content.items, predicate);
+			if (match !== undefined) {
+				return match;
+			}
+		} else {
+			return node;
+		}
+	}
+
+	return undefined;
+}
+
+function collectAllItems(items: Items, results: Item[]): void {
+	for (const node of items) {
+		if (Tree.is(node.content, Group)) {
+			collectAllItems(node.content.items, results);
+		} else {
+			results.push(node);
+		}
+	}
+}
 
 export function findItemById(items: Items, id: string): Item | undefined {
-	return items.find((item) => item.id === id);
+	return findItemRecursive(items, (item) => item.id === id);
 }
 
 export function findItemsByIds(items: Items, ids: string[]): Item[] {
@@ -11,5 +38,7 @@ export function findItemsByIds(items: Items, ids: string[]): Item[] {
 }
 
 export function getAllItems(items: Items): Item[] {
-	return Array.from(items);
+	const allItems: Item[] = [];
+	collectAllItems(items, allItems);
+	return allItems;
 }

@@ -109,7 +109,7 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 				// Use the specific color or fallback to random selection (same logic as buttons)
 				const colors = shapeColor ? [shapeColor] : SHAPE_COLORS;
 				view.root.items.createShapeItem("circle", canvasSize, colors);
-				centerLastItem(view.root.items, pan, zoom, props.canvasSize, 120, 120, true);
+				centerLastItem(view.root.items, pan, zoom, props.canvasSize, 120, 120);
 			},
 		},
 		{
@@ -118,7 +118,7 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 				// Use the specific color or fallback to random selection (same logic as buttons)
 				const colors = shapeColor ? [shapeColor] : SHAPE_COLORS;
 				view.root.items.createShapeItem("square", canvasSize, colors);
-				centerLastItem(view.root.items, pan, zoom, props.canvasSize, 120, 120, true);
+				centerLastItem(view.root.items, pan, zoom, props.canvasSize, 120, 120);
 			},
 		},
 		{
@@ -127,7 +127,7 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 				// Use the specific color or fallback to random selection (same logic as buttons)
 				const colors = shapeColor ? [shapeColor] : SHAPE_COLORS;
 				view.root.items.createShapeItem("triangle", canvasSize, colors);
-				centerLastItem(view.root.items, pan, zoom, props.canvasSize, 120, 120, true);
+				centerLastItem(view.root.items, pan, zoom, props.canvasSize, 120, 120);
 			},
 		},
 		{
@@ -136,21 +136,21 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 				// Use the specific color or fallback to random selection (same logic as buttons)
 				const colors = shapeColor ? [shapeColor] : SHAPE_COLORS;
 				view.root.items.createShapeItem("star", canvasSize, colors);
-				centerLastItem(view.root.items, pan, zoom, props.canvasSize, 120, 120, true);
+				centerLastItem(view.root.items, pan, zoom, props.canvasSize, 120, 120);
 			},
 		},
 		{
 			key: "n",
 			action: () => {
 				view.root.items.createNoteItem(canvasSize, users.getMyself().value.id);
-				centerLastItem(view.root.items, pan, zoom, props.canvasSize, 180, 120, true);
+				centerLastItem(view.root.items, pan, zoom, props.canvasSize, 180, 120);
 			},
 		},
 		{
 			key: "b",
 			action: () => {
 				view.root.items.createTableItem(canvasSize);
-				centerLastItem(view.root.items, pan, zoom, props.canvasSize, 240, 160, true);
+				centerLastItem(view.root.items, pan, zoom, props.canvasSize, 240, 160);
 			},
 		},
 		// Selected item shortcuts

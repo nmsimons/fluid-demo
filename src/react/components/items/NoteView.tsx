@@ -43,6 +43,7 @@ export function NoteText(props: { note: Note }): JSX.Element {
 			appearance="filled-lighter"
 			size="large"
 			style={{ resize: "none", backgroundColor: "#feff68" }}
+			autoComplete="off"
 		/>
 	);
 }

@@ -13,6 +13,7 @@ import {
 import { TooltipButton } from "../../forms/Button.js";
 import { useTree } from "../../../hooks/useTree.js";
 import { Items } from "../../../../schema/appSchema.js";
+import { findItemById } from "../../../../utils/itemsHelpers.js";
 
 // Z-order buttons
 export function MoveItemForwardButton(props: {
@@ -21,7 +22,7 @@ export function MoveItemForwardButton(props: {
 }): JSX.Element {
 	const { items, selectedItemId } = props;
 	useTree(items);
-	const item = selectedItemId ? items.find((i) => i.id === selectedItemId) : undefined;
+	const item = selectedItemId ? findItemById(items, selectedItemId) : undefined;
 	const idx = item ? items.indexOf(item) : -1;
 	const can = item && idx < items.length - 1;
 	return (
@@ -43,7 +44,7 @@ export function MoveItemBackwardButton(props: {
 }): JSX.Element {
 	const { items, selectedItemId } = props;
 	useTree(items);
-	const item = selectedItemId ? items.find((i) => i.id === selectedItemId) : undefined;
+	const item = selectedItemId ? findItemById(items, selectedItemId) : undefined;
 	const idx = item ? items.indexOf(item) : -1;
 	const can = item && idx > 0;
 	return (
@@ -65,7 +66,7 @@ export function BringItemToFrontButton(props: {
 }): JSX.Element {
 	const { items, selectedItemId } = props;
 	useTree(items);
-	const item = selectedItemId ? items.find((i) => i.id === selectedItemId) : undefined;
+	const item = selectedItemId ? findItemById(items, selectedItemId) : undefined;
 	const idx = item ? items.indexOf(item) : -1;
 	const can = item && idx < items.length - 1;
 	return (
@@ -87,7 +88,7 @@ export function SendItemToBackButton(props: {
 }): JSX.Element {
 	const { items, selectedItemId } = props;
 	useTree(items);
-	const item = selectedItemId ? items.find((i) => i.id === selectedItemId) : undefined;
+	const item = selectedItemId ? findItemById(items, selectedItemId) : undefined;
 	const idx = item ? items.indexOf(item) : -1;
 	const can = item && idx > 0;
 	return (

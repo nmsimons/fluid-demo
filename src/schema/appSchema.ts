@@ -175,7 +175,6 @@ export class Note extends sf.object(
 	// Fields for Notes which SharedTree will store and synchronize across clients.
 	// These fields are exposed as members of instances of the Note class.
 	{
-		id: sf.string,
 		text: sf.string,
 		author: sf.required(sf.string, {
 			metadata: {
@@ -366,7 +365,17 @@ export class FluidTable extends TableSchema.table({
 		return new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime()));
 	}
 }
-export class Item extends sf.object("Item", {
+
+export class Group extends sf.objectRecursive("Group", {
+	id: sf.string,
+	items: [() => Items],
+}) {
+	moveIn(sourceIndex: number, sourceItems: Items) {
+		this.items.moveToEnd(sourceIndex, sourceItems);
+	}
+}
+
+export class Item extends sf.objectRecursive("Item", {
 	id: sf.string,
 	x: sf.required(sf.number, {
 		metadata: {
@@ -387,7 +396,7 @@ export class Item extends sf.object("Item", {
 	}),
 	comments: Comments,
 	votes: Vote,
-	content: [Shape, Note, FluidTable],
+	content: [Shape, Note, FluidTable, Group],
 }) {
 	delete(): void {
 		const parent = Tree.parent(this);
@@ -398,7 +407,7 @@ export class Item extends sf.object("Item", {
 }
 
 // Simple Items array containing only Item objects
-export class Items extends sf.array("Items", [Item]) {
+export class Items extends sf.arrayRecursive("Items", [Item]) {
 	/**
 	 * Create a new shape item and add it to the items collection
 	 */
@@ -439,7 +448,6 @@ export class Items extends sf.array("Items", [Item]) {
 	 */
 	createNoteItem(canvasSize: { width: number; height: number }, authorId: string): Item {
 		const note = new Note({
-			id: crypto.randomUUID(),
 			text: "",
 			author: authorId,
 		});
@@ -550,7 +558,6 @@ export class Items extends sf.array("Items", [Item]) {
 			});
 		} else if (Tree.is(item.content, Note)) {
 			duplicatedContent = new Note({
-				id: crypto.randomUUID(),
 				text: item.content.text,
 				author: item.content.author,
 			});
