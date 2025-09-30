@@ -196,7 +196,7 @@ export function groupItems(items: Item[]): Item | undefined {
 	const targetIndex = Math.min(...indices);
 	let createdGroup: Item | undefined;
 	Tree.runTransaction(parent, () => {
-		const groupContent = new Group({ id: crypto.randomUUID(), items: new Items([]) });
+		const groupContent = new Group({ items: new Items([]) });
 		const groupItem = new Item({
 			id: crypto.randomUUID(),
 			x: minX,
