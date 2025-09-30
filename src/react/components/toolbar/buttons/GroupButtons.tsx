@@ -123,16 +123,22 @@ export function GroupItemsButton(props: { selectedItems: Item[] }): JSX.Element 
 					return;
 				}
 
+				// Save the current selection IDs
+				const selectedIds = selectedItems.map((item) => ({ id: item.id }));
+
 				if (isUngroupMode) {
 					ungroupItems(selectedItems);
+					// Restore selection to the ungrouped items
+					presence.itemSelection.setSelection(selectedIds);
 				} else if (isAddToGroupMode && addToGroupResult.targetGroup) {
 					addToGroup(selectedItems, addToGroupResult.targetGroup);
-					// Keep the selection on the group
-					presence.itemSelection.setSelection({ id: addToGroupResult.targetGroup.id });
+					// Keep the selection on all items (now including items added to group)
+					presence.itemSelection.setSelection(selectedIds);
 				} else {
 					const grouped = groupItems(selectedItems);
 					if (grouped) {
-						presence.itemSelection.setSelection({ id: grouped.id });
+						// Keep the selection on the child items (now inside the group)
+						presence.itemSelection.setSelection(selectedIds);
 					}
 				}
 			}}
