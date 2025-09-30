@@ -16,6 +16,26 @@
 //      the item's initial position. Earlier incremental / clamped logic was
 //      intentionally removed to reduce complexity and eliminate jump / stutter
 //      issues with foreignObject (SVG / HTML overlay) elements like tables.
+
+/**
+ * GroupView - Simple visual representation for a group item
+ * The actual child items are rendered directly on the main canvas with adjusted positions.
+ * This component just shows a visual placeholder/border for the group container itself.
+ */
+function GroupView({ item }: { item: Item & { content: Group } }) {
+	const group = item.content;
+	useTree(group);
+
+	// Groups don't render content here anymore - child items are on main canvas
+	// This is just a visual placeholder
+	return (
+		<div className="group-placeholder flex items-center justify-center rounded-lg border-2 border-dashed border-slate-300 bg-slate-50/30 p-4">
+			<div className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+				Group ({group.items.length} items)
+			</div>
+		</div>
+	);
+}
 //   3. Resizing (shapes only) maintains the geometric center of the shape and
 //      scales uniformly by projecting the live pointer vector onto the initial
 //      pointer vector (dot product + magnitude ratio). This avoids distortion
@@ -41,7 +61,7 @@
 import React, { useContext, useEffect, useRef, useState } from "react";
 import { clampShapeSize } from "../../../constants/shape.js";
 import { Tree } from "fluid-framework";
-import { FluidTable, Item, Note } from "../../../schema/appSchema.js";
+import { FluidTable, Group, Item, Note } from "../../../schema/appSchema.js";
 import { PresenceContext } from "../../contexts/PresenceContext.js";
 import { useTree, objectIdNumber } from "../../hooks/useTree.js";
 import { ShapeView } from "./ShapeView.js";
@@ -53,7 +73,12 @@ import { DragAndRotatePackage } from "../../../presence/drag.js";
 import { ResizePackage } from "../../../presence/Interfaces/ResizeManager.js";
 import { LayoutContext } from "../../hooks/useLayoutManger.js";
 import { ChevronLeft16Filled } from "@fluentui/react-icons";
-import { getContentHandler, getContentType, isShape } from "../../../utils/contentHandlers.js";
+import {
+	getContentHandler,
+	getContentType,
+	isGroup,
+	isShape,
+} from "../../../utils/contentHandlers.js";
 
 // ============================================================================
 // Helpers
@@ -89,7 +114,8 @@ const itemType = (item: Item) => getContentType(item);
 export const calculateCanvasMouseCoordinates = (
 	e: { clientX: number; clientY: number },
 	pan?: { x: number; y: number },
-	zoom = 1
+	zoom = 1,
+	canvasElement?: HTMLElement | null
 ) => {
 	// Translate a raw (clientX, clientY) into logical canvas coordinates by:
 	//   1. Subtracting the canvas element's top-left (DOMRect) to obtain a local
@@ -99,7 +125,7 @@ export const calculateCanvasMouseCoordinates = (
 	//   3. Dividing by zoom to map CSS pixels back into model (logical) units.
 	// This keeps the model fully resolution / zoom independent and ensures
 	// consistent math for drag / resize / rotate no matter the viewport scale.
-	const c = document.getElementById("canvas");
+	const c = canvasElement ?? document.getElementById("canvas");
 	const r = c?.getBoundingClientRect() || ({ left: 0, top: 0 } as DOMRect);
 	const sx = e.clientX - r.left; // screen -> canvas local X (CSS px)
 	const sy = e.clientY - r.top; // screen -> canvas local Y (CSS px)
@@ -109,12 +135,13 @@ export const calculateOffsetFromCanvasOrigin = (
 	e: { clientX: number; clientY: number },
 	item: Item,
 	pan?: { x: number; y: number },
-	zoom = 1
+	zoom = 1,
+	canvasElement?: HTMLElement | null
 ) => {
 	// Computes the pointer offset relative to the item's top-left corner in
 	// model coordinates. Useful for anchor-preserving drag strategies (not used
 	// by the current absolute delta approach but retained for potential reuse).
-	const c = calculateCanvasMouseCoordinates(e, pan, zoom);
+	const c = calculateCanvasMouseCoordinates(e, pan, zoom, canvasElement);
 	return { x: c.x - item.x, y: c.y - item.y };
 };
 export {
@@ -150,6 +177,9 @@ export function ContentElement({
 	if (handler.type === "table" && Tree.is(item.content, FluidTable)) {
 		return <TableView key={objectIdNumber(item.content)} fluidTable={item.content} />;
 	}
+	if (handler.type === "group" && isGroup(item)) {
+		return <GroupView key={objectIdNumber(item.content)} item={item} />;
+	}
 	return <></>;
 }
 
@@ -163,8 +193,14 @@ export function ItemView(props: {
 	hideSelectionControls?: boolean;
 	pan?: { x: number; y: number };
 	zoom?: number;
+	logicalZoom?: number;
+	canvasElement?: HTMLElement | null;
+	onMeasured?: (item: Item, size: { width: number; height: number }) => void;
+	absoluteX?: number;
+	absoluteY?: number;
+	parentGroup?: Group;
 }) {
-	const { item, index, hideSelectionControls } = props;
+	const { item, index, hideSelectionControls, absoluteX, absoluteY, parentGroup } = props;
 	useTree(item);
 	const presence = useContext(PresenceContext);
 	const layout = useContext(LayoutContext);
@@ -173,9 +209,26 @@ export function ItemView(props: {
 	const dragRef = useRef<DragState | null>(null);
 	// (offset ref removed in delta-based drag implementation)
 	const intrinsic = useRef({ w: 0, h: 0 });
+
+	// Calculate group offset if this item is in a group
+	// parentGroup is the Group object; its parent is the Item that contains it
+	let groupOffsetX = 0;
+	let groupOffsetY = 0;
+	if (parentGroup) {
+		const groupContainer = Tree.parent(parentGroup);
+		if (groupContainer && Tree.is(groupContainer, Item)) {
+			groupOffsetX = groupContainer.x;
+			groupOffsetY = groupContainer.y;
+		}
+	}
+
+	// Use absoluteX/Y if provided (for items in groups), otherwise use item's own coordinates
+	const displayX = absoluteX ?? item.x;
+	const displayY = absoluteY ?? item.y;
+
 	const [view, setView] = useState({
-		left: item.x,
-		top: item.y,
+		left: displayX,
+		top: displayY,
 		zIndex: index,
 		transform: `rotate(${item.rotation}deg)`,
 	});
@@ -183,38 +236,87 @@ export function ItemView(props: {
 	useEffect(() => {
 		setView((v) => ({
 			...v,
-			left: item.x,
-			top: item.y,
+			left: displayX,
+			top: displayY,
 			zIndex: index,
 			transform: itemType(item) === "table" ? "rotate(0)" : `rotate(${item.rotation}deg)`,
 		}));
-	}, [item.x, item.y, item.rotation, index]);
+	}, [displayX, displayY, item.rotation, index]);
+
+	// Store the relative offset (item.x, item.y) in a ref so it's stable during drag
+	const relativeOffsetRef = React.useRef({ x: item.x, y: item.y });
+	React.useEffect(() => {
+		relativeOffsetRef.current = { x: item.x, y: item.y };
+	}, [item.x, item.y]);
 
 	// Presence listeners
-	const applyDrag = (d: DragAndRotatePackage) => {
-		if (!d || d.id !== item.id) return;
-		// Ephemeral (presence) update: we optimistically render the new position
-		// immediately for smooth remote & local collaborative movement. Commit to
-		// the authoritative Fluid tree only on pointerup / drag end.
-		setView((v) => ({
-			...v,
-			left: d.x,
-			top: d.y,
-			transform: getContentHandler(item).getRotationTransform(d.rotation),
-		}));
-		const handler = getContentHandler(item, shapeProps.sizeOverride);
-		const w = intrinsic.current.w || handler.getSize();
-		const h = intrinsic.current.h || handler.getSize();
-		// Update the spatial index (layout) so hit-testing / selection overlays can
-		// track live motion. This uses either measured intrinsic size (for table /
-		// note) or shape size. Only performed if dimensions are known.
-		if (w && h) layout.set(item.id, { left: d.x, top: d.y, right: d.x + w, bottom: d.y + h });
-	};
+	const applyDrag = React.useCallback(
+		(d: DragAndRotatePackage) => {
+			if (!d) return;
+
+			// Check if this item itself is being dragged
+			if (d.id === item.id) {
+				// Ephemeral (presence) update: we optimistically render the new position
+				// immediately for smooth remote & local collaborative movement. Commit to
+				// the authoritative Fluid tree only on pointerup / drag end.
+
+				// Presence coordinates are now in absolute canvas space
+				setView((v) => ({
+					...v,
+					left: d.x,
+					top: d.y,
+					transform: getContentHandler(item).getRotationTransform(d.rotation),
+				}));
+				const handler = getContentHandler(item, shapeProps.sizeOverride);
+				const w = intrinsic.current.w || handler.getSize();
+				const h = intrinsic.current.h || handler.getSize();
+				// Update the spatial index (layout) so hit-testing / selection overlays can
+				// track live motion. This uses either measured intrinsic size (for table /
+				// note) or shape size. Only performed if dimensions are known.
+				if (w && h)
+					layout.set(item.id, { left: d.x, top: d.y, right: d.x + w, bottom: d.y + h });
+				return;
+			}
+
+			// Check if this item's parent group is being dragged
+			if (parentGroup) {
+				const groupContainer = Tree.parent(parentGroup);
+				if (groupContainer && Tree.is(groupContainer, Item) && d.id === groupContainer.id) {
+					// Parent group is being dragged - calculate new absolute position
+					const newGroupX = d.x;
+					const newGroupY = d.y;
+					const newAbsoluteX = newGroupX + relativeOffsetRef.current.x;
+					const newAbsoluteY = newGroupY + relativeOffsetRef.current.y;
+
+					setView((v) => ({
+						...v,
+						left: newAbsoluteX,
+						top: newAbsoluteY,
+					}));
+
+					const handler = getContentHandler(item, shapeProps.sizeOverride);
+					const w = intrinsic.current.w || handler.getSize();
+					const h = intrinsic.current.h || handler.getSize();
+					if (w && h) {
+						layout.set(item.id, {
+							left: newAbsoluteX,
+							top: newAbsoluteY,
+							right: newAbsoluteX + w,
+							bottom: newAbsoluteY + h,
+						});
+					}
+				}
+			}
+		},
+		[item.id, parentGroup, shapeProps.sizeOverride, layout]
+	);
 	const applyResize = (r: ResizePackage | null) => {
 		if (r && r.id === item.id && getContentHandler(item).canResize()) {
 			// During a resize we shift the item's (x,y) so that scaling occurs around
 			// the geometric center, keeping the visual center stationary while edges
 			// expand / contract uniformly.
+
+			// Presence coordinates are in absolute canvas space
 			setView((v) => ({ ...v, left: r.x, top: r.y }));
 			setShapeProps({ sizeOverride: r.size });
 			intrinsic.current = { w: r.size, h: r.size };
@@ -239,7 +341,7 @@ export function ItemView(props: {
 
 	// Pointer lifecycle (delta-based to avoid foreignObject measurement jumps)
 	const coordsCanvas = (e: { clientX: number; clientY: number }) =>
-		calculateCanvasMouseCoordinates(e, props.pan, props.zoom);
+		calculateCanvasMouseCoordinates(e, props.pan, props.zoom, props.canvasElement ?? undefined);
 	interface DragState {
 		pointerId: number;
 		started: boolean;
@@ -301,11 +403,12 @@ export function ItemView(props: {
 		const { interactive } = handleItemInteraction(e, false);
 		const start = coordsCanvas(e);
 
+		// For drag, use absolute display coordinates
 		dragRef.current = {
 			pointerId: -1, // Use -1 for mouse to distinguish from touch
 			started: false,
-			startItemX: item.x,
-			startItemY: item.y,
+			startItemX: displayX,
+			startItemY: displayY,
 			startCanvasX: start.x,
 			startCanvasY: start.y,
 			interactiveStart: interactive,
@@ -346,9 +449,12 @@ export function ItemView(props: {
 					cur.x = dragState.x;
 					cur.y = dragState.y;
 				}
+				// Convert absolute canvas coordinates back to relative coordinates for items in groups
+				const finalX = cur.x - groupOffsetX;
+				const finalY = cur.y - groupOffsetY;
 				Tree.runTransaction(item, () => {
-					item.x = cur.x;
-					item.y = cur.y;
+					item.x = finalX;
+					item.y = finalY;
 				});
 				presence.drag.clearDragging();
 				delete document.documentElement.dataset.manipulating;
@@ -378,11 +484,12 @@ export function ItemView(props: {
 		const { interactive } = handleItemInteraction(e, true);
 		const start = coordsCanvas(touch);
 
+		// For drag, use absolute display coordinates
 		dragRef.current = {
 			pointerId: touch.identifier,
 			started: false,
-			startItemX: item.x,
-			startItemY: item.y,
+			startItemX: displayX,
+			startItemY: displayY,
 			startCanvasX: start.x,
 			startCanvasY: start.y,
 			interactiveStart: interactive,
@@ -429,9 +536,12 @@ export function ItemView(props: {
 					cur.x = dragState.x;
 					cur.y = dragState.y;
 				}
+				// Convert absolute canvas coordinates back to relative coordinates for items in groups
+				const finalX = cur.x - groupOffsetX;
+				const finalY = cur.y - groupOffsetY;
 				Tree.runTransaction(item, () => {
-					item.x = cur.x;
-					item.y = cur.y;
+					item.x = finalX;
+					item.y = finalY;
 				});
 				presence.drag.clearDragging();
 				delete document.documentElement.dataset.manipulating;
@@ -496,6 +606,7 @@ export function ItemView(props: {
 				right: view.left + w,
 				bottom: view.top + h,
 			});
+			props.onMeasured?.(item, { width: w, height: h });
 		};
 		measure();
 		let ro: ResizeObserver | null = null;
@@ -504,7 +615,16 @@ export function ItemView(props: {
 			ro.observe(el);
 		}
 		return () => ro?.disconnect();
-	}, [item.id, item.content, view.left, view.top, shapeProps.sizeOverride, props.zoom, layout]);
+	}, [
+		item.id,
+		item.content,
+		view.left,
+		view.top,
+		shapeProps.sizeOverride,
+		props.zoom,
+		layout,
+		props.onMeasured,
+	]);
 
 	// Never mutate view directly (React may freeze state objects in strict/dev modes)
 	const style = {
@@ -514,6 +634,7 @@ export function ItemView(props: {
 		WebkitUserSelect: "none",
 		userSelect: "none",
 	} as const;
+	const logicalZoom = props.logicalZoom ?? props.zoom;
 	return (
 		<div
 			ref={ref}
@@ -554,6 +675,11 @@ export function ItemView(props: {
 				item={item}
 				onResizeEnd={() => setShapeProps({})}
 				visualHidden={!!hideSelectionControls}
+				zoom={logicalZoom}
+				absoluteX={displayX}
+				absoluteY={displayY}
+				groupOffsetX={groupOffsetX}
+				groupOffsetY={groupOffsetY}
 			/>
 			<ContentElement item={item} shapeProps={shapeProps} />
 		</div>
@@ -568,18 +694,37 @@ export function SelectionBox({
 	item,
 	onResizeEnd,
 	visualHidden,
+	zoom,
+	absoluteX,
+	absoluteY,
+	groupOffsetX = 0,
+	groupOffsetY = 0,
 }: {
 	selected: boolean;
 	item: Item;
 	onResizeEnd?: () => void;
 	visualHidden?: boolean;
+	zoom?: number;
+	absoluteX?: number;
+	absoluteY?: number;
+	groupOffsetX?: number;
+	groupOffsetY?: number;
 }) {
 	useTree(item);
 	const pad = 8;
 	return (
 		<>
 			<div style={{ display: selected ? (visualHidden ? "none" : "block") : "none" }}>
-				<SelectionControls item={item} padding={pad} onResizeEnd={onResizeEnd} />
+				<SelectionControls
+					item={item}
+					padding={pad}
+					onResizeEnd={onResizeEnd}
+					zoom={zoom}
+					absoluteX={absoluteX}
+					absoluteY={absoluteY}
+					groupOffsetX={groupOffsetX}
+					groupOffsetY={groupOffsetY}
+				/>
 			</div>
 			<div
 				className={`absolute border-3 border-dashed border-black bg-transparent ${selected && !visualHidden ? "" : " hidden"}`}
@@ -599,17 +744,36 @@ export function SelectionControls({
 	item,
 	padding,
 	onResizeEnd,
+	zoom,
+	absoluteX,
+	absoluteY,
+	groupOffsetX = 0,
+	groupOffsetY = 0,
 }: {
 	item: Item;
 	padding: number;
 	onResizeEnd?: () => void;
+	zoom?: number;
+	absoluteX?: number;
+	absoluteY?: number;
+	groupOffsetX?: number;
+	groupOffsetY?: number;
 }) {
 	useTree(item);
-	const showRotate = itemType(item) !== "table";
+	const allowRotate = itemType(item) !== "table" && itemType(item) !== "group";
 	return (
 		<>
-			{showRotate && <RotateHandle item={item} />}
-			<CornerResizeHandles item={item} padding={padding} onResizeEnd={onResizeEnd} />
+			{allowRotate && (
+				<RotateHandle item={item} zoom={zoom} absoluteX={absoluteX} absoluteY={absoluteY} />
+			)}
+			<CornerResizeHandles
+				item={item}
+				padding={padding}
+				onResizeEnd={onResizeEnd}
+				zoom={zoom}
+				groupOffsetX={groupOffsetX}
+				groupOffsetY={groupOffsetY}
+			/>
 		</>
 	);
 }
@@ -617,10 +781,24 @@ export function SelectionControls({
 // ============================================================================
 // Rotate
 // ============================================================================
-export function RotateHandle({ item }: { item: Item }) {
+export function RotateHandle({
+	item,
+	zoom,
+	absoluteX,
+	absoluteY,
+}: {
+	item: Item;
+	zoom?: number;
+	absoluteX?: number;
+	absoluteY?: number;
+}) {
 	const presence = useContext(PresenceContext);
 	useTree(item);
 	const [active, setActive] = useState(false);
+	const scale = zoom ?? 1;
+	// Use absolute position for rotation
+	const displayX = absoluteX ?? item.x;
+	const displayY = absoluteY ?? item.y;
 	const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
 		e.stopPropagation();
 		e.preventDefault();
@@ -631,11 +809,11 @@ export function RotateHandle({ item }: { item: Item }) {
 		} catch {
 			/* unsupported */
 		}
-		// Set initial drag presence immediately so pan guard sees it
+		// Set initial drag presence with absolute coordinates
 		presence.drag.setDragging({
 			id: item.id,
-			x: item.x,
-			y: item.y,
+			x: displayX,
+			y: displayY,
 			rotation: item.rotation,
 			branch: presence.branch,
 		});
@@ -665,8 +843,8 @@ export function RotateHandle({ item }: { item: Item }) {
 			if (deg < 0) deg += 360;
 			presence.drag.setDragging({
 				id: item.id,
-				x: item.x,
-				y: item.y,
+				x: displayX,
+				y: displayY,
 				rotation: deg,
 				branch: presence.branch,
 			});
@@ -695,12 +873,16 @@ export function RotateHandle({ item }: { item: Item }) {
 		document.addEventListener("pointermove", move);
 		document.addEventListener("pointerup", up, { once: true });
 	};
-	const size = active ? 22 : 18;
-	const touchSize = 44; // Apple's recommended minimum touch target
+	const baseSize = active ? 22 : 18;
+	const baseTouchSize = 44; // Apple's recommended minimum touch target
+	const size = baseSize * scale;
+	const touchSize = baseTouchSize * scale;
+	const handleOffset = 80 * scale;
+	const handleHeight = 160 * scale;
 	return (
 		<div
 			className="absolute flex flex-row w-full justify-center items-center"
-			style={{ top: -80, height: 160, pointerEvents: "auto" }}
+			style={{ top: -handleOffset, height: handleHeight, pointerEvents: "auto" }}
 			onPointerDown={onPointerDown}
 			data-rotate-handle
 		>
@@ -710,7 +892,7 @@ export function RotateHandle({ item }: { item: Item }) {
 					width: touchSize,
 					height: touchSize,
 					position: "absolute",
-					top: 80 - touchSize / 2,
+					top: handleOffset - touchSize / 2,
 					left: "50%",
 					transform: "translateX(-50%)",
 					backgroundColor: "transparent",
@@ -724,7 +906,7 @@ export function RotateHandle({ item }: { item: Item }) {
 					height: size,
 					borderRadius: "50%",
 					position: "absolute",
-					top: 80 - size / 2,
+					top: handleOffset - size / 2,
 					left: "50%",
 					transform: "translateX(-50%)",
 					pointerEvents: "none", // Let the larger touch area handle events
@@ -741,10 +923,16 @@ export function CornerResizeHandles({
 	item,
 	padding,
 	onResizeEnd,
+	zoom,
+	groupOffsetX = 0,
+	groupOffsetY = 0,
 }: {
 	item: Item;
 	padding: number;
 	onResizeEnd?: () => void;
+	zoom?: number;
+	groupOffsetX?: number;
+	groupOffsetY?: number;
 }) {
 	const handler = getContentHandler(item);
 	if (!handler.canResize() || !isShape(item)) return <></>;
@@ -752,11 +940,19 @@ export function CornerResizeHandles({
 	useTree(shape);
 	const presence = useContext(PresenceContext);
 	const [resizing, setResizing] = useState(false);
+	const scale = zoom ?? 1;
 	const initSize = useRef(shape.size);
 	const centerModel = useRef({ x: 0, y: 0 });
 	const centerScreen = useRef({ x: 0, y: 0 });
 	const initDist = useRef(0);
 	const initVec = useRef({ dx: 0, dy: 0 });
+
+	// Calculate absolute position (accounting for groups)
+	const getAbsolutePosition = () => {
+		const absX = item.x + groupOffsetX;
+		const absY = item.y + groupOffsetY;
+		return { absX, absY };
+	};
 	const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
 		e.stopPropagation();
 		e.preventDefault();
@@ -766,11 +962,14 @@ export function CornerResizeHandles({
 		} catch {
 			/* unsupported */
 		}
+		// Get absolute position for resize
+		const { absX, absY } = getAbsolutePosition();
 		// Seed resize presence so pan guard sees active manipulation instantly
-		presence.resize.setResizing({ id: item.id, x: item.x, y: item.y, size: shape.size });
+		presence.resize.setResizing({ id: item.id, x: absX, y: absY, size: shape.size });
 		document.documentElement.dataset.manipulating = "1";
 		initSize.current = shape.size;
-		centerModel.current = { x: item.x + shape.size / 2, y: item.y + shape.size / 2 };
+		// Calculate center in absolute canvas space
+		centerModel.current = { x: absX + shape.size / 2, y: absY + shape.size / 2 };
 		let el: HTMLElement | null = e.currentTarget.parentElement;
 		while (el && !el.getAttribute("data-item-id")) el = el.parentElement;
 		if (el) {
@@ -807,10 +1006,11 @@ export function CornerResizeHandles({
 			delete document.documentElement.dataset.manipulating;
 			const r = presence.resize.state.local;
 			if (r && r.id === item.id) {
+				// Use the passed group offsets to convert absolute coordinates back to relative
 				Tree.runTransaction(item, () => {
 					shape.size = r.size;
-					item.x = r.x;
-					item.y = r.y;
+					item.x = r.x - groupOffsetX;
+					item.y = r.y - groupOffsetY;
 				});
 			}
 			presence.resize.clearResizing();
@@ -824,7 +1024,8 @@ export function CornerResizeHandles({
 		document.addEventListener("pointerup", up, { once: true });
 	};
 	const pos = (p: string) => {
-		const o = resizing ? 10 : 8; // enlarged for touch
+		const baseOffset = resizing ? 10 : 8; // enlarged for touch
+		const o = baseOffset * scale;
 		switch (p) {
 			case "top-left":
 				return { left: -padding - o, top: -padding - o };
@@ -841,7 +1042,8 @@ export function CornerResizeHandles({
 	const Handle = ({ position }: { position: string }) => {
 		// Wrapper large zone
 		const zone = pos(position);
-		const WRAP = 120; // large square zone for touch
+		const baseWrap = 120; // large square zone for touch
+		const WRAP = baseWrap * scale;
 		const wrapStyle: React.CSSProperties = {
 			position: "absolute",
 			width: WRAP,
@@ -851,7 +1053,8 @@ export function CornerResizeHandles({
 			...zone,
 			// shift so small handle remains at corner while wrapper extends inward
 		};
-		const handleSize = resizing ? 30 : 26;
+		const baseHandleSize = resizing ? 30 : 26;
+		const handleSize = baseHandleSize * scale;
 		const adjust = (v: number) => v - (WRAP - handleSize) / 2;
 		if (Object.prototype.hasOwnProperty.call(zone, "left"))
 			wrapStyle.left = adjust((zone as Record<string, number>).left);
@@ -866,8 +1069,8 @@ export function CornerResizeHandles({
 				<div
 					className="absolute bg-black cursor-nw-resize hover:bg-black shadow-lg z-[9998]"
 					style={{
-						width: resizing ? 30 : 26,
-						height: resizing ? 30 : 26,
+						width: handleSize,
+						height: handleSize,
 						borderRadius: 6,
 						pointerEvents: "none",
 						// Place at corner inside wrapper

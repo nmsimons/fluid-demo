@@ -30,7 +30,7 @@
 //
 // ============================================================================
 import React from "react";
-import { FluidTable, Item, Shape } from "../../schema/appSchema.js";
+import { FluidTable, Item, Shape, Group } from "../../schema/appSchema.js";
 import { Tree } from "fluid-framework";
 import { getActiveDragForItem } from "../utils/dragUtils.js";
 
@@ -81,6 +81,24 @@ export function SelectionOverlay(props: {
 		left = active.x;
 		top = active.y;
 	}
+
+	// Also check if the parent group is being dragged
+	if (!active) {
+		const parentGroup = Tree.parent(item);
+		if (parentGroup && Tree.is(parentGroup, Group)) {
+			const groupContainer = Tree.parent(parentGroup);
+			if (groupContainer && Tree.is(groupContainer, Item)) {
+				const groupDrag = getActiveDragForItem(presence, groupContainer.id);
+				if (groupDrag) {
+					// Parent group is being dragged - calculate this item's position
+					// from the group's drag position + item's relative offset
+					left = groupDrag.x + item.x;
+					top = groupDrag.y + item.y;
+				}
+			}
+		}
+	}
+
 	let angle = active ? active.rotation : item.rotation;
 	const isTable = Tree.is(item.content, FluidTable);
 	const isShape = Tree.is(item.content, Shape);

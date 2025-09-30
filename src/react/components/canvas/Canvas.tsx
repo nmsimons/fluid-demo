@@ -43,15 +43,7 @@ import React, { JSX, useContext, useRef, useState, useEffect } from "react";
  * - Logical ink width is scaled by zoom for visual accuracy, but polyline uses vectorEffect="non-scaling-stroke" to retain crispness.
  * - Custom circle overlay drawn in screen space for ink / eraser feedback.
  */
-import {
-	Items,
-	Item,
-	InkStroke,
-	InkPoint,
-	InkStyle,
-	InkBBox,
-	App,
-} from "../../../schema/appSchema.js";
+import { Items, InkStroke, InkPoint, InkStyle, InkBBox, App } from "../../../schema/appSchema.js";
 import { Tree } from "fluid-framework";
 import { IFluidContainer } from "fluid-framework";
 import { PresenceContext } from "../../contexts/PresenceContext.js";
@@ -62,10 +54,12 @@ import { SelectionOverlay } from "../../overlays/SelectionOverlay.js";
 import { PresenceOverlay } from "../../overlays/PresenceOverlay.js";
 import { CommentOverlay } from "../../overlays/CommentOverlay.js";
 import { CursorOverlay } from "../../overlays/CursorOverlay.js";
+import { GroupOverlay } from "../../overlays/GroupOverlay.js";
 import { useCanvasNavigation } from "../../hooks/useCanvasNavigation.js";
 import { useOverlayRerenders } from "../../hooks/useOverlayRerenders.js";
 import { ItemsHtmlLayer } from "./ItemsHtmlLayer.js";
 import { PaneContext } from "../../contexts/PaneContext.js";
+import { flattenItems } from "../../../utils/flattenItems.js";
 
 export function Canvas(props: {
 	items: Items;
@@ -94,8 +88,12 @@ export function Canvas(props: {
 
 	// Global presence context (ephemeral collaboration state: selections, drags, ink, etc.)
 	const presence = useContext(PresenceContext);
-	useTree(items);
+	// Use deep tracking to detect changes to item positions, not just collection changes
+	const itemsVersion = useTree(items, true);
 	const layout = useContext(LayoutContext);
+
+	// Flatten the items tree so all items (including those in groups) render on the main canvas
+	const flattenedItems = React.useMemo(() => flattenItems(items), [items, itemsVersion]);
 
 	const svgRef = useRef<SVGSVGElement>(null);
 	// Freehand ink capture lifecycle:
@@ -659,7 +657,7 @@ export function Canvas(props: {
 						}}
 					>
 						<ItemsHtmlLayer
-							items={items}
+							items={flattenedItems}
 							canvasPosition={canvasPosition}
 							pan={pan}
 							zoom={zoom}
@@ -756,6 +754,14 @@ export function Canvas(props: {
 						/>
 					)}
 				</g>
+				{/* Group overlays - render group visual bounds */}
+				<g
+					transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}
+					style={{ pointerEvents: "none" }}
+					data-layer="group-overlays"
+				>
+					<GroupOverlay items={Array.from(items)} layout={layout} zoom={zoom} />
+				</g>
 				{/* Per-item SVG wrappers (overlay), built from measured layout */}
 				<g
 					key={`sel-${selKey}-${motionKey}-${layoutVersion}`}
@@ -763,20 +769,23 @@ export function Canvas(props: {
 					style={{ pointerEvents: "auto", touchAction: "none" }}
 					data-layer="selection-overlays"
 				>
-					{items.map((item) => {
-						if (!(item instanceof Item)) return null;
-						const isSelected = presence.itemSelection?.testSelection({ id: item.id });
-						if (!isSelected) return null; // only draw selection overlays for selected items
-						return (
-							<SelectionOverlay
-								key={`wrap-${item.id}`}
-								item={item}
-								layout={layout}
-								presence={presence}
-								zoom={zoom}
-							/>
-						);
-					})}
+					{flattenedItems
+						.filter((flatItem) => !flatItem.isGroupContainer)
+						.map((flatItem) => {
+							const isSelected = presence.itemSelection?.testSelection({
+								id: flatItem.item.id,
+							});
+							if (!isSelected) return null; // only draw selection overlays for selected items
+							return (
+								<SelectionOverlay
+									key={`wrap-${flatItem.item.id}`}
+									item={flatItem.item}
+									layout={layout}
+									presence={presence}
+									zoom={zoom}
+								/>
+							);
+						})}
 				</g>
 				{/* Presence indicators overlay for all items with remote selections */}
 				<g
@@ -785,36 +794,39 @@ export function Canvas(props: {
 					style={{ pointerEvents: "auto", touchAction: "none" }}
 					data-layer="presence-overlays"
 				>
-					{items.map((item) => {
-						if (!(item instanceof Item)) return null;
-						const remoteIds =
-							presence.itemSelection?.testRemoteSelection({ id: item.id }) ?? [];
-						if (!remoteIds.length) return null;
-						const isExpanded = expandedPresence.has(item.id);
-						const toggleExpanded = (e: React.MouseEvent) => {
-							e.stopPropagation();
-							setExpandedPresence((prev) => {
-								const next = new Set(prev);
-								if (next.has(item.id)) next.delete(item.id);
-								else next.add(item.id);
-								return next;
-							});
-						};
-						return (
-							<PresenceOverlay
-								key={`presence-${item.id}`}
-								item={item}
-								layout={layout}
-								presence={presence}
-								remoteIds={remoteIds}
-								zoom={zoom}
-								getInitials={getInitials}
-								getUserColor={getUserColor}
-								expanded={isExpanded}
-								onToggleExpanded={toggleExpanded}
-							/>
-						);
-					})}
+					{flattenedItems
+						.filter((flatItem) => !flatItem.isGroupContainer)
+						.map((flatItem) => {
+							const remoteIds =
+								presence.itemSelection?.testRemoteSelection({
+									id: flatItem.item.id,
+								}) ?? [];
+							if (!remoteIds.length) return null;
+							const isExpanded = expandedPresence.has(flatItem.item.id);
+							const toggleExpanded = (e: React.MouseEvent) => {
+								e.stopPropagation();
+								setExpandedPresence((prev) => {
+									const next = new Set(prev);
+									if (next.has(flatItem.item.id)) next.delete(flatItem.item.id);
+									else next.add(flatItem.item.id);
+									return next;
+								});
+							};
+							return (
+								<PresenceOverlay
+									key={`presence-${flatItem.item.id}`}
+									item={flatItem.item}
+									layout={layout}
+									presence={presence}
+									remoteIds={remoteIds}
+									zoom={zoom}
+									getInitials={getInitials}
+									getUserColor={getUserColor}
+									expanded={isExpanded}
+									onToggleExpanded={toggleExpanded}
+								/>
+							);
+						})}
 				</g>
 				{/* Comment indicators (zoom-invariant) */}
 				<g
@@ -823,22 +835,24 @@ export function Canvas(props: {
 					style={{ pointerEvents: "auto", touchAction: "none" }}
 					data-layer="comment-overlays"
 				>
-					{items.map((item) => {
-						if (!(item instanceof Item)) return null;
-						const isSelected =
-							presence.itemSelection?.testSelection({ id: item.id }) ?? false;
-						return (
-							<CommentOverlay
-								key={`comment-${item.id}`}
-								item={item}
-								layout={layout}
-								zoom={zoom}
-								commentPaneVisible={commentPaneVisible}
-								selected={isSelected}
-								presence={presence}
-							/>
-						);
-					})}
+					{flattenedItems
+						.filter((flatItem) => !flatItem.isGroupContainer)
+						.map((flatItem) => {
+							const isSelected =
+								presence.itemSelection?.testSelection({ id: flatItem.item.id }) ??
+								false;
+							return (
+								<CommentOverlay
+									key={`comment-${flatItem.item.id}`}
+									item={flatItem.item}
+									layout={layout}
+									zoom={zoom}
+									commentPaneVisible={commentPaneVisible}
+									selected={isSelected}
+									presence={presence}
+								/>
+							);
+						})}
 				</g>
 				{/* Screen-space cursor overlay */}
 				{cursor.visible && (inkActive || eraserActive) && (

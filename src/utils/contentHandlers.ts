@@ -10,12 +10,12 @@
 // ============================================================================
 
 import { Tree } from "fluid-framework";
-import { Item, Shape, Note, FluidTable } from "../schema/appSchema.js";
+import { Item, Shape, Note, FluidTable, Group } from "../schema/appSchema.js";
 
 /**
  * Content type enumeration for type-safe handling
  */
-export type ContentType = "shape" | "note" | "table" | "unknown";
+export type ContentType = "shape" | "note" | "table" | "group" | "unknown";
 
 /**
  * Common interface for all content handlers
@@ -133,6 +133,34 @@ class TableHandler implements ContentHandler {
 }
 
 /**
+ * Handler for Group content
+ */
+class GroupHandler implements ContentHandler {
+	readonly type: ContentType = "group";
+
+	getSize(): number {
+		return 0;
+	}
+
+	getName(): string {
+		return "Group";
+	}
+
+	canResize(): boolean {
+		return false;
+	}
+
+	canRotate(): boolean {
+		return false;
+	}
+
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	getRotationTransform(_rotation: number): string {
+		return "rotate(0)";
+	}
+}
+
+/**
  * Handler for unknown content types
  */
 class UnknownHandler implements ContentHandler {
@@ -174,6 +202,9 @@ export function getContentHandler(item: Item, sizeOverride?: number): ContentHan
 	if (Tree.is(item.content, FluidTable)) {
 		return new TableHandler(item.content);
 	}
+	if (Tree.is(item.content, Group)) {
+		return new GroupHandler();
+	}
 	return new UnknownHandler();
 }
 
@@ -198,4 +229,8 @@ export function isNote(item: Item): item is Item & { content: Note } {
 
 export function isTable(item: Item): item is Item & { content: FluidTable } {
 	return Tree.is(item.content, FluidTable);
+}
+
+export function isGroup(item: Item): item is Item & { content: Group } {
+	return Tree.is(item.content, Group);
 }
