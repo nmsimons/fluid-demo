@@ -140,6 +140,10 @@ export function GroupOverlay(props: {
 	// Filter to only group items
 	const groupItems = items.filter((item) => Tree.is(item.content, Group));
 
+	// Get selected items from presence
+	const selectedItems = presence.itemSelection.state.local || [];
+	const selectedIds = new Set(selectedItems.map((s) => s.id));
+
 	// Note: childUpdateTrigger state changes force re-renders when any item drag/resize happens
 	// This ensures we read fresh layout bounds even though the Map reference doesn't change
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -149,6 +153,14 @@ export function GroupOverlay(props: {
 		<>
 			{groupItems.map((groupItem) => {
 				const group = groupItem.content as Group;
+
+				// Only show group overlay if at least one item in the group is selected
+				const hasSelectedChild = group.items.some((childItem) =>
+					selectedIds.has(childItem.id)
+				);
+				if (!hasSelectedChild) {
+					return null;
+				}
 
 				// Check if this group is being dragged (from local or remote presence)
 				const dragState = allDragStates.get(groupItem.id);
@@ -252,17 +264,7 @@ export function GroupOverlay(props: {
 
 				return (
 					<g key={groupItem.id}>
-						{/* Background fill */}
-						<rect
-							x={x}
-							y={y}
-							width={width}
-							height={height}
-							fill="#f1f5f9"
-							opacity={0.3}
-							rx={12 / zoom}
-						/>
-						{/* Border */}
+						{/* Border (no background fill) */}
 						<rect
 							x={x}
 							y={y}
@@ -275,7 +277,7 @@ export function GroupOverlay(props: {
 							rx={12 / zoom}
 							opacity={0.6}
 						/>
-						{/* Drag handle - centered at top */}
+						{/* Drag handle - centered above top of box */}
 						<g
 							className="group-drag-handle"
 							style={{ cursor: "move" }}
@@ -284,7 +286,7 @@ export function GroupOverlay(props: {
 							{/* Handle background */}
 							<rect
 								x={x + width / 2 - 20 / zoom}
-								y={y - 1 / zoom}
+								y={y - 20 / zoom}
 								width={40 / zoom}
 								height={16 / zoom}
 								fill="#64748b"
@@ -295,9 +297,9 @@ export function GroupOverlay(props: {
 							{/* Grip lines */}
 							<line
 								x1={x + width / 2 - 8 / zoom}
-								y1={y + 5 / zoom}
+								y1={y - 14 / zoom}
 								x2={x + width / 2 + 8 / zoom}
-								y2={y + 5 / zoom}
+								y2={y - 14 / zoom}
 								stroke="#fff"
 								strokeWidth={1.5 / zoom}
 								opacity={0.8}
@@ -305,9 +307,9 @@ export function GroupOverlay(props: {
 							/>
 							<line
 								x1={x + width / 2 - 8 / zoom}
-								y1={y + 10 / zoom}
+								y1={y - 9 / zoom}
 								x2={x + width / 2 + 8 / zoom}
-								y2={y + 10 / zoom}
+								y2={y - 9 / zoom}
 								stroke="#fff"
 								strokeWidth={1.5 / zoom}
 								opacity={0.8}
