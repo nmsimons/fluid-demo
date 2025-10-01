@@ -275,8 +275,30 @@ export function GroupOverlay(props: {
 					// During CHILD drag/resize: use layout bounds (updated in real-time by ItemView)
 					if (isGroupBeingDragged) {
 						// Group is being dragged - calculate child position from group + relative offset
-						const childAbsX = groupX + childItem.x;
-						const childAbsY = groupY + childItem.y;
+						let childRelativeX: number;
+						let childRelativeY: number;
+
+						if (group.viewAsGrid === true) {
+							const itemIndex = group.items.indexOf(childItem);
+							// Grid layout parameters (must match flattenItems.ts and ItemView.tsx)
+							const gridGapX = 20;
+							const gridGapY = 40;
+							const itemWidth = 200;
+							const itemHeight = 150;
+							const padding = 40;
+							const columns = 3;
+
+							const col = itemIndex % columns;
+							const row = Math.floor(itemIndex / columns);
+							childRelativeX = padding + col * (itemWidth + gridGapX);
+							childRelativeY = padding + row * (itemHeight + gridGapY);
+						} else {
+							childRelativeX = childItem.x;
+							childRelativeY = childItem.y;
+						}
+
+						const childAbsX = groupX + childRelativeX;
+						const childAbsY = groupY + childRelativeY;
 						const childBounds = layout.get(childItem.id);
 						if (childBounds) {
 							const width = childBounds.right - childBounds.left;
@@ -303,8 +325,29 @@ export function GroupOverlay(props: {
 							maxY = Math.max(maxY, childBounds.bottom);
 						} else {
 							// Fallback: calculate from tree positions
-							const childAbsX = groupX + childItem.x;
-							const childAbsY = groupY + childItem.y;
+							let childRelativeX: number;
+							let childRelativeY: number;
+
+							if (group.viewAsGrid === true) {
+								const itemIndex = group.items.indexOf(childItem);
+								const gridGapX = 20;
+								const gridGapY = 40;
+								const itemWidth = 200;
+								const itemHeight = 150;
+								const padding = 40;
+								const columns = 3;
+
+								const col = itemIndex % columns;
+								const row = Math.floor(itemIndex / columns);
+								childRelativeX = padding + col * (itemWidth + gridGapX);
+								childRelativeY = padding + row * (itemHeight + gridGapY);
+							} else {
+								childRelativeX = childItem.x;
+								childRelativeY = childItem.y;
+							}
+
+							const childAbsX = groupX + childRelativeX;
+							const childAbsY = groupY + childRelativeY;
 							minX = Math.min(minX, childAbsX);
 							minY = Math.min(minY, childAbsY);
 							maxX = Math.max(maxX, childAbsX + 100);
@@ -487,10 +530,17 @@ export function GroupOverlay(props: {
 												<button
 													onClick={(e) => {
 														e.stopPropagation();
-														console.log("Grid view");
+														if (group.viewAsGrid === true) {
+															group.viewAsGrid = undefined;
+														} else {
+															group.viewAsGrid = true;
+														}
 													}}
 													style={{
-														background: "rgba(255, 255, 255, 0.2)",
+														background:
+															group.viewAsGrid === true
+																? "rgba(255, 255, 255, 0.4)"
+																: "rgba(255, 255, 255, 0.2)",
 														border: "none",
 														borderRadius: "4px",
 														padding: "4px 8px",
@@ -500,7 +550,11 @@ export function GroupOverlay(props: {
 														color: "#ffffff",
 														fontSize: "14px",
 													}}
-													title="Grid View"
+													title={
+														group.viewAsGrid === true
+															? "Free Layout"
+															: "Grid View"
+													}
 												>
 													<GridRegular />
 												</button>

@@ -369,6 +369,7 @@ export class FluidTable extends TableSchema.table({
 export class Group extends sf.objectRecursive("Group", {
 	name: sf.string,
 	items: [() => Items],
+	viewAsGrid: sf.optional(sf.boolean),
 }) {}
 
 export class Item extends sf.objectRecursive("Item", {

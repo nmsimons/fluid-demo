@@ -226,22 +226,27 @@ export function ItemView(props: {
 	const displayX = absoluteX ?? item.x;
 	const displayY = absoluteY ?? item.y;
 
+	// In grid view, force rotation to 0 (visual only, doesn't change stored rotation)
+	const displayRotation = parentGroup?.viewAsGrid === true ? 0 : item.rotation;
+
 	const [view, setView] = useState({
 		left: displayX,
 		top: displayY,
 		zIndex: index,
-		transform: `rotate(${item.rotation}deg)`,
+		transform: `rotate(${displayRotation}deg)`,
 	});
 
 	useEffect(() => {
+		// In grid view, force rotation to 0 (visual only)
+		const displayRotation = parentGroup?.viewAsGrid === true ? 0 : item.rotation;
 		setView((v) => ({
 			...v,
 			left: displayX,
 			top: displayY,
 			zIndex: index,
-			transform: itemType(item) === "table" ? "rotate(0)" : `rotate(${item.rotation}deg)`,
+			transform: itemType(item) === "table" ? "rotate(0)" : `rotate(${displayRotation}deg)`,
 		}));
-	}, [displayX, displayY, item.rotation, index]);
+	}, [displayX, displayY, item.rotation, index, parentGroup]);
 
 	// Store the relative offset (item.x, item.y) in a ref so it's stable during drag
 	const relativeOffsetRef = React.useRef({ x: item.x, y: item.y });
@@ -285,15 +290,46 @@ export function ItemView(props: {
 					// Parent group is being dragged - calculate new absolute position
 					const newGroupX = d.x;
 					const newGroupY = d.y;
-					const newAbsoluteX = newGroupX + relativeOffsetRef.current.x;
-					const newAbsoluteY = newGroupY + relativeOffsetRef.current.y;
+
+					let itemOffsetX: number;
+					let itemOffsetY: number;
+
+					// If grid view is enabled, calculate grid position instead of using stored x/y
+					if (parentGroup.viewAsGrid === true) {
+						// Find item's index in the group
+						const itemIndex = parentGroup.items.indexOf(item);
+
+						// Grid layout parameters (must match flattenItems.ts)
+						const gridGapX = 20;
+						const gridGapY = 40;
+						const itemWidth = 200;
+						const itemHeight = 150;
+						const padding = 40;
+						const columns = 3;
+						const col = itemIndex % columns;
+						const row = Math.floor(itemIndex / columns);
+						itemOffsetX = padding + col * (itemWidth + gridGapX);
+						itemOffsetY = padding + row * (itemHeight + gridGapY);
+					} else {
+						// Free layout: use stored x/y
+						itemOffsetX = relativeOffsetRef.current.x;
+						itemOffsetY = relativeOffsetRef.current.y;
+					}
+
+					const newAbsoluteX = newGroupX + itemOffsetX;
+					const newAbsoluteY = newGroupY + itemOffsetY;
+
+					// In grid view, force rotation to 0 (visual only)
+					const displayRotation = parentGroup.viewAsGrid === true ? 0 : item.rotation;
+					const transform =
+						itemType(item) === "table" ? "rotate(0)" : `rotate(${displayRotation}deg)`;
 
 					setView((v) => ({
 						...v,
 						left: newAbsoluteX,
 						top: newAbsoluteY,
+						transform: transform,
 					}));
-
 					const handler = getContentHandler(item, shapeProps.sizeOverride);
 					const w = intrinsic.current.w || handler.getSize();
 					const h = intrinsic.current.h || handler.getSize();
@@ -422,6 +458,8 @@ export function ItemView(props: {
 			const dx = cur.x - st.startCanvasX;
 			const dy = cur.y - st.startCanvasY;
 			if (!st.started) {
+				// Don't allow dragging items in grid-view groups
+				if (parentGroup?.viewAsGrid) return;
 				const threshold = st.interactiveStart ? THRESHOLD_BASE * 2 : THRESHOLD_BASE;
 				if (Math.hypot(dx, dy) < threshold) return;
 				st.started = true;
@@ -443,6 +481,14 @@ export function ItemView(props: {
 			const st = dragRef.current;
 			if (!st) return;
 			if (st.started) {
+				// Don't allow dragging items in grid-view groups
+				if (parentGroup?.viewAsGrid) {
+					presence.drag.clearDragging();
+					delete document.documentElement.dataset.manipulating;
+					dragRef.current = null;
+					return;
+				}
+
 				const cur = { x: st.startItemX, y: st.startItemY };
 				const dragState = presence.drag.state.local;
 				if (dragState && dragState.id === item.id) {
@@ -508,6 +554,8 @@ export function ItemView(props: {
 			const dx = cur.x - st.startCanvasX;
 			const dy = cur.y - st.startCanvasY;
 			if (!st.started) {
+				// Don't allow dragging items in grid-view groups
+				if (parentGroup?.viewAsGrid) return;
 				// Use same threshold for touch to keep behavior consistent
 				const threshold = st.interactiveStart ? THRESHOLD_BASE * 2 : THRESHOLD_BASE;
 				if (Math.hypot(dx, dy) < threshold) return;
@@ -530,6 +578,14 @@ export function ItemView(props: {
 			const st = dragRef.current;
 			if (!st) return;
 			if (st.started) {
+				// Don't allow dragging items in grid-view groups
+				if (parentGroup?.viewAsGrid) {
+					presence.drag.clearDragging();
+					delete document.documentElement.dataset.manipulating;
+					dragRef.current = null;
+					return;
+				}
+
 				const cur = { x: st.startItemX, y: st.startItemY };
 				const dragState = presence.drag.state.local;
 				if (dragState && dragState.id === item.id) {
@@ -680,6 +736,7 @@ export function ItemView(props: {
 				absoluteY={displayY}
 				groupOffsetX={groupOffsetX}
 				groupOffsetY={groupOffsetY}
+				parentGroup={parentGroup}
 			/>
 			<ContentElement item={item} shapeProps={shapeProps} />
 		</div>
@@ -699,6 +756,7 @@ export function SelectionBox({
 	absoluteY,
 	groupOffsetX = 0,
 	groupOffsetY = 0,
+	parentGroup,
 }: {
 	selected: boolean;
 	item: Item;
@@ -709,6 +767,7 @@ export function SelectionBox({
 	absoluteY?: number;
 	groupOffsetX?: number;
 	groupOffsetY?: number;
+	parentGroup?: Group;
 }) {
 	useTree(item);
 	const pad = 8;
@@ -724,6 +783,7 @@ export function SelectionBox({
 					absoluteY={absoluteY}
 					groupOffsetX={groupOffsetX}
 					groupOffsetY={groupOffsetY}
+					parentGroup={parentGroup}
 				/>
 			</div>
 			<div
@@ -749,6 +809,7 @@ export function SelectionControls({
 	absoluteY,
 	groupOffsetX = 0,
 	groupOffsetY = 0,
+	parentGroup,
 }: {
 	item: Item;
 	padding: number;
@@ -758,9 +819,17 @@ export function SelectionControls({
 	absoluteY?: number;
 	groupOffsetX?: number;
 	groupOffsetY?: number;
+	parentGroup?: Group;
 }) {
 	useTree(item);
 	const allowRotate = itemType(item) !== "table" && itemType(item) !== "group";
+	const isInGridView = parentGroup?.viewAsGrid === true;
+
+	// Don't show handles for items in grid-view groups
+	if (isInGridView) {
+		return null;
+	}
+
 	return (
 		<>
 			{allowRotate && (

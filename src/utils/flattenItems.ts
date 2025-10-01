@@ -51,9 +51,38 @@ function flattenItem(
 			isGroupContainer: true,
 		});
 
-		// Add all child items with adjusted positions
-		for (const childItem of group.items) {
-			flattenItem(childItem, item.x, item.y, group, result);
+		// Check if grid view is enabled
+		const useGridView = group.viewAsGrid === true;
+
+		if (useGridView) {
+			// Grid layout: arrange items in a grid
+			const gridGapX = 20; // Horizontal gap between items
+			const gridGapY = 40; // Vertical gap between rows (larger for sticky notes)
+			const itemWidth = 200; // Default item width
+			const itemHeight = 150; // Default item height
+			const padding = 40; // Padding from group edges
+			const columns = 3; // Number of columns
+
+			group.items.forEach((childItem, index) => {
+				const col = index % columns;
+				const row = Math.floor(index / columns);
+				const gridX = padding + col * (itemWidth + gridGapX);
+				const gridY = padding + row * (itemHeight + gridGapY);
+
+				// Use grid position instead of item's stored x/y
+				result.push({
+					item: childItem,
+					absoluteX: item.x + gridX,
+					absoluteY: item.y + gridY,
+					parentGroup: group,
+					isGroupContainer: false,
+				});
+			});
+		} else {
+			// Normal layout: use item's x/y coordinates
+			for (const childItem of group.items) {
+				flattenItem(childItem, item.x, item.y, group, result);
+			}
 		}
 	} else {
 		// Regular item (Shape, Note, FluidTable)
