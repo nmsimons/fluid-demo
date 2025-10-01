@@ -403,11 +403,14 @@ export function GroupOverlay(props: {
 														ref={editInputRef}
 														type="text"
 														value={editingValue}
-														onChange={(e) => setEditingValue(e.target.value)}
+														onChange={(e) =>
+															setEditingValue(e.target.value)
+														}
 														onKeyDown={(e) => {
 															if (e.key === "Enter") {
 																e.preventDefault();
-																const trimmedValue = editingValue.trim();
+																const trimmedValue =
+																	editingValue.trim();
 																if (trimmedValue) {
 																	group.name = trimmedValue;
 																}
@@ -418,7 +421,8 @@ export function GroupOverlay(props: {
 															}
 														}}
 														onBlur={() => {
-															const trimmedValue = editingValue.trim();
+															const trimmedValue =
+																editingValue.trim();
 															if (trimmedValue) {
 																group.name = trimmedValue;
 															}
