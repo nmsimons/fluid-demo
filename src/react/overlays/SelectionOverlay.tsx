@@ -33,6 +33,7 @@ import React from "react";
 import { FluidTable, Item, Shape, Group } from "../../schema/appSchema.js";
 import { Tree } from "fluid-framework";
 import { getActiveDragForItem } from "../utils/dragUtils.js";
+import { getGridOffsetForChild, isGroupGridEnabled } from "../layout/groupGrid.js";
 
 export function SelectionOverlay(props: {
 	item: Item;
@@ -84,12 +85,14 @@ export function SelectionOverlay(props: {
 
 	// Also check if the parent group is being dragged
 	let parentGroup: Group | null = null;
+	let parentGroupGridEnabled = false;
 	if (!active) {
 		const parent = Tree.parent(item);
 		if (parent) {
 			const grandparent = Tree.parent(parent);
 			if (grandparent && Tree.is(grandparent, Group)) {
 				parentGroup = grandparent;
+				parentGroupGridEnabled = isGroupGridEnabled(parentGroup);
 				const groupContainer = Tree.parent(parentGroup);
 				if (groupContainer && Tree.is(groupContainer, Item)) {
 					const groupDrag = getActiveDragForItem(presence, groupContainer.id);
@@ -98,23 +101,15 @@ export function SelectionOverlay(props: {
 						// from the group's drag position + item's relative offset
 
 						// If grid view is enabled, calculate grid position instead of using stored x/y
-						if (parentGroup.viewAsGrid === true) {
-							const itemIndex = parentGroup.items.indexOf(item);
-							// Grid layout parameters (must match flattenItems.ts and ItemView.tsx)
-							const gridGapX = 20;
-							const gridGapY = 40;
-							const itemWidth = 200;
-							const itemHeight = 150;
-							const padding = 40;
-							const columns = 3;
-
-							const col = itemIndex % columns;
-							const row = Math.floor(itemIndex / columns);
-							const itemOffsetX = padding + col * (itemWidth + gridGapX);
-							const itemOffsetY = padding + row * (itemHeight + gridGapY);
-
-							left = groupDrag.x + itemOffsetX;
-							top = groupDrag.y + itemOffsetY;
+						if (parentGroupGridEnabled) {
+							const offset = getGridOffsetForChild(parentGroup, item);
+							if (offset) {
+								left = groupDrag.x + offset.x;
+								top = groupDrag.y + offset.y;
+							} else {
+								left = groupDrag.x + item.x;
+								top = groupDrag.y + item.y;
+							}
 						} else {
 							left = groupDrag.x + item.x;
 							top = groupDrag.y + item.y;
@@ -129,7 +124,7 @@ export function SelectionOverlay(props: {
 	const isTable = Tree.is(item.content, FluidTable);
 	const isShape = Tree.is(item.content, Shape);
 	// Tables and items in grid view groups should have no rotation
-	if (isTable || parentGroup?.viewAsGrid === true) angle = 0;
+	if (isTable || parentGroupGridEnabled) angle = 0;
 
 	// Screen-constant geometry (expressed in screen px, converted to local):
 	const rotationGapPx = 22; // vertical offset for rotation handle center

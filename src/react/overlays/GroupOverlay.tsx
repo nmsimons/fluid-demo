@@ -4,6 +4,7 @@ import { Item, Group } from "../../schema/appSchema.js";
 import { PresenceContext } from "../contexts/PresenceContext.js";
 import { usePresenceManager } from "../hooks/usePresenceManger.js";
 import { EditRegular, GridRegular } from "@fluentui/react-icons";
+import { getGridOffsetForChild, isGroupGridEnabled } from "../layout/groupGrid.js";
 
 /**
  * GroupOverlay - Renders visual bounds for group containers on the SVG overlay layer
@@ -168,6 +169,7 @@ export function GroupOverlay(props: {
 		<>
 			{groupItems.map((groupItem) => {
 				const group = groupItem.content as Group;
+				const gridEnabled = isGroupGridEnabled(group);
 
 				// Optionally show group overlay only if at least one item in the group is selected
 				if (showOnlyWhenChildSelected) {
@@ -275,26 +277,15 @@ export function GroupOverlay(props: {
 					// During CHILD drag/resize: use layout bounds (updated in real-time by ItemView)
 					if (isGroupBeingDragged) {
 						// Group is being dragged - calculate child position from group + relative offset
-						let childRelativeX: number;
-						let childRelativeY: number;
+						let childRelativeX = childItem.x;
+						let childRelativeY = childItem.y;
 
-						if (group.viewAsGrid === true) {
-							const itemIndex = group.items.indexOf(childItem);
-							// Grid layout parameters (must match flattenItems.ts and ItemView.tsx)
-							const gridGapX = 20;
-							const gridGapY = 40;
-							const itemWidth = 200;
-							const itemHeight = 150;
-							const padding = 40;
-							const columns = 3;
-
-							const col = itemIndex % columns;
-							const row = Math.floor(itemIndex / columns);
-							childRelativeX = padding + col * (itemWidth + gridGapX);
-							childRelativeY = padding + row * (itemHeight + gridGapY);
-						} else {
-							childRelativeX = childItem.x;
-							childRelativeY = childItem.y;
+						if (gridEnabled) {
+							const offset = getGridOffsetForChild(group, childItem);
+							if (offset) {
+								childRelativeX = offset.x;
+								childRelativeY = offset.y;
+							}
 						}
 
 						const childAbsX = groupX + childRelativeX;
@@ -325,25 +316,15 @@ export function GroupOverlay(props: {
 							maxY = Math.max(maxY, childBounds.bottom);
 						} else {
 							// Fallback: calculate from tree positions
-							let childRelativeX: number;
-							let childRelativeY: number;
+							let childRelativeX = childItem.x;
+							let childRelativeY = childItem.y;
 
-							if (group.viewAsGrid === true) {
-								const itemIndex = group.items.indexOf(childItem);
-								const gridGapX = 20;
-								const gridGapY = 40;
-								const itemWidth = 200;
-								const itemHeight = 150;
-								const padding = 40;
-								const columns = 3;
-
-								const col = itemIndex % columns;
-								const row = Math.floor(itemIndex / columns);
-								childRelativeX = padding + col * (itemWidth + gridGapX);
-								childRelativeY = padding + row * (itemHeight + gridGapY);
-							} else {
-								childRelativeX = childItem.x;
-								childRelativeY = childItem.y;
+							if (gridEnabled) {
+								const offset = getGridOffsetForChild(group, childItem);
+								if (offset) {
+									childRelativeX = offset.x;
+									childRelativeY = offset.y;
+								}
 							}
 
 							const childAbsX = groupX + childRelativeX;
@@ -537,10 +518,9 @@ export function GroupOverlay(props: {
 														}
 													}}
 													style={{
-														background:
-															group.viewAsGrid === true
-																? "rgba(255, 255, 255, 0.4)"
-																: "rgba(255, 255, 255, 0.2)",
+														background: gridEnabled
+															? "rgba(255, 255, 255, 0.4)"
+															: "rgba(255, 255, 255, 0.2)",
 														border: "none",
 														borderRadius: "4px",
 														padding: "4px 8px",
@@ -551,9 +531,7 @@ export function GroupOverlay(props: {
 														fontSize: "14px",
 													}}
 													title={
-														group.viewAsGrid === true
-															? "Free Layout"
-															: "Grid View"
+														gridEnabled ? "Free Layout" : "Grid View"
 													}
 												>
 													<GridRegular />

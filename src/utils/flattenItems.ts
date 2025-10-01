@@ -1,5 +1,10 @@
 import { Tree } from "@fluidframework/tree";
 import { Item, Items, Group } from "../schema/appSchema.js";
+import {
+	getGroupGridConfig,
+	getGridPositionByIndex,
+	isGroupGridEnabled,
+} from "../react/layout/groupGrid.js";
 
 export interface FlattenedItem {
 	item: Item;
@@ -52,28 +57,19 @@ function flattenItem(
 		});
 
 		// Check if grid view is enabled
-		const useGridView = group.viewAsGrid === true;
+		const useGridView = isGroupGridEnabled(group);
 
 		if (useGridView) {
-			// Grid layout: arrange items in a grid
-			const gridGapX = 20; // Horizontal gap between items
-			const gridGapY = 40; // Vertical gap between rows (larger for sticky notes)
-			const itemWidth = 200; // Default item width
-			const itemHeight = 150; // Default item height
-			const padding = 40; // Padding from group edges
-			const columns = 3; // Number of columns
+			const config = getGroupGridConfig();
 
 			group.items.forEach((childItem, index) => {
-				const col = index % columns;
-				const row = Math.floor(index / columns);
-				const gridX = padding + col * (itemWidth + gridGapX);
-				const gridY = padding + row * (itemHeight + gridGapY);
+				const offset = getGridPositionByIndex(index, config);
 
 				// Use grid position instead of item's stored x/y
 				result.push({
 					item: childItem,
-					absoluteX: item.x + gridX,
-					absoluteY: item.y + gridY,
+					absoluteX: item.x + offset.x,
+					absoluteY: item.y + offset.y,
 					parentGroup: group,
 					isGroupContainer: false,
 				});
