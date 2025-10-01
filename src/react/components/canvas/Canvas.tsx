@@ -60,6 +60,7 @@ import { useOverlayRerenders } from "../../hooks/useOverlayRerenders.js";
 import { ItemsHtmlLayer } from "./ItemsHtmlLayer.js";
 import { PaneContext } from "../../contexts/PaneContext.js";
 import { flattenItems } from "../../../utils/flattenItems.js";
+import { smoothAndSimplifyInkPoints } from "../../utils/inkSmoothing.js";
 
 export function Canvas(props: {
 	items: Items;
@@ -96,6 +97,12 @@ export function Canvas(props: {
 	const flattenedItems = React.useMemo(() => flattenItems(items), [items, itemsVersion]);
 
 	const svgRef = useRef<SVGSVGElement>(null);
+	const smoothingOptions = {
+		smoothingWindow: 7,
+		tolerance: 1.2,
+		minimumPoints: 2,
+		chaikinIterations: 2,
+	};
 	// Freehand ink capture lifecycle:
 	// 1. pointerDown -> start stroke (local ephemeral + presence broadcast)
 	// 2. pointerMove -> accumulate points (filtered) & throttle presence update via rAF
@@ -448,13 +455,31 @@ export function Canvas(props: {
 				presence.ink?.clearStroke();
 				return;
 			}
-			const minX = Math.min(...pts.map((p) => p.x));
-			const maxX = Math.max(...pts.map((p) => p.x));
-			const minY = Math.min(...pts.map((p) => p.y));
-			const maxY = Math.max(...pts.map((p) => p.y));
+			const smoothed = smoothAndSimplifyInkPoints(pts, smoothingOptions);
+			const clonePoint = (p: InkPoint) => new InkPoint({ x: p.x, y: p.y, t: p.t, p: p.p });
+			const rawPoints = pts.map(clonePoint);
+			const simplifiedSource = smoothed.length >= 2 ? smoothed : pts;
+			const simplifiedPoints = simplifiedSource.map(clonePoint);
+			const bboxPoints = simplifiedPoints.length >= 2 ? simplifiedPoints : rawPoints;
+			const simplifiedIsDifferent =
+				simplifiedPoints.length !== rawPoints.length ||
+				simplifiedPoints.some((p, idx) => {
+					const original = rawPoints[idx];
+					return (
+						!original ||
+						original.x !== p.x ||
+						original.y !== p.y ||
+						original.t !== p.t ||
+						original.p !== p.p
+					);
+				});
+			const minX = Math.min(...bboxPoints.map((p) => p.x));
+			const maxX = Math.max(...bboxPoints.map((p) => p.x));
+			const minY = Math.min(...bboxPoints.map((p) => p.y));
+			const maxY = Math.max(...bboxPoints.map((p) => p.y));
 			const stroke = new InkStroke({
 				id: crypto.randomUUID(),
-				points: pts.slice(),
+				points: rawPoints,
 				style: new InkStyle({
 					strokeColor: inkColor,
 					strokeWidth: inkWidth,
@@ -463,6 +488,10 @@ export function Canvas(props: {
 					lineJoin: "round",
 				}),
 				bbox: new InkBBox({ x: minX, y: minY, w: maxX - minX, h: maxY - minY }),
+				simplified:
+					simplifiedIsDifferent && simplifiedPoints.length <= rawPoints.length
+						? simplifiedPoints
+						: undefined,
 			});
 			root.inks.insertAtEnd(stroke);
 			tempPointsRef.current = [];
