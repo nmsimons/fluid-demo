@@ -62,6 +62,16 @@ import { PaneContext } from "../../contexts/PaneContext.js";
 import { flattenItems } from "../../../utils/flattenItems.js";
 import { smoothAndSimplifyInkPoints } from "../../utils/inkSmoothing.js";
 
+type MarqueeDragState = {
+	pointerId: number;
+	origin: { x: number; y: number };
+	current: { x: number; y: number };
+	additive: boolean;
+	subtractive: boolean;
+	baselineIds: string[];
+	hasDragged: boolean;
+};
+
 export function Canvas(props: {
 	items: Items;
 	container: IFluidContainer;
@@ -139,6 +149,15 @@ export function Canvas(props: {
 	});
 	// Hovered stroke (eraser preview)
 	const [eraserHoverId, setEraserHoverId] = useState<string | null>(null);
+	const [marqueeState, setMarqueeState] = useState<MarqueeDragState | null>(null);
+	const marqueeRect = React.useMemo(() => {
+		if (!marqueeState) return null;
+		const x = Math.min(marqueeState.origin.x, marqueeState.current.x);
+		const y = Math.min(marqueeState.origin.y, marqueeState.current.y);
+		const width = Math.abs(marqueeState.origin.x - marqueeState.current.x);
+		const height = Math.abs(marqueeState.origin.y - marqueeState.current.y);
+		return { x, y, width, height };
+	}, [marqueeState]);
 
 	// Collaborative cursor tracking
 	useEffect(() => {
@@ -217,6 +236,13 @@ export function Canvas(props: {
 	};
 
 	const paneContext = useContext(PaneContext);
+
+	const isCanvasInteractiveTarget = (element: Element | null): boolean => {
+		if (!element) return false;
+		return !!element.closest(
+			"button, input, select, textarea, [role='button'], [data-canvas-interactive='true'], [contenteditable='true']"
+		);
+	};
 
 	// Layout version to trigger overlay re-renders when intrinsic sizes change (e.g., table growth)
 	const [layoutVersion, setLayoutVersion] = useState(0);
@@ -313,8 +339,80 @@ export function Canvas(props: {
 		}
 	};
 
+	const finalizeMarqueeSelection = (state: MarqueeDragState): boolean => {
+		const dx = Math.abs(state.current.x - state.origin.x);
+		const dy = Math.abs(state.current.y - state.origin.y);
+		if (!state.hasDragged && Math.max(dx, dy) < 1) {
+			return false;
+		}
+		const minX = Math.min(state.origin.x, state.current.x);
+		const maxX = Math.max(state.origin.x, state.current.x);
+		const minY = Math.min(state.origin.y, state.current.y);
+		const maxY = Math.max(state.origin.y, state.current.y);
+		const hits: string[] = [];
+		for (const flatItem of flattenedItems) {
+			if (flatItem.isGroupContainer) continue;
+			const bounds = layout.get(flatItem.item.id);
+			if (!bounds) continue;
+			if (
+				bounds.right < minX ||
+				bounds.left > maxX ||
+				bounds.bottom < minY ||
+				bounds.top > maxY
+			)
+				continue;
+			hits.push(flatItem.item.id);
+		}
+		const manager = presence.itemSelection;
+		if (!manager) return false;
+		let finalIds: string[];
+		if (state.subtractive) {
+			const base = new Set(state.baselineIds);
+			for (const id of hits) base.delete(id);
+			finalIds = Array.from(base);
+		} else if (state.additive) {
+			const base = new Set(state.baselineIds);
+			for (const id of hits) base.add(id);
+			finalIds = Array.from(base);
+		} else {
+			finalIds = hits;
+		}
+		if (finalIds.length > 0) {
+			manager.setSelection(finalIds.map((id) => ({ id })));
+		} else {
+			manager.clearSelection();
+		}
+		const svg = svgRef.current as (SVGSVGElement & { dataset: DOMStringMap }) | null;
+		if (svg) {
+			svg.dataset.suppressClearUntil = String(Date.now() + 150);
+		}
+		return true;
+	};
+
 	// Begin inking on left button background press (not on items)
 	const handlePointerMove = (e: React.PointerEvent) => {
+		if (marqueeState && e.pointerId === marqueeState.pointerId) {
+			const logical = toLogical(e.clientX, e.clientY);
+			setMarqueeState((prev) => {
+				if (!prev || prev.pointerId !== e.pointerId) return prev;
+				const dragged =
+					prev.hasDragged ||
+					Math.abs(logical.x - prev.origin.x) > 1 ||
+					Math.abs(logical.y - prev.origin.y) > 1;
+				if (
+					logical.x === prev.current.x &&
+					logical.y === prev.current.y &&
+					dragged === prev.hasDragged
+				)
+					return prev;
+				return {
+					...prev,
+					current: logical,
+					hasDragged: dragged,
+				};
+			});
+			e.preventDefault();
+		}
 		// Update cursor visibility + optionally perform erase scrubbing.
 		if (!(inkActive || eraserActive)) {
 			if (cursor.visible) setCursor((c) => ({ ...c, visible: false }));
@@ -534,6 +632,17 @@ export function Canvas(props: {
 				}}
 				onClick={(e) => handleBackgroundClick(e)}
 				onPointerUp={(e) => {
+					if (marqueeState && e.pointerId === marqueeState.pointerId) {
+						try {
+							(e.currentTarget as SVGSVGElement).releasePointerCapture(e.pointerId);
+						} catch {
+							// Ignore release failures
+						}
+						finalizeMarqueeSelection(marqueeState);
+						setMarqueeState(null);
+						handlePointerUp(e);
+						return;
+					}
 					// Handle tap-to-clear-selection for touch events (equivalent to onClick for mouse)
 					if (e.pointerType === "touch") {
 						const target = e.target as Element | null;
@@ -585,6 +694,9 @@ export function Canvas(props: {
 					// Check if this is a handle interaction - if so, don't interfere
 					const target = e.target as Element | null;
 					const isHandle = target?.closest("[data-resize-handle], [data-rotate-handle]");
+					const isOnItem =
+						target?.closest("[data-item-id]") || target?.closest("[data-svg-item-id]");
+					const isInteractive = isCanvasInteractiveTarget(target);
 					if (isHandle) {
 						// Let the handle component deal with this event
 						return;
@@ -592,17 +704,46 @@ export function Canvas(props: {
 
 					// For touch events, check if we're touching an item first
 					if (e.pointerType === "touch") {
-						const isOnItem =
-							target?.closest("[data-item-id]") ||
-							target?.closest("[data-svg-item-id]");
-
 						// Only allow panning if not on an item and not in ink/eraser mode
-						if (!isOnItem && !(inkActive || eraserActive)) {
+						if (!isOnItem && !isInteractive && !(inkActive || eraserActive)) {
 							beginPanIfBackground(e);
 						}
 					} else {
 						// For non-touch (mouse), use original logic
-						if (!(inkActive || eraserActive)) beginPanIfBackground(e);
+						if (!isInteractive && !(inkActive || eraserActive)) beginPanIfBackground(e);
+					}
+
+					if (
+						!inkActive &&
+						!eraserActive &&
+						e.button === 0 &&
+						e.pointerType !== "touch" &&
+						!isOnItem &&
+						!isInteractive &&
+						!marqueeState &&
+						!presence.drag.state.local &&
+						!presence.resize.state?.local
+					) {
+						const origin = toLogical(e.clientX, e.clientY);
+						const baselineIds =
+							presence.itemSelection?.getLocalSelection()?.map((sel) => sel.id) ?? [];
+						const additive = e.shiftKey || e.ctrlKey || e.metaKey;
+						const subtractive = !additive && e.altKey;
+						setMarqueeState({
+							pointerId: e.pointerId,
+							origin,
+							current: origin,
+							additive,
+							subtractive,
+							baselineIds,
+							hasDragged: false,
+						});
+						try {
+							(e.currentTarget as SVGSVGElement).setPointerCapture(e.pointerId);
+						} catch {
+							// Ignore pointer capture failures (e.g., Safari without capture support)
+						}
+						return;
 					}
 
 					// Manage three mutually exclusive interactions: inking, erasing, panning(right mouse handled upstream).
@@ -662,6 +803,17 @@ export function Canvas(props: {
 				}}
 				onPointerMove={handlePointerMove}
 				onPointerLeave={handlePointerLeave}
+				onPointerCancel={(e) => {
+					if (marqueeState && e.pointerId === marqueeState.pointerId) {
+						try {
+							(e.currentTarget as SVGSVGElement).releasePointerCapture(e.pointerId);
+						} catch {
+							// ignore
+						}
+						setMarqueeState(null);
+					}
+					handlePointerUp(e);
+				}}
 				onContextMenu={(e) => {
 					// Always suppress default context menu on canvas
 					e.preventDefault();
@@ -816,6 +968,25 @@ export function Canvas(props: {
 							);
 						})}
 				</g>
+				{marqueeRect && (
+					<g
+						transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}
+						pointerEvents="none"
+						data-layer="marquee-overlay"
+					>
+						<rect
+							x={marqueeRect.x}
+							y={marqueeRect.y}
+							width={Math.max(marqueeRect.width, 0.001)}
+							height={Math.max(marqueeRect.height, 0.001)}
+							fill="rgba(37, 99, 235, 0.12)"
+							stroke="#2563eb"
+							strokeWidth={1}
+							strokeDasharray="8 4"
+							vectorEffect="non-scaling-stroke"
+						/>
+					</g>
+				)}
 				{/* Presence indicators overlay for all items with remote selections */}
 				<g
 					key={`presence-${selKey}-${motionKey}-${layoutVersion}`}
