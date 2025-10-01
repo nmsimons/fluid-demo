@@ -14,8 +14,9 @@ export function GroupOverlay(props: {
 	items: Item[];
 	layout: Map<string, { left: number; top: number; right: number; bottom: number }>;
 	zoom: number;
+	showOnlyWhenChildSelected?: boolean;
 }): JSX.Element {
-	const { items, layout, zoom } = props;
+	const { items, layout, zoom, showOnlyWhenChildSelected = false } = props;
 	const presence = useContext(PresenceContext);
 
 	// Track all group drag states (local + remote) for smooth overlay updates
@@ -152,17 +153,17 @@ export function GroupOverlay(props: {
 	return (
 		<>
 			{groupItems.map((groupItem) => {
-				const group = groupItem.content as Group;
+			const group = groupItem.content as Group;
 
-				// Only show group overlay if at least one item in the group is selected
+			// Optionally show group overlay only if at least one item in the group is selected
+			if (showOnlyWhenChildSelected) {
 				const hasSelectedChild = group.items.some((childItem) =>
 					selectedIds.has(childItem.id)
 				);
 				if (!hasSelectedChild) {
 					return null;
 				}
-
-				// Check if this group is being dragged (from local or remote presence)
+			}				// Check if this group is being dragged (from local or remote presence)
 				const dragState = allDragStates.get(groupItem.id);
 				const groupX = dragState ? dragState.x : groupItem.x;
 				const groupY = dragState ? dragState.y : groupItem.y;
@@ -256,7 +257,7 @@ export function GroupOverlay(props: {
 					return null;
 				}
 
-				const padding = 16 / zoom; // Screen-constant padding around children
+				const padding = 32 / zoom; // Screen-constant padding around children
 				const x = minX - padding;
 				const y = minY - padding;
 				const width = maxX - minX + padding * 2;
