@@ -4,7 +4,8 @@ import { Item, Group } from "../../schema/appSchema.js";
 import { PresenceContext } from "../contexts/PresenceContext.js";
 import { usePresenceManager } from "../hooks/usePresenceManger.js";
 import { EditRegular, GridRegular } from "@fluentui/react-icons";
-import { getGridOffsetForChild, isGroupGridEnabled } from "../layout/groupGrid.js";
+import { isGroupGridEnabled } from "../layout/groupGrid.js";
+import { getGroupChildOffset } from "../utils/presenceGeometry.js";
 
 /**
  * GroupOverlay - Renders visual bounds for group containers on the SVG overlay layer
@@ -277,19 +278,9 @@ export function GroupOverlay(props: {
 					// During CHILD drag/resize: use layout bounds (updated in real-time by ItemView)
 					if (isGroupBeingDragged) {
 						// Group is being dragged - calculate child position from group + relative offset
-						let childRelativeX = childItem.x;
-						let childRelativeY = childItem.y;
-
-						if (gridEnabled) {
-							const offset = getGridOffsetForChild(group, childItem);
-							if (offset) {
-								childRelativeX = offset.x;
-								childRelativeY = offset.y;
-							}
-						}
-
-						const childAbsX = groupX + childRelativeX;
-						const childAbsY = groupY + childRelativeY;
+						const offset = getGroupChildOffset(group, childItem);
+						const childAbsX = groupX + offset.x;
+						const childAbsY = groupY + offset.y;
 						const childBounds = layout.get(childItem.id);
 						if (childBounds) {
 							const width = childBounds.right - childBounds.left;
@@ -316,19 +307,9 @@ export function GroupOverlay(props: {
 							maxY = Math.max(maxY, childBounds.bottom);
 						} else {
 							// Fallback: calculate from tree positions
-							let childRelativeX = childItem.x;
-							let childRelativeY = childItem.y;
-
-							if (gridEnabled) {
-								const offset = getGridOffsetForChild(group, childItem);
-								if (offset) {
-									childRelativeX = offset.x;
-									childRelativeY = offset.y;
-								}
-							}
-
-							const childAbsX = groupX + childRelativeX;
-							const childAbsY = groupY + childRelativeY;
+							const offset = getGroupChildOffset(group, childItem);
+							const childAbsX = groupX + offset.x;
+							const childAbsY = groupY + offset.y;
 							minX = Math.min(minX, childAbsX);
 							minY = Math.min(minY, childAbsY);
 							maxX = Math.max(maxX, childAbsX + 100);

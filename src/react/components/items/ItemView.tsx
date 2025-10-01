@@ -73,7 +73,8 @@ import { DragAndRotatePackage } from "../../../presence/drag.js";
 import { ResizePackage } from "../../../presence/Interfaces/ResizeManager.js";
 import { LayoutContext } from "../../hooks/useLayoutManger.js";
 import { ChevronLeft16Filled } from "@fluentui/react-icons";
-import { getGridOffsetForChild, isGroupGridEnabled } from "../../layout/groupGrid.js";
+import { isGroupGridEnabled } from "../../layout/groupGrid.js";
+import { getGroupChildOffset } from "../../utils/presenceGeometry.js";
 import {
 	getContentHandler,
 	getContentType,
@@ -297,14 +298,9 @@ export function ItemView(props: {
 
 					// If grid view is enabled, calculate grid position instead of using stored x/y
 					if (isGroupGridEnabled(parentGroup)) {
-						const offset = getGridOffsetForChild(parentGroup, item);
-						if (offset) {
-							itemOffsetX = offset.x;
-							itemOffsetY = offset.y;
-						} else {
-							itemOffsetX = relativeOffsetRef.current.x;
-							itemOffsetY = relativeOffsetRef.current.y;
-						}
+						const offset = getGroupChildOffset(parentGroup, item);
+						itemOffsetX = offset.x;
+						itemOffsetY = offset.y;
 					} else {
 						// Free layout: use stored x/y
 						itemOffsetX = relativeOffsetRef.current.x;

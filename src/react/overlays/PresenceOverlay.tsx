@@ -30,7 +30,7 @@
 import React from "react";
 import { FluidTable, Item } from "../../schema/appSchema.js";
 import { Tree } from "fluid-framework";
-import { getActiveDragForItem } from "../utils/dragUtils.js";
+import { resolveItemTransform } from "../utils/presenceGeometry.js";
 
 export function PresenceOverlay(props: {
 	item: Item;
@@ -54,20 +54,28 @@ export function PresenceOverlay(props: {
 		onToggleExpanded,
 		zoom,
 	} = props;
-	const b = layout.get(item.id);
-	if (!b) return null;
-	let left = b.left;
-	let top = b.top;
-	const w = Math.max(0, b.right - b.left);
-	const h = Math.max(0, b.bottom - b.top);
-	const active = getActiveDragForItem(presence, item.id);
+	const transform = resolveItemTransform({
+		item,
+		layout,
+		presence,
+		includeParentGroupDrag: true,
+	});
+
+	if (!transform.layoutBounds) return null;
+
+	let left = transform.left;
+	let top = transform.top;
+	let angle = transform.angle;
+	const w = transform.width;
+	const h = transform.height;
+	const active = transform.activeDrag;
+
 	// While the item is being actively dragged we substitute presence coordinates
 	// so the badge cluster moves perfectly in sync with the item.
 	if (active) {
 		left = active.x;
 		top = active.y;
 	}
-	let angle = active ? active.rotation : item.rotation;
 	if (Tree.is(item.content, FluidTable)) angle = 0;
 	const connected = (presence.users.getConnectedUsers?.() ?? []) as unknown as ReadonlyArray<{
 		value: { name: string; id: string; image?: string };

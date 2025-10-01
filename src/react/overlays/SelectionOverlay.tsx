@@ -30,10 +30,10 @@
 //
 // ============================================================================
 import React from "react";
-import { FluidTable, Item, Shape, Group } from "../../schema/appSchema.js";
+import { FluidTable, Item, Shape } from "../../schema/appSchema.js";
 import { Tree } from "fluid-framework";
-import { getActiveDragForItem } from "../utils/dragUtils.js";
-import { getGridOffsetForChild, isGroupGridEnabled } from "../layout/groupGrid.js";
+import { isGroupGridEnabled } from "../layout/groupGrid.js";
+import { resolveItemTransform } from "../utils/presenceGeometry.js";
 
 export function SelectionOverlay(props: {
 	item: Item;
@@ -42,12 +42,19 @@ export function SelectionOverlay(props: {
 	zoom: number;
 }): JSX.Element | null {
 	const { item, layout, presence, zoom } = props;
-	const b = layout.get(item.id);
-	// Base position from layout (falls back to model position if missing)
-	let left = b?.left ?? item.x;
-	let top = b?.top ?? item.y;
-	let w = b ? Math.max(0, b.right - b.left) : 0;
-	let h = b ? Math.max(0, b.bottom - b.top) : 0;
+	const transform = resolveItemTransform({
+		item,
+		layout,
+		presence,
+		includeParentGroupDrag: true,
+	});
+
+	let { left, top, width: w, height: h, angle } = transform;
+	const parentGroupInfo = transform.parentGroupInfo;
+	const parentGroupGridEnabled = parentGroupInfo
+		? isGroupGridEnabled(parentGroupInfo.group)
+		: false;
+	const active = transform.activeDrag;
 
 	// Prefer live resize presence for THIS item (if shape) so the overlay matches
 	// the ephemeral size mid-drag. Layout cache may update a frame later.
@@ -76,51 +83,12 @@ export function SelectionOverlay(props: {
 		(navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 
 	const padding = 10 / zoom;
-	const active = getActiveDragForItem(presence, item.id);
 	// If dragging (but not resizing) override position/rotation for smoothness.
 	if (active && !(resizePresence && resizePresence.id === item.id)) {
 		left = active.x;
 		top = active.y;
 	}
 
-	// Also check if the parent group is being dragged
-	let parentGroup: Group | null = null;
-	let parentGroupGridEnabled = false;
-	if (!active) {
-		const parent = Tree.parent(item);
-		if (parent) {
-			const grandparent = Tree.parent(parent);
-			if (grandparent && Tree.is(grandparent, Group)) {
-				parentGroup = grandparent;
-				parentGroupGridEnabled = isGroupGridEnabled(parentGroup);
-				const groupContainer = Tree.parent(parentGroup);
-				if (groupContainer && Tree.is(groupContainer, Item)) {
-					const groupDrag = getActiveDragForItem(presence, groupContainer.id);
-					if (groupDrag) {
-						// Parent group is being dragged - calculate this item's position
-						// from the group's drag position + item's relative offset
-
-						// If grid view is enabled, calculate grid position instead of using stored x/y
-						if (parentGroupGridEnabled) {
-							const offset = getGridOffsetForChild(parentGroup, item);
-							if (offset) {
-								left = groupDrag.x + offset.x;
-								top = groupDrag.y + offset.y;
-							} else {
-								left = groupDrag.x + item.x;
-								top = groupDrag.y + item.y;
-							}
-						} else {
-							left = groupDrag.x + item.x;
-							top = groupDrag.y + item.y;
-						}
-					}
-				}
-			}
-		}
-	}
-
-	let angle = active ? active.rotation : item.rotation;
 	const isTable = Tree.is(item.content, FluidTable);
 	const isShape = Tree.is(item.content, Shape);
 	// Tables and items in grid view groups should have no rotation

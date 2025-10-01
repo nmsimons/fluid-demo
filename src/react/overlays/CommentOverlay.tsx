@@ -25,7 +25,7 @@
 import React from "react";
 import { Item, FluidTable } from "../../schema/appSchema.js";
 import { Tree } from "fluid-framework";
-import { getActiveDragForItem } from "../utils/dragUtils.js";
+import { resolveItemTransform } from "../utils/presenceGeometry.js";
 import { Comment20Filled } from "@fluentui/react-icons";
 import type { PresenceContext } from "../contexts/PresenceContext.js";
 
@@ -44,22 +44,29 @@ export function CommentOverlay(props: {
 	//   * Item has zero comments
 	// Doing this early avoids any geometry work.
 	if (!commentPaneVisible || selected || item.comments.length === 0) return null;
-	const b = layout.get(item.id);
-	if (!b) return null;
-	let left = b.left;
-	let top = b.top;
-	const w = Math.max(0, b.right - b.left);
-	const h = Math.max(0, b.bottom - b.top);
+	const transform = resolveItemTransform({
+		item,
+		layout,
+		presence,
+		includeParentGroupDrag: true,
+	});
+
+	if (!transform.layoutBounds) return null;
+
+	let left = transform.left;
+	let top = transform.top;
+	const w = transform.width;
+	const h = transform.height;
 
 	// Prefer live drag data while an item is being moved to avoid a frame of lag.
-	const active = getActiveDragForItem(presence, item.id);
+	const active = transform.activeDrag;
 	if (active) {
 		left = active.x;
 		top = active.y;
 	}
 
 	// Angle: follow item rotation except tables which stay unrotated
-	let angle = active ? active.rotation : item.rotation;
+	let angle = transform.angle;
 	if (Tree.is(item.content, FluidTable)) angle = 0;
 
 	// Geometry relative to (unrotated) item bounding box:
