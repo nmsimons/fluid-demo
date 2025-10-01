@@ -1,5 +1,6 @@
 import React, { JSX, useContext } from "react";
 import { Tree } from "fluid-framework";
+import { GroupRegular, GroupReturnRegular } from "@fluentui/react-icons";
 import { TooltipButton } from "../../forms/Button.js";
 import { PresenceContext } from "../../../contexts/PresenceContext.js";
 import { Group, Item } from "../../../../schema/appSchema.js";
@@ -11,75 +12,6 @@ import {
 	groupItems,
 	ungroupItems,
 } from "../../../../utils/itemsHelpers.js";
-
-function GroupIcon(): JSX.Element {
-	return (
-		<svg width={16} height={16} viewBox="0 0 24 24" fill="none" aria-hidden focusable="false">
-			<circle cx="12" cy="8" r="3.25" stroke="currentColor" strokeWidth="1.5" />
-			<path
-				d="M5 19c0-3.2 3.2-5.75 7-5.75s7 2.55 7 5.75"
-				stroke="currentColor"
-				strokeWidth="1.5"
-				strokeLinecap="round"
-				strokeLinejoin="round"
-			/>
-			<circle
-				cx="6"
-				cy="9.5"
-				r="2.25"
-				stroke="currentColor"
-				strokeWidth="1.25"
-				opacity={0.7}
-			/>
-			<circle
-				cx="18"
-				cy="9.5"
-				r="2.25"
-				stroke="currentColor"
-				strokeWidth="1.25"
-				opacity={0.7}
-			/>
-		</svg>
-	);
-}
-
-function UngroupIcon(): JSX.Element {
-	return (
-		<svg width={16} height={16} viewBox="0 0 24 24" fill="none" aria-hidden focusable="false">
-			<circle cx="12" cy="8" r="3.25" stroke="currentColor" strokeWidth="1.5" />
-			<path
-				d="M5 19c0-3.2 3.2-5.75 7-5.75s7 2.55 7 5.75"
-				stroke="currentColor"
-				strokeWidth="1.5"
-				strokeLinecap="round"
-				strokeLinejoin="round"
-			/>
-			<circle
-				cx="6"
-				cy="9.5"
-				r="2.25"
-				stroke="currentColor"
-				strokeWidth="1.25"
-				opacity={0.7}
-			/>
-			<circle
-				cx="18"
-				cy="9.5"
-				r="2.25"
-				stroke="currentColor"
-				strokeWidth="1.25"
-				opacity={0.7}
-			/>
-			{/* Add an "ungroup" indicator - arrow pointing outward */}
-			<path
-				d="M12 15 L14 13 M12 15 L10 13"
-				stroke="currentColor"
-				strokeWidth="1.5"
-				strokeLinecap="round"
-			/>
-		</svg>
-	);
-}
 
 export function GroupItemsButton(props: { selectedItems: Item[] }): JSX.Element {
 	const { selectedItems } = props;
@@ -142,7 +74,7 @@ export function GroupItemsButton(props: { selectedItems: Item[] }): JSX.Element 
 					}
 				}
 			}}
-			icon={isUngroupMode ? <UngroupIcon /> : <GroupIcon />}
+			icon={isUngroupMode ? <GroupReturnRegular /> : <GroupRegular />}
 			disabled={disabled}
 			tooltip={tooltip}
 		/>
