@@ -13,37 +13,24 @@ import {
 	ungroupItems,
 } from "../../../../utils/itemsHelpers.js";
 
-export function GroupItemsButton(props: { selectedItems: Item[] }): JSX.Element {
+export function GroupButton(props: { selectedItems: Item[] }): JSX.Element {
 	const { selectedItems } = props;
 	const presence = useContext(PresenceContext);
 
 	const canGroup = canGroupItems(selectedItems);
-	const canUngroup = canUngroupItems(selectedItems);
 	const addToGroupResult = canAddToGroup(selectedItems);
-
-	// Determine which mode we're in (priority order: ungroup > add to group > group)
-	const isUngroupMode = canUngroup;
-	const isAddToGroupMode = !isUngroupMode && addToGroupResult.canAdd;
-	const isGroupMode = !isUngroupMode && !isAddToGroupMode && canGroup;
-	const disabled = !isUngroupMode && !isAddToGroupMode && !isGroupMode;
+	const isAddToGroupMode = addToGroupResult.canAdd;
+	const disabled = !canGroup && !isAddToGroupMode;
 
 	// Determine tooltip message
 	let tooltip = "Group selected items";
-	if (isUngroupMode) {
-		tooltip = "Ungroup selected items";
-	} else if (isAddToGroupMode) {
+	if (isAddToGroupMode) {
 		tooltip = "Add selected items to group";
 	} else if (disabled) {
 		if (selectedItems.length <= 1) {
-			tooltip = "Select at least two items to group";
+			tooltip = "You can't nest groups";
 		} else {
-			const parent = Tree.parent(selectedItems[0]);
-			const grandParent = parent !== undefined ? Tree.parent(parent) : undefined;
-			if (grandParent !== undefined && Tree.is(grandParent, Group)) {
-				tooltip = "Cannot group items that are already in a group";
-			} else {
-				tooltip = "Selected items must be at the same level to group";
-			}
+			tooltip = "Selected items can't already be in a group";
 		}
 	}
 
@@ -58,11 +45,7 @@ export function GroupItemsButton(props: { selectedItems: Item[] }): JSX.Element 
 				// Save the current selection IDs
 				const selectedIds = selectedItems.map((item) => ({ id: item.id }));
 
-				if (isUngroupMode) {
-					ungroupItems(selectedItems);
-					// Restore selection to the ungrouped items
-					presence.itemSelection.setSelection(selectedIds);
-				} else if (isAddToGroupMode && addToGroupResult.targetGroup) {
+				if (isAddToGroupMode && addToGroupResult.targetGroup) {
 					addToGroup(selectedItems, addToGroupResult.targetGroup);
 					// Keep the selection on all items (now including items added to group)
 					presence.itemSelection.setSelection(selectedIds);
@@ -74,7 +57,48 @@ export function GroupItemsButton(props: { selectedItems: Item[] }): JSX.Element 
 					}
 				}
 			}}
-			icon={isUngroupMode ? <GroupReturnRegular /> : <GroupRegular />}
+			icon={<GroupRegular />}
+			disabled={disabled}
+			tooltip={tooltip}
+		/>
+	);
+}
+
+export function UngroupButton(props: { selectedItems: Item[] }): JSX.Element {
+	const { selectedItems } = props;
+	const presence = useContext(PresenceContext);
+
+	const canUngroup = canUngroupItems(selectedItems);
+	const disabled = !canUngroup;
+
+	// Determine tooltip message
+	let tooltip = "Ungroup selected items";
+	if (disabled) {
+		if (selectedItems.length === 0) {
+			tooltip = "Select a group or items in a group to ungroup";
+		} else if (selectedItems.length === 1 && Tree.is(selectedItems[0].content, Group)) {
+			tooltip = "Ungroup this group";
+		} else {
+			tooltip = "Select items in the same group to ungroup them";
+		}
+	}
+
+	return (
+		<TooltipButton
+			onClick={(e) => {
+				e.stopPropagation();
+				if (disabled) {
+					return;
+				}
+
+				// Save the current selection IDs
+				const selectedIds = selectedItems.map((item) => ({ id: item.id }));
+
+				ungroupItems(selectedItems);
+				// Restore selection to the ungrouped items
+				presence.itemSelection.setSelection(selectedIds);
+			}}
+			icon={<GroupReturnRegular />}
 			disabled={disabled}
 			tooltip={tooltip}
 		/>

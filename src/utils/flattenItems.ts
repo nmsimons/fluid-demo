@@ -23,45 +23,46 @@ export function flattenItems(items: Items): FlattenedItem[] {
 	for (const item of items) {
 		// Skip invalid items
 		if (!item || !item.content) continue;
-
-		const content = item.content;
-
-		// Check if this item is a Group
-		if (Tree.is(content, Group)) {
-			const group = content;
-
-			// Add the group item itself (marked as container - for overlay rendering only)
-			// Don't set absoluteX/Y - let ItemView use item.x/y directly for reactivity
-			result.push({
-				item,
-				absoluteX: undefined,
-				absoluteY: undefined,
-				parentGroup: undefined,
-				isGroupContainer: true,
-			});
-
-			// Add all child items with adjusted positions
-			for (const childItem of group.items) {
-				result.push({
-					item: childItem,
-					absoluteX: item.x + childItem.x,
-					absoluteY: item.y + childItem.y,
-					parentGroup: group,
-					isGroupContainer: false,
-				});
-			}
-		} else {
-			// Regular item (Shape, Note, FluidTable) - not in a group
-			// Don't set absoluteX/Y - let ItemView use item.x/y directly for reactivity
-			result.push({
-				item,
-				absoluteX: undefined,
-				absoluteY: undefined,
-				parentGroup: undefined,
-				isGroupContainer: false,
-			});
-		}
+		flattenItem(item, 0, 0, undefined, result);
 	}
 
 	return result;
+}
+
+function flattenItem(
+	item: Item,
+	parentX: number,
+	parentY: number,
+	parentGroup: Group | undefined,
+	result: FlattenedItem[]
+): void {
+	const content = item.content;
+	// Check if this item is a Group
+	if (Tree.is(content, Group)) {
+		const group = content;
+
+		// Add the group item itself (marked as container - for overlay rendering only)
+		// Don't set absoluteX/Y - let ItemView use item.x/y directly for reactivity
+		result.push({
+			item,
+			absoluteX: item.x + parentX,
+			absoluteY: item.y + parentY,
+			parentGroup: parentGroup,
+			isGroupContainer: true,
+		});
+
+		// Add all child items with adjusted positions
+		for (const childItem of group.items) {
+			flattenItem(childItem, item.x, item.y, group, result);
+		}
+	} else {
+		// Regular item (Shape, Note, FluidTable)
+		result.push({
+			item,
+			absoluteX: item.x + parentX,
+			absoluteY: item.y + parentY,
+			parentGroup: parentGroup,
+			isGroupContainer: false,
+		});
+	}
 }

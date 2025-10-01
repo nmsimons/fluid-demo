@@ -39,7 +39,7 @@ import { UndoButton, RedoButton, ClearAllButton } from "./buttons/ActionButtons.
 import { CommentsPaneToggleButton } from "./buttons/PaneButtons.js";
 import { ZoomMenu } from "./buttons/ViewButtons.js";
 import { DeleteSelectedRowsButton } from "./buttons/TableButtons.js";
-import { GroupItemsButton } from "./buttons/GroupButtons.js";
+import { GroupButton, UngroupButton } from "./buttons/GroupButtons.js";
 // All toolbar button UIs now componentized; direct TooltipButton usage removed.
 import { MessageBar, MessageBarBody, MessageBarTitle } from "@fluentui/react-message-bar";
 import { Toolbar, ToolbarDivider, ToolbarGroup } from "@fluentui/react-toolbar";
@@ -229,7 +229,8 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 								{/* Multi-item actions: show when any items are selected */}
 								{hasSelectedItems && (
 									<>
-										<GroupItemsButton selectedItems={selectedItems} />
+										<GroupButton selectedItems={selectedItems} />
+										<UngroupButton selectedItems={selectedItems} />
 										<DuplicateButton
 											count={selectedItems.length}
 											duplicate={() => {

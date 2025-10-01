@@ -134,9 +134,7 @@ export function GroupOverlay(props: {
 						groupItem.y = dragState.y;
 					});
 				}
-				presence.drag.clearDragging();
-
-				// Prevent canvas from clearing selection after drag
+				presence.drag.clearDragging(); // Prevent canvas from clearing selection after drag
 				const canvasEl = document.getElementById("canvas") as
 					| (SVGSVGElement & { dataset: DOMStringMap })
 					| null;
@@ -182,9 +180,7 @@ export function GroupOverlay(props: {
 				const dragState = allDragStates.get(groupItem.id);
 				const groupX = dragState ? dragState.x : groupItem.x;
 				const groupY = dragState ? dragState.y : groupItem.y;
-				const isGroupBeingDragged = !!dragState;
-
-				// Handler for selecting the group (shared between empty and non-empty groups)
+				const isGroupBeingDragged = !!dragState; // Handler for selecting the group (shared between empty and non-empty groups)
 				const handleGroupClick = (e: React.MouseEvent) => {
 					e.stopPropagation();
 
@@ -310,7 +306,6 @@ export function GroupOverlay(props: {
 						}
 					}
 				}
-
 				if (!isFinite(minX) || !isFinite(minY)) {
 					return null;
 				}

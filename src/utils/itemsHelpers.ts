@@ -173,15 +173,18 @@ export function addToGroup(items: Item[], targetGroup: Item): void {
 }
 
 export function canGroupItems(items: Item[]): boolean {
-	if (items.length <= 1) {
+	if (items.length === 0) {
 		return false;
 	}
 	const parent = getParentItems(items[0]);
 	if (parent === undefined) {
 		return false;
 	}
+
+	// Check that all items have the same parent
+	// and that none of the items are a group
 	for (const item of items) {
-		if (getParentItems(item) !== parent) {
+		if (getParentItems(item) !== parent || item.content instanceof Group) {
 			return false;
 		}
 	}
@@ -214,6 +217,7 @@ export function groupItems(items: Item[]): Item | undefined {
 	let createdGroup: Item | undefined;
 	Tree.runTransaction(parent, () => {
 		const groupContent = new Group({
+			name: "Group",
 			items: new Items([]),
 		});
 		const groupItem = new Item({
@@ -236,7 +240,7 @@ export function groupItems(items: Item[]): Item | undefined {
 			}
 			item.x = item.x - minX;
 			item.y = item.y - minY;
-			groupContent.moveIn(currentIndex, parent);
+			groupContent.items.moveToEnd(currentIndex, parent);
 		}
 		createdGroup = groupItem;
 	});
@@ -311,7 +315,7 @@ export function ungroupItems(items: Item[]): void {
 				rootItems.moveToEnd(currentIndex, group.items);
 			}
 
-			// Remove the now-empty group
+			// Remove the now-empty group TODO: Is this safe if someone concurrently adds an item to this group?
 			const currentGroupIndex = rootItems.indexOf(groupItem);
 			if (currentGroupIndex !== -1) {
 				rootItems.removeAt(currentGroupIndex);
@@ -374,7 +378,7 @@ export function ungroupItems(items: Item[]): void {
 			rootItems.moveToEnd(currentIndex, parent);
 		}
 
-		// If the group is now empty, remove it
+		// If the group is now empty, remove it TODO: Is this safe if someone concurrently adds an item to this group?
 		if (parent.length === 0) {
 			const currentGroupIndex = rootItems.indexOf(groupItem);
 			if (currentGroupIndex !== -1) {
