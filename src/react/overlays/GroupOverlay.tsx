@@ -153,17 +153,17 @@ export function GroupOverlay(props: {
 	return (
 		<>
 			{groupItems.map((groupItem) => {
-			const group = groupItem.content as Group;
+				const group = groupItem.content as Group;
 
-			// Optionally show group overlay only if at least one item in the group is selected
-			if (showOnlyWhenChildSelected) {
-				const hasSelectedChild = group.items.some((childItem) =>
-					selectedIds.has(childItem.id)
-				);
-				if (!hasSelectedChild) {
-					return null;
-				}
-			}				// Check if this group is being dragged (from local or remote presence)
+				// Optionally show group overlay only if at least one item in the group is selected
+				if (showOnlyWhenChildSelected) {
+					const hasSelectedChild = group.items.some((childItem) =>
+						selectedIds.has(childItem.id)
+					);
+					if (!hasSelectedChild) {
+						return null;
+					}
+				} // Check if this group is being dragged (from local or remote presence)
 				const dragState = allDragStates.get(groupItem.id);
 				const groupX = dragState ? dragState.x : groupItem.x;
 				const groupY = dragState ? dragState.y : groupItem.y;
