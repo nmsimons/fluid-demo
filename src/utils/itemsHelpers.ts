@@ -58,15 +58,28 @@ export function canAddToGroup(items: Item[]): { canAdd: boolean; targetGroup?: I
 		return { canAdd: false };
 	}
 
-	// Separate items into those in groups and those not in groups
+	// Separate items into groups and non-groups
 	const itemsInGroups: Item[] = [];
 	const itemsNotInGroups: Item[] = [];
+	const groupItems: Item[] = [];
 	let commonGroupItem: Item | undefined;
 
 	for (const item of items) {
 		const parent = getParentItems(item);
 		if (parent === undefined) {
 			return { canAdd: false };
+		}
+
+		// Check if this item IS a group
+		if (Tree.is(item.content, Group)) {
+			groupItems.push(item);
+			if (commonGroupItem === undefined) {
+				commonGroupItem = item;
+			} else if (commonGroupItem !== item) {
+				// Multiple different groups selected
+				return { canAdd: false };
+			}
+			continue;
 		}
 
 		const grandParent = Tree.parent(parent);
@@ -89,11 +102,12 @@ export function canAddToGroup(items: Item[]): { canAdd: boolean; targetGroup?: I
 	}
 
 	// We can add to group if:
-	// 1. We have at least one item in a group
-	// 2. We have at least one item not in a group
-	// 3. All items in groups are in the same group
-	// 4. All items not in groups share the same parent as the group
-	if (itemsInGroups.length > 0 && itemsNotInGroups.length > 0 && commonGroupItem !== undefined) {
+	// Case 1: A group is selected + ungrouped items
+	// Case 2: Items in a group + ungrouped items
+	const hasTargetGroup = groupItems.length > 0 || itemsInGroups.length > 0;
+	const hasItemsToAdd = itemsNotInGroups.length > 0;
+
+	if (hasTargetGroup && hasItemsToAdd && commonGroupItem !== undefined) {
 		// Check that ungrouped items share the same parent as the group
 		const groupParent = getParentItems(commonGroupItem);
 		if (groupParent === undefined) {
@@ -111,7 +125,6 @@ export function canAddToGroup(items: Item[]): { canAdd: boolean; targetGroup?: I
 
 	return { canAdd: false };
 }
-
 export function addToGroup(items: Item[], targetGroup: Item): void {
 	if (!Tree.is(targetGroup.content, Group)) {
 		return;
@@ -126,8 +139,12 @@ export function addToGroup(items: Item[], targetGroup: Item): void {
 		return;
 	}
 
-	// Filter to only items not already in the group
+	// Filter to only items not already in the group, and exclude the target group itself
 	const itemsToAdd = items.filter((item) => {
+		// Don't try to add the group to itself
+		if (item === targetGroup) {
+			return false;
+		}
 		const parent = getParentItems(item);
 		return parent === rootItems; // Only add items from root level
 	});
@@ -196,7 +213,9 @@ export function groupItems(items: Item[]): Item | undefined {
 	const targetIndex = Math.min(...indices);
 	let createdGroup: Item | undefined;
 	Tree.runTransaction(parent, () => {
-		const groupContent = new Group({ items: new Items([]) });
+		const groupContent = new Group({
+			items: new Items([]),
+		});
 		const groupItem = new Item({
 			id: crypto.randomUUID(),
 			x: minX,
@@ -229,7 +248,12 @@ export function canUngroupItems(items: Item[]): boolean {
 		return false;
 	}
 
-	// All items must be in the same group
+	// Case 1: The group itself is selected (single item that is a group)
+	if (items.length === 1 && Tree.is(items[0].content, Group)) {
+		return true;
+	}
+
+	// Case 2: All items must be in the same group
 	const parent = getParentItems(items[0]);
 	if (parent === undefined) {
 		return false;
@@ -252,6 +276,51 @@ export function canUngroupItems(items: Item[]): boolean {
 }
 
 export function ungroupItems(items: Item[]): void {
+	// Case 1: If a single group is selected, ungroup all its children
+	if (items.length === 1 && Tree.is(items[0].content, Group)) {
+		const groupItem = items[0];
+		const group = groupItem.content as Group;
+		const rootItems = getParentItems(groupItem);
+
+		if (rootItems === undefined || group.items.length === 0) {
+			return;
+		}
+
+		const groupX = groupItem.x;
+		const groupY = groupItem.y;
+		const groupIndex = rootItems.indexOf(groupItem);
+
+		if (groupIndex === -1) {
+			return;
+		}
+
+		// Collect all children to ungroup
+		const childrenToUngroup = Array.from(group.items);
+
+		Tree.runTransaction(rootItems, () => {
+			// Move all children from group to root
+			for (const childItem of childrenToUngroup) {
+				const currentIndex = group.items.indexOf(childItem);
+				if (currentIndex === -1) {
+					continue;
+				}
+				// Convert from relative to absolute coordinates
+				childItem.x = childItem.x + groupX;
+				childItem.y = childItem.y + groupY;
+				// Move to root
+				rootItems.moveToEnd(currentIndex, group.items);
+			}
+
+			// Remove the now-empty group
+			const currentGroupIndex = rootItems.indexOf(groupItem);
+			if (currentGroupIndex !== -1) {
+				rootItems.removeAt(currentGroupIndex);
+			}
+		});
+		return;
+	}
+
+	// Case 2: Ungroup selected items within a group
 	if (!canUngroupItems(items)) {
 		return;
 	}

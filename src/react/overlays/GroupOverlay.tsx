@@ -1,4 +1,4 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useState, useRef } from "react";
 import { Tree } from "@fluidframework/tree";
 import { Item, Group } from "../../schema/appSchema.js";
 import { PresenceContext } from "../contexts/PresenceContext.js";
@@ -18,6 +18,9 @@ export function GroupOverlay(props: {
 }): JSX.Element {
 	const { items, layout, zoom, showOnlyWhenChildSelected = false } = props;
 	const presence = useContext(PresenceContext);
+
+	// Track which groups have just been dragged to prevent click-on-release
+	const draggedGroupsRef = useRef<Set<string>>(new Set());
 
 	// Track all group drag states (local + remote) for smooth overlay updates
 	const [allDragStates, setAllDragStates] = useState<Map<string, { x: number; y: number }>>(
@@ -116,6 +119,13 @@ export function GroupOverlay(props: {
 			document.removeEventListener("pointerup", handleUp);
 
 			if (hasMoved) {
+				// Mark this group as recently dragged to prevent click handler
+				draggedGroupsRef.current.add(groupItem.id);
+				// Clear the flag after a short delay
+				setTimeout(() => {
+					draggedGroupsRef.current.delete(groupItem.id);
+				}, 100);
+
 				// Commit the final position from presence to the tree
 				const dragState = presence.drag.state.local;
 				if (dragState && dragState.id === groupItem.id) {
@@ -163,17 +173,41 @@ export function GroupOverlay(props: {
 					if (!hasSelectedChild) {
 						return null;
 					}
-				} // Check if this group is being dragged (from local or remote presence)
+				}
+
+				// Check if this group itself is selected
+				const isGroupSelected = selectedIds.has(groupItem.id);
+
+				// Check if this group is being dragged (from local or remote presence)
 				const dragState = allDragStates.get(groupItem.id);
 				const groupX = dragState ? dragState.x : groupItem.x;
 				const groupY = dragState ? dragState.y : groupItem.y;
 				const isGroupBeingDragged = !!dragState;
 
+				// Handler for selecting the group (shared between empty and non-empty groups)
+				const handleGroupClick = (e: React.MouseEvent) => {
+					e.stopPropagation();
+
+					// Don't select if this group was just dragged
+					if (draggedGroupsRef.current.has(groupItem.id)) {
+						return;
+					}
+
+					// Respect Ctrl/Meta for multi-select
+					if (e.ctrlKey || e.metaKey) {
+						presence.itemSelection.toggleSelection({ id: groupItem.id });
+					} else {
+						presence.itemSelection.setSelection({ id: groupItem.id });
+					}
+				};
+
 				// Calculate group bounds based on child items
 				if (group.items.length === 0) {
 					// Empty group - render a minimal placeholder
-					const padding = 10 / zoom; // Screen-constant padding
-					const minSize = 100 / zoom; // Minimum visible size
+					const padding = 10 / zoom;
+					const minSize = 100 / zoom;
+					const titleBarHeight = 28 / zoom;
+					const titleBarY = groupY - padding - titleBarHeight - 4 / zoom;
 
 					return (
 						<g key={groupItem.id}>
@@ -183,23 +217,47 @@ export function GroupOverlay(props: {
 								width={minSize}
 								height={minSize}
 								fill="none"
-								stroke="#94a3b8"
-								strokeWidth={2 / zoom}
+								stroke={isGroupSelected ? "#3b82f6" : "#94a3b8"}
+								strokeWidth={isGroupSelected ? 3 / zoom : 2 / zoom}
 								strokeDasharray={`${8 / zoom} ${4 / zoom}`}
 								rx={8 / zoom}
-								opacity={0.5}
+								opacity={isGroupSelected ? 0.8 : 0.5}
+								style={{ cursor: "pointer" }}
+								onClick={handleGroupClick}
 							/>
-							<text
-								x={groupX + minSize / 2}
-								y={groupY + minSize / 2}
-								fontSize={12 / zoom}
-								textAnchor="middle"
-								dominantBaseline="middle"
-								fill="#94a3b8"
-								opacity={0.7}
+
+							{/* Title bar for empty group */}
+							<g
+								className="group-title-bar"
+								style={{ cursor: "move" }}
+								onPointerDown={(e) => handleGroupDragStart(e, groupItem)}
+								onClick={handleGroupClick}
 							>
-								Empty Group
-							</text>
+								<rect
+									x={groupX - padding}
+									y={titleBarY}
+									width={minSize}
+									height={titleBarHeight}
+									fill={isGroupSelected ? "#3b82f6" : "#94a3b8"}
+									opacity={0.9}
+									rx={6 / zoom}
+									style={{ pointerEvents: "all" }}
+								/>
+								<text
+									x={groupX - padding + 8 / zoom}
+									y={titleBarY + titleBarHeight / 2}
+									fontSize={12 / zoom}
+									fill="#ffffff"
+									dominantBaseline="middle"
+									style={{
+										pointerEvents: "none",
+										userSelect: "none",
+										fontWeight: 500,
+									}}
+								>
+									Empty Group
+								</text>
+							</g>
 						</g>
 					);
 				}
@@ -263,6 +321,9 @@ export function GroupOverlay(props: {
 				const width = maxX - minX + padding * 2;
 				const height = maxY - minY + padding * 2;
 
+				const titleBarHeight = 28 / zoom;
+				const titleBarY = y - titleBarHeight - 4 / zoom; // 4px gap above border
+
 				return (
 					<g key={groupItem.id}>
 						{/* Border (no background fill) */}
@@ -272,50 +333,77 @@ export function GroupOverlay(props: {
 							width={width}
 							height={height}
 							fill="none"
-							stroke="#64748b"
-							strokeWidth={2 / zoom}
+							stroke={isGroupSelected ? "#3b82f6" : "#64748b"}
+							strokeWidth={isGroupSelected ? 3 / zoom : 2 / zoom}
 							strokeDasharray={`${8 / zoom} ${4 / zoom}`}
 							rx={12 / zoom}
-							opacity={0.6}
+							opacity={isGroupSelected ? 0.8 : 0.6}
+							style={{ cursor: "pointer" }}
+							onClick={handleGroupClick}
 						/>
-						{/* Drag handle - centered above top of box */}
+
+						{/* Title bar - full width, serves as drag handle and selection target */}
 						<g
-							className="group-drag-handle"
+							className="group-title-bar"
 							style={{ cursor: "move" }}
 							onPointerDown={(e) => handleGroupDragStart(e, groupItem)}
+							onClick={handleGroupClick}
 						>
-							{/* Handle background */}
+							{/* Title bar background */}
 							<rect
-								x={x + width / 2 - 20 / zoom}
-								y={y - 20 / zoom}
-								width={40 / zoom}
-								height={16 / zoom}
-								fill="#64748b"
+								x={x}
+								y={titleBarY}
+								width={width}
+								height={titleBarHeight}
+								fill={isGroupSelected ? "#3b82f6" : "#64748b"}
 								opacity={0.9}
-								rx={8 / zoom}
+								rx={6 / zoom}
 								style={{ pointerEvents: "all" }}
 							/>
-							{/* Grip lines */}
-							<line
-								x1={x + width / 2 - 8 / zoom}
-								y1={y - 14 / zoom}
-								x2={x + width / 2 + 8 / zoom}
-								y2={y - 14 / zoom}
-								stroke="#fff"
-								strokeWidth={1.5 / zoom}
-								opacity={0.8}
-								style={{ pointerEvents: "none" }}
-							/>
-							<line
-								x1={x + width / 2 - 8 / zoom}
-								y1={y - 9 / zoom}
-								x2={x + width / 2 + 8 / zoom}
-								y2={y - 9 / zoom}
-								stroke="#fff"
-								strokeWidth={1.5 / zoom}
-								opacity={0.8}
-								style={{ pointerEvents: "none" }}
-							/>
+							<text
+								x={x + 8 / zoom}
+								y={titleBarY + titleBarHeight / 2}
+								fontSize={12 / zoom}
+								fill="#ffffff"
+								dominantBaseline="middle"
+								style={{
+									pointerEvents: "none",
+									userSelect: "none",
+									fontWeight: 500,
+								}}
+							>
+								Group
+							</text>
+							{/* Drag grip indicator on the right side */}
+							<g style={{ pointerEvents: "none" }}>
+								<line
+									x1={x + width - 20 / zoom}
+									y1={titleBarY + 10 / zoom}
+									x2={x + width - 8 / zoom}
+									y2={titleBarY + 10 / zoom}
+									stroke="#ffffff"
+									strokeWidth={1.5 / zoom}
+									opacity={0.6}
+								/>
+								<line
+									x1={x + width - 20 / zoom}
+									y1={titleBarY + 14 / zoom}
+									x2={x + width - 8 / zoom}
+									y2={titleBarY + 14 / zoom}
+									stroke="#ffffff"
+									strokeWidth={1.5 / zoom}
+									opacity={0.6}
+								/>
+								<line
+									x1={x + width - 20 / zoom}
+									y1={titleBarY + 18 / zoom}
+									x2={x + width - 8 / zoom}
+									y2={titleBarY + 18 / zoom}
+									stroke="#ffffff"
+									strokeWidth={1.5 / zoom}
+									opacity={0.6}
+								/>
+							</g>
 						</g>
 					</g>
 				);
@@ -323,3 +411,4 @@ export function GroupOverlay(props: {
 		</>
 	);
 }
+

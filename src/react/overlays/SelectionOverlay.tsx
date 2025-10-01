@@ -122,7 +122,7 @@ export function SelectionOverlay(props: {
 					width={w + padding * 2}
 					height={h + padding * 2}
 					fill="none"
-					stroke="#000"
+					stroke="#3b82f6"
 					strokeLinecap="round"
 					strokeDasharray={`${(2 / zoom).toFixed(3)} ${(4 / zoom).toFixed(3)}`}
 					strokeWidth={2 / zoom}
@@ -134,7 +134,7 @@ export function SelectionOverlay(props: {
 					{/* Visible rotation handle */}
 					<circle
 						r={6 / zoom}
-						fill="#000"
+						fill="#3b82f6"
 						cursor="grab"
 						onClick={(e) => {
 							e.stopPropagation();
@@ -241,7 +241,7 @@ export function SelectionOverlay(props: {
 									y={pos.y - half}
 									width={handleSize}
 									height={handleSize}
-									fill="#000"
+									fill="#3b82f6"
 									stroke="none"
 									cursor={pos.cursor}
 									onClick={(e) => {
