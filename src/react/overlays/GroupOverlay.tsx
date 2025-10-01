@@ -3,6 +3,7 @@ import { Tree } from "@fluidframework/tree";
 import { Item, Group } from "../../schema/appSchema.js";
 import { PresenceContext } from "../contexts/PresenceContext.js";
 import { usePresenceManager } from "../hooks/usePresenceManger.js";
+import { EditRegular, GridRegular } from "@fluentui/react-icons";
 
 /**
  * GroupOverlay - Renders visual bounds for group containers on the SVG overlay layer
@@ -337,13 +338,8 @@ export function GroupOverlay(props: {
 							onClick={handleGroupClick}
 						/>
 
-						{/* Title bar - full width, serves as drag handle and selection target */}
-						<g
-							className="group-title-bar"
-							style={{ cursor: "move" }}
-							onPointerDown={(e) => handleGroupDragStart(e, groupItem)}
-							onClick={handleGroupClick}
-						>
+						{/* Title bar - full width with toolbar */}
+						<g className="group-title-bar">
 							{/* Title bar background */}
 							<rect
 								x={x}
@@ -353,51 +349,151 @@ export function GroupOverlay(props: {
 								fill={isGroupSelected ? "#3b82f6" : "#64748b"}
 								opacity={0.9}
 								rx={6 / zoom}
-								style={{ pointerEvents: "all" }}
+								style={{ pointerEvents: "all", cursor: "move" }}
+								onPointerDown={(e) => handleGroupDragStart(e, groupItem)}
+								onClick={handleGroupClick}
 							/>
-							<text
-								x={x + 8 / zoom}
-								y={titleBarY + titleBarHeight / 2}
-								fontSize={12 / zoom}
-								fill="#ffffff"
-								dominantBaseline="middle"
-								style={{
-									pointerEvents: "none",
-									userSelect: "none",
-									fontWeight: 500,
-								}}
-							>
-								Group
-							</text>
-							{/* Drag grip indicator on the right side */}
-							<g style={{ pointerEvents: "none" }}>
-								<line
-									x1={x + width - 20 / zoom}
-									y1={titleBarY + 10 / zoom}
-									x2={x + width - 8 / zoom}
-									y2={titleBarY + 10 / zoom}
-									stroke="#ffffff"
-									strokeWidth={1.5 / zoom}
-									opacity={0.6}
-								/>
-								<line
-									x1={x + width - 20 / zoom}
-									y1={titleBarY + 14 / zoom}
-									x2={x + width - 8 / zoom}
-									y2={titleBarY + 14 / zoom}
-									stroke="#ffffff"
-									strokeWidth={1.5 / zoom}
-									opacity={0.6}
-								/>
-								<line
-									x1={x + width - 20 / zoom}
-									y1={titleBarY + 18 / zoom}
-									x2={x + width - 8 / zoom}
-									y2={titleBarY + 18 / zoom}
-									stroke="#ffffff"
-									strokeWidth={1.5 / zoom}
-									opacity={0.6}
-								/>
+
+							{/* Embedded HTML toolbar using foreignObject */}
+							<g transform={`scale(${1 / zoom})`}>
+								<foreignObject
+									x={x * zoom}
+									y={titleBarY * zoom}
+									width={width * zoom}
+									height={titleBarHeight * zoom}
+									style={{ pointerEvents: "none" }}
+								>
+									<div
+										style={{
+											position: "relative",
+											width: "100%",
+											height: "100%",
+											display: "flex",
+											alignItems: "center",
+											fontSize: "12px",
+											color: "#ffffff",
+											fontWeight: 500,
+										}}
+									>
+										{/* Left side: Group name label - truncate with ellipsis, hide when too narrow */}
+										{width * zoom > 80 && (
+											<div
+												style={{
+													userSelect: "none",
+													paddingLeft: "8px",
+													paddingRight: "12px",
+													whiteSpace: "nowrap",
+													overflow: "hidden",
+													textOverflow: "ellipsis",
+													maxWidth:
+														width * zoom > 200
+															? `${(width * zoom) / 2 - 80}px` // Leave space for centered buttons (half width minus button space)
+															: `${width * zoom - 40}px`, // Reserve space for drag handle only
+													minWidth: "30px",
+												}}
+											>
+												{group.name}
+											</div>
+										)}
+
+										{/* Center: Toolbar buttons - absolutely positioned, hide when too narrow */}
+										{width * zoom > 200 && (
+											<div
+												style={{
+													position: "absolute",
+													left: "50%",
+													top: "50%",
+													transform: "translate(-50%, -50%)",
+													display: "flex",
+													gap: "4px",
+													pointerEvents: "auto",
+													alignItems: "center",
+												}}
+											>
+												<button
+													onClick={(e) => {
+														e.stopPropagation();
+														console.log("Edit group");
+													}}
+													style={{
+														background: "rgba(255, 255, 255, 0.2)",
+														border: "none",
+														borderRadius: "4px",
+														padding: "4px 8px",
+														cursor: "pointer",
+														display: "flex",
+														alignItems: "center",
+														color: "#ffffff",
+														fontSize: "14px",
+													}}
+													title="Edit"
+												>
+													<EditRegular />
+												</button>
+												<button
+													onClick={(e) => {
+														e.stopPropagation();
+														console.log("Grid view");
+													}}
+													style={{
+														background: "rgba(255, 255, 255, 0.2)",
+														border: "none",
+														borderRadius: "4px",
+														padding: "4px 8px",
+														cursor: "pointer",
+														display: "flex",
+														alignItems: "center",
+														color: "#ffffff",
+														fontSize: "14px",
+													}}
+													title="Grid View"
+												>
+													<GridRegular />
+												</button>
+											</div>
+										)}
+
+										{/* Right side: Drag handle grip - absolutely positioned */}
+										<div
+											style={{
+												position: "absolute",
+												right: "8px",
+												top: "50%",
+												transform: "translateY(-50%)",
+												display: "flex",
+												flexDirection: "column",
+												gap: "2px",
+												opacity: 0.6,
+												pointerEvents: "none",
+											}}
+										>
+											<div
+												style={{
+													width: "12px",
+													height: "2px",
+													background: "#ffffff",
+													borderRadius: "1px",
+												}}
+											/>
+											<div
+												style={{
+													width: "12px",
+													height: "2px",
+													background: "#ffffff",
+													borderRadius: "1px",
+												}}
+											/>
+											<div
+												style={{
+													width: "12px",
+													height: "2px",
+													background: "#ffffff",
+													borderRadius: "1px",
+												}}
+											/>
+										</div>
+									</div>
+								</foreignObject>
 							</g>
 						</g>
 					</g>
