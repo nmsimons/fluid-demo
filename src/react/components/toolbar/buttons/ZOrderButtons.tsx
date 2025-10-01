@@ -13,7 +13,7 @@ import {
 import { TooltipButton } from "../../forms/Button.js";
 import { useTree } from "../../../hooks/useTree.js";
 import { Items } from "../../../../schema/appSchema.js";
-import { findItemById } from "../../../../utils/itemsHelpers.js";
+import { findItemById, getParentItems } from "../../../../utils/itemsHelpers.js";
 
 // Z-order buttons
 export function MoveItemForwardButton(props: {
@@ -23,12 +23,13 @@ export function MoveItemForwardButton(props: {
 	const { items, selectedItemId } = props;
 	useTree(items);
 	const item = selectedItemId ? findItemById(items, selectedItemId) : undefined;
-	const idx = item ? items.indexOf(item) : -1;
-	const can = item && idx < items.length - 1;
+	const parentItems = item ? getParentItems(item) : undefined;
+	const idx = item && parentItems ? parentItems.indexOf(item) : -1;
+	const can = item && parentItems && idx >= 0 && idx < parentItems.length - 1;
 	return (
 		<TooltipButton
 			onClick={() => {
-				if (item && can) items.moveItemForward(item);
+				if (item && parentItems && can) parentItems.moveItemForward(item);
 			}}
 			icon={<PositionForwardRegular />}
 			tooltip="Move item forward"
@@ -45,12 +46,13 @@ export function MoveItemBackwardButton(props: {
 	const { items, selectedItemId } = props;
 	useTree(items);
 	const item = selectedItemId ? findItemById(items, selectedItemId) : undefined;
-	const idx = item ? items.indexOf(item) : -1;
-	const can = item && idx > 0;
+	const parentItems = item ? getParentItems(item) : undefined;
+	const idx = item && parentItems ? parentItems.indexOf(item) : -1;
+	const can = item && parentItems && idx > 0;
 	return (
 		<TooltipButton
 			onClick={() => {
-				if (item && can) items.moveItemBackward(item);
+				if (item && parentItems && can) parentItems.moveItemBackward(item);
 			}}
 			icon={<PositionBackwardRegular />}
 			tooltip="Move item backward"
@@ -67,12 +69,13 @@ export function BringItemToFrontButton(props: {
 	const { items, selectedItemId } = props;
 	useTree(items);
 	const item = selectedItemId ? findItemById(items, selectedItemId) : undefined;
-	const idx = item ? items.indexOf(item) : -1;
-	const can = item && idx < items.length - 1;
+	const parentItems = item ? getParentItems(item) : undefined;
+	const idx = item && parentItems ? parentItems.indexOf(item) : -1;
+	const can = item && parentItems && idx >= 0 && idx < parentItems.length - 1;
 	return (
 		<TooltipButton
 			onClick={() => {
-				if (item && can) items.bringItemToFront(item);
+				if (item && parentItems && can) parentItems.bringItemToFront(item);
 			}}
 			icon={<PositionToFrontRegular />}
 			tooltip="Bring to front"
@@ -89,12 +92,13 @@ export function SendItemToBackButton(props: {
 	const { items, selectedItemId } = props;
 	useTree(items);
 	const item = selectedItemId ? findItemById(items, selectedItemId) : undefined;
-	const idx = item ? items.indexOf(item) : -1;
-	const can = item && idx > 0;
+	const parentItems = item ? getParentItems(item) : undefined;
+	const idx = item && parentItems ? parentItems.indexOf(item) : -1;
+	const can = item && parentItems && idx > 0;
 	return (
 		<TooltipButton
 			onClick={() => {
-				if (item && can) items.sendItemToBack(item);
+				if (item && parentItems && can) parentItems.sendItemToBack(item);
 			}}
 			icon={<PositionToBackRegular />}
 			tooltip="Send to back"

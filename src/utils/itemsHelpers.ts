@@ -45,7 +45,7 @@ export function getAllItems(items: Items): Item[] {
 	return allItems;
 }
 
-function getParentItems(item: Item): Items | undefined {
+export function getParentItems(item: Item): Items | undefined {
 	const parent = Tree.parent(item);
 	if (Tree.is(parent, Items)) {
 		return parent;

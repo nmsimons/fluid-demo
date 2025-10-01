@@ -10,7 +10,7 @@ import { undoRedo } from "../../undo/undo.js";
 import { UsersManager } from "../../presence/Interfaces/UsersManager.js";
 import { SelectionManager } from "../../presence/Interfaces/SelectionManager.js";
 import { SHAPE_COLORS } from "../components/toolbar/buttons/CreationButtons.js";
-import { findItemById, findItemsByIds, getAllItems } from "../../utils/itemsHelpers.js";
+import { findItemById, findItemsByIds, getAllItems, getParentItems } from "../../utils/itemsHelpers.js";
 import { centerLastItem } from "../../utils/centerItem.js";
 
 /**
@@ -195,7 +195,10 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 					selectedItemIds.forEach((itemId) => {
 						const selectedItem = findItemById(view.root.items, itemId);
 						if (selectedItem) {
-							view.root.items.moveItemBackward(selectedItem);
+							const parentItems = getParentItems(selectedItem);
+							if (parentItems) {
+								parentItems.moveItemBackward(selectedItem);
+							}
 						}
 					});
 				});
@@ -210,7 +213,10 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 					selectedItemIds.forEach((itemId) => {
 						const selectedItem = findItemById(view.root.items, itemId);
 						if (selectedItem) {
-							view.root.items.moveItemForward(selectedItem);
+							const parentItems = getParentItems(selectedItem);
+							if (parentItems) {
+								parentItems.moveItemForward(selectedItem);
+							}
 						}
 					});
 				});
@@ -226,7 +232,10 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 					selectedItemIds.forEach((itemId) => {
 						const selectedItem = findItemById(view.root.items, itemId);
 						if (selectedItem) {
-							view.root.items.sendItemToBack(selectedItem);
+							const parentItems = getParentItems(selectedItem);
+							if (parentItems) {
+								parentItems.sendItemToBack(selectedItem);
+							}
 						}
 					});
 				});
@@ -242,7 +251,10 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 					selectedItemIds.forEach((itemId) => {
 						const selectedItem = findItemById(view.root.items, itemId);
 						if (selectedItem) {
-							view.root.items.bringItemToFront(selectedItem);
+							const parentItems = getParentItems(selectedItem);
+							if (parentItems) {
+								parentItems.bringItemToFront(selectedItem);
+							}
 						}
 					});
 				});
