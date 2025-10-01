@@ -237,6 +237,11 @@ export function ItemView(props: {
 		zIndex: index,
 		transform: `rotate(${displayRotation}deg)`,
 	});
+	const [layoutAnimating, setLayoutAnimating] = useState(false);
+	const layoutAnimationTimeoutRef = useRef<number | null>(null);
+	const previousGridStateRef = useRef<boolean | null>(
+		parentGroup ? isGroupGridEnabled(parentGroup) : null
+	);
 
 	useEffect(() => {
 		// In grid view, force rotation to 0 (visual only)
@@ -249,6 +254,42 @@ export function ItemView(props: {
 			transform: itemType(item) === "table" ? "rotate(0)" : `rotate(${displayRotation}deg)`,
 		}));
 	}, [displayX, displayY, item.rotation, index, parentGroup]);
+
+	useEffect(() => {
+		const currentGrid = parentGroup ? isGroupGridEnabled(parentGroup) : null;
+		const previousGrid = previousGridStateRef.current;
+
+		if (!parentGroup) {
+			previousGridStateRef.current = null;
+			if (layoutAnimationTimeoutRef.current !== null) {
+				window.clearTimeout(layoutAnimationTimeoutRef.current);
+				layoutAnimationTimeoutRef.current = null;
+			}
+			setLayoutAnimating(false);
+			return;
+		}
+
+		if (previousGrid !== null && previousGrid !== currentGrid) {
+			if (layoutAnimationTimeoutRef.current !== null) {
+				window.clearTimeout(layoutAnimationTimeoutRef.current);
+			}
+			setLayoutAnimating(true);
+			layoutAnimationTimeoutRef.current = window.setTimeout(() => {
+				setLayoutAnimating(false);
+				layoutAnimationTimeoutRef.current = null;
+			}, 280);
+		}
+
+		previousGridStateRef.current = currentGrid;
+	}, [parentGroup, parentGroup?.viewAsGrid]);
+
+	useEffect(() => {
+		return () => {
+			if (layoutAnimationTimeoutRef.current !== null) {
+				window.clearTimeout(layoutAnimationTimeoutRef.current);
+			}
+		};
+	}, []);
 
 	// Store the relative offset (item.x, item.y) in a ref so it's stable during drag
 	const relativeOffsetRef = React.useRef({ x: item.x, y: item.y });
@@ -674,12 +715,17 @@ export function ItemView(props: {
 	]);
 
 	// Never mutate view directly (React may freeze state objects in strict/dev modes)
+	const isBeingDragged = presence.drag.state.local?.id === item.id;
+	const isBeingResized = presence.resize.state.local?.id === item.id;
+	const shouldAnimateLayout = layoutAnimating && !isBeingDragged && !isBeingResized;
+
 	const style = {
 		...view,
 		zIndex: index,
 		touchAction: "none",
 		WebkitUserSelect: "none",
 		userSelect: "none",
+		willChange: shouldAnimateLayout ? "transform, left, top" : undefined,
 	} as const;
 	const logicalZoom = props.logicalZoom ?? props.zoom;
 	return (
@@ -710,7 +756,7 @@ export function ItemView(props: {
 			}}
 			onPointerMove={onPointerMove}
 			onPointerUp={onPointerUp}
-			className="absolute"
+			className={`absolute${shouldAnimateLayout ? " layout-swap-animate" : ""}`}
 			style={style}
 			onClick={(e) => {
 				e.stopPropagation();

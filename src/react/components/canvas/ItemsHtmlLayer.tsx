@@ -50,9 +50,7 @@ export function ItemsHtmlLayer(props: {
 			{itemsToRender
 				.filter((flatItem) => !flatItem.isGroupContainer) // Don't render group containers as items
 				.map((flatItem, index) => {
-					// Create unique key: use index for grouped items to avoid conflicts
-					// (grouped items could theoretically have same IDs as top-level items)
-					const itemKey = flatItem.parentGroup ? `grouped-${index}` : flatItem.item.id;
+					const itemKey = flatItem.item.id;
 
 					return (
 						<ItemView
