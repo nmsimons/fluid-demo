@@ -23,6 +23,11 @@ export function GroupOverlay(props: {
 	// Track which groups have just been dragged to prevent click-on-release
 	const draggedGroupsRef = useRef<Set<string>>(new Set());
 
+	// Track which group is being edited
+	const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
+	const [editingValue, setEditingValue] = useState("");
+	const editInputRef = useRef<HTMLInputElement>(null);
+
 	// Track all group drag states (local + remote) for smooth overlay updates
 	const [allDragStates, setAllDragStates] = useState<Map<string, { x: number; y: number }>>(
 		new Map()
@@ -390,9 +395,53 @@ export function GroupOverlay(props: {
 															? `${(width * zoom) / 2 - 80}px` // Leave space for centered buttons (half width minus button space)
 															: `${width * zoom - 40}px`, // Reserve space for drag handle only
 													minWidth: "30px",
+													pointerEvents: "auto",
 												}}
 											>
-												{group.name}
+												{editingGroupId === groupItem.id ? (
+													<input
+														ref={editInputRef}
+														type="text"
+														value={editingValue}
+														onChange={(e) => setEditingValue(e.target.value)}
+														onKeyDown={(e) => {
+															if (e.key === "Enter") {
+																e.preventDefault();
+																const trimmedValue = editingValue.trim();
+																if (trimmedValue) {
+																	group.name = trimmedValue;
+																}
+																setEditingGroupId(null);
+															} else if (e.key === "Escape") {
+																e.preventDefault();
+																setEditingGroupId(null);
+															}
+														}}
+														onBlur={() => {
+															const trimmedValue = editingValue.trim();
+															if (trimmedValue) {
+																group.name = trimmedValue;
+															}
+															setEditingGroupId(null);
+														}}
+														onClick={(e) => e.stopPropagation()}
+														onPointerDown={(e) => e.stopPropagation()}
+														style={{
+															background: "rgba(255, 255, 255, 0.9)",
+															color: "#000000",
+															border: "1px solid rgba(255, 255, 255, 0.3)",
+															borderRadius: "2px",
+															padding: "2px 4px",
+															fontSize: "12px",
+															fontWeight: 500,
+															width: "100%",
+															outline: "none",
+														}}
+														autoFocus
+													/>
+												) : (
+													group.name
+												)}
 											</div>
 										)}
 
@@ -413,7 +462,8 @@ export function GroupOverlay(props: {
 												<button
 													onClick={(e) => {
 														e.stopPropagation();
-														console.log("Edit group");
+														setEditingGroupId(groupItem.id);
+														setEditingValue(group.name);
 													}}
 													style={{
 														background: "rgba(255, 255, 255, 0.2)",
@@ -426,7 +476,7 @@ export function GroupOverlay(props: {
 														color: "#ffffff",
 														fontSize: "14px",
 													}}
-													title="Edit"
+													title="Edit group name"
 												>
 													<EditRegular />
 												</button>
