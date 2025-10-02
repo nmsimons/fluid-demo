@@ -119,57 +119,8 @@ export function TextFormattingMenu(props: {
 		selectedTexts = [],
 	} = props;
 
-	const aggregateColor = (): { value: string; mixed: boolean } => {
-		if (selectedTexts.length === 0) {
-			return { value: color, mixed: false };
-		}
-		const uniqueColors = new Set(selectedTexts.map((t) => t.color));
-		if (uniqueColors.size === 1) {
-			return { value: selectedTexts[0].color, mixed: false };
-		}
-		return { value: color, mixed: true };
-	};
-
-	const aggregateFontSize = (): { value: number; mixed: boolean } => {
-		if (selectedTexts.length === 0) {
-			return { value: fontSize, mixed: false };
-		}
-		const uniqueSizes = new Set(selectedTexts.map((t) => t.fontSize));
-		if (uniqueSizes.size === 1) {
-			return { value: selectedTexts[0].fontSize, mixed: false };
-		}
-		return { value: fontSize, mixed: true };
-	};
-
-	const aggregateBoolean = (
-		getter: (text: TextBlock) => boolean | undefined,
-		fallback: boolean
-	) => {
-		if (selectedTexts.length === 0) {
-			return { value: fallback, mixed: false };
-		}
-		const unique = new Set(selectedTexts.map((t) => ((getter(t) ?? false) ? "true" : "false")));
-		if (unique.size === 1) {
-			return { value: getter(selectedTexts[0]) ?? false, mixed: false };
-		}
-		return { value: fallback, mixed: true };
-	};
-
-	const colorState = aggregateColor();
-	const sizeState = aggregateFontSize();
-	const boldState = aggregateBoolean((t) => t.bold, bold);
-	const italicState = aggregateBoolean((t) => t.italic, italic);
-	const underlineState = aggregateBoolean((t) => t.underline, underline);
-	const strikeState = aggregateBoolean((t) => t.strikethrough, strikethrough);
 	const minFontSize = React.useMemo(() => Math.min(...TEXT_FONT_SIZES), []);
 	const maxFontSize = React.useMemo(() => Math.max(...TEXT_FONT_SIZES), []);
-	const hasMixedState =
-		colorState.mixed ||
-		sizeState.mixed ||
-		boldState.mixed ||
-		italicState.mixed ||
-		underlineState.mixed ||
-		strikeState.mixed;
 
 	const applyToSelection = (updater: (text: TextBlock) => void) => {
 		if (selectedTexts.length === 0) return;
@@ -203,12 +154,12 @@ export function TextFormattingMenu(props: {
 	};
 
 	const previewStyles: React.CSSProperties = {
-		color: colorState.value,
+		color,
 		fontSize: "14px",
-		fontWeight: boldState.value ? 700 : 500,
-		fontStyle: italicState.value ? "italic" : "normal",
+		fontWeight: bold ? 700 : 500,
+		fontStyle: italic ? "italic" : "normal",
 		textDecoration:
-			[underlineState.value ? "underline" : "", strikeState.value ? "line-through" : ""]
+			[underline ? "underline" : "", strikethrough ? "line-through" : ""]
 				.filter(Boolean)
 				.join(" ")
 				.trim() || undefined,
@@ -225,9 +176,6 @@ export function TextFormattingMenu(props: {
 		borderRadius: 6,
 		border: "1px solid var(--colorNeutralStroke2)",
 		backgroundColor: "var(--colorNeutralBackground1)",
-		backgroundImage: hasMixedState
-			? "linear-gradient(135deg, var(--colorNeutralBackground1), var(--colorNeutralBackground3))"
-			: undefined,
 		paddingInline: 4,
 		position: "relative",
 	};
@@ -235,36 +183,11 @@ export function TextFormattingMenu(props: {
 	const previewIcon = (
 		<div style={previewTileStyles} aria-hidden>
 			<span style={previewStyles}>Aa</span>
-			{hasMixedState && (
-				<span
-					style={{
-						position: "absolute",
-						inset: 0,
-						borderRadius: 6,
-						border: "1px dashed var(--colorNeutralStroke1)",
-						pointerEvents: "none",
-					}}
-				/>
-			)}
 		</div>
 	);
 
-	const triggerLabel = hasMixedState ? "Text formatting (mixed selection)" : "Text formatting";
+	const triggerLabel = "Text formatting";
 	const fontSizeLabelId = React.useId();
-	const mixedSizeMessageId = React.useId();
-
-	const mixedBadge = hasMixedState ? (
-		<span
-			style={{
-				fontSize: 10,
-				fontWeight: 600,
-				color: "var(--colorNeutralForeground3)",
-				textTransform: "uppercase",
-			}}
-		>
-			Mixed
-		</span>
-	) : null;
 
 	return (
 		<Menu>
@@ -276,7 +199,6 @@ export function TextFormattingMenu(props: {
 					aria-label={triggerLabel}
 					icon={previewIcon}
 				>
-					{mixedBadge}
 					<ChevronDownRegular />
 				</ToolbarButton>
 			</MenuTrigger>
@@ -285,29 +207,23 @@ export function TextFormattingMenu(props: {
 					<ColorPicker
 						label="Text color"
 						ariaLabel="Text color picker"
-						selected={colorState.value}
+						selected={color}
 						setColor={handleColorChange}
 						columnCount={6}
 						shape="circular"
 						swatches={TEXT_COLOR_SWATCH_ITEMS}
 					/>
-					{colorState.mixed && (
-						<span className="text-xs text-gray-500 block mt-1">
-							Mixed selection — applying will update all selected text items
-						</span>
-					)}
 					<MenuDivider />
 					<div style={{ display: "grid", gap: 4 }}>
-						<Label>Font size</Label>
+						<Label id={fontSizeLabelId}>Font size</Label>
 						<SpinButton
-							width={"100%"}
-							value={sizeState.value}
+							value={fontSize}
 							min={minFontSize}
 							max={maxFontSize}
 							step={1}
 							appearance="filled-darker"
 							aria-labelledby={fontSizeLabelId}
-							aria-describedby={sizeState.mixed ? mixedSizeMessageId : undefined}
+							style={{ width: "100%" }}
 							onChange={(_event, data) => {
 								const parsedValue =
 									typeof data.value === "number"
@@ -319,15 +235,6 @@ export function TextFormattingMenu(props: {
 							}}
 						/>
 					</div>
-					{sizeState.mixed && (
-						<span
-							id={mixedSizeMessageId}
-							className="text-xs text-gray-500 block mt-1"
-							aria-live="polite"
-						>
-							Mixed selection — applying will update all selected text items
-						</span>
-					)}
 					<MenuDivider />
 					<Toolbar aria-label="Text style toggles">
 						<ToolbarGroup>
@@ -335,40 +242,32 @@ export function TextFormattingMenu(props: {
 								appearance="subtle"
 								aria-label="Toggle bold"
 								icon={<TextBoldRegular />}
-								checked={boldState.value}
+								checked={bold}
 								onClick={() => {
-									handleBooleanChange(
-										!boldState.value,
-										onBoldChange,
-										(text, value) => {
-											text.bold = value;
-										}
-									);
+									handleBooleanChange(!bold, onBoldChange, (text, value) => {
+										text.bold = value;
+									});
 								}}
 							/>
 							<ToggleButton
 								appearance="subtle"
 								aria-label="Toggle italic"
 								icon={<TextItalicRegular />}
-								checked={italicState.value}
+								checked={italic}
 								onClick={() => {
-									handleBooleanChange(
-										!italicState.value,
-										onItalicChange,
-										(text, value) => {
-											text.italic = value;
-										}
-									);
+									handleBooleanChange(!italic, onItalicChange, (text, value) => {
+										text.italic = value;
+									});
 								}}
 							/>
 							<ToggleButton
 								appearance="subtle"
 								aria-label="Toggle underline"
 								icon={<TextUnderlineRegular />}
-								checked={underlineState.value}
+								checked={underline}
 								onClick={() => {
 									handleBooleanChange(
-										!underlineState.value,
+										!underline,
 										onUnderlineChange,
 										(text, value) => {
 											text.underline = value;
@@ -380,10 +279,10 @@ export function TextFormattingMenu(props: {
 								appearance="subtle"
 								aria-label="Toggle strikethrough"
 								icon={<TextStrikethroughRegular />}
-								checked={strikeState.value}
+								checked={strikethrough}
 								onClick={() => {
 									handleBooleanChange(
-										!strikeState.value,
+										!strikethrough,
 										onStrikethroughChange,
 										(text, value) => {
 											text.strikethrough = value;
