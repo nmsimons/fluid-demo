@@ -15,7 +15,7 @@ export const DEFAULT_GROUP_GRID_LAYOUT: GroupGridLayoutConfig = {
 	itemWidth: 200,
 	itemHeight: 150,
 	gapX: 20,
-	gapY: 40,
+	gapY: 80,
 };
 
 export function getGroupGridConfig(): GroupGridLayoutConfig {
