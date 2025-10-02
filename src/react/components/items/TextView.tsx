@@ -11,7 +11,8 @@ export function TextView(props: { text: TextBlock; widthOverride?: number }): JS
 	const updateHeight = useCallback(() => {
 		const el = textareaRef.current;
 		if (!el) return;
-		const minHeight = text.fontSize * 1.4 + 24;
+		const minHeight = text.fontSize * 1.2 + 8;
+		el.style.minHeight = `${minHeight}px`;
 		el.style.height = "auto";
 		el.style.height = `${Math.max(el.scrollHeight, minHeight)}px`;
 	}, [text.fontSize]);
@@ -51,6 +52,7 @@ export function TextView(props: { text: TextBlock; widthOverride?: number }): JS
 			}}
 		>
 			<textarea
+				rows={1}
 				ref={textareaRef}
 				value={text.text}
 				onChange={(e) => {
@@ -65,8 +67,7 @@ export function TextView(props: { text: TextBlock; widthOverride?: number }): JS
 					width: "100%",
 					boxSizing: "border-box",
 					color: text.color,
-					backgroundColor: "transparent",
-					border: "none",
+					backgroundColor: "yellow",
 					borderRadius: 0,
 					padding: 0,
 					fontFamily: '"Inter", "Segoe UI", system-ui, -apple-system, sans-serif',
