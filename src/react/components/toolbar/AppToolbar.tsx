@@ -72,6 +72,8 @@ export interface AppToolbarProps {
 	onInkWidthChange: (w: number) => void;
 	shapeColor: string;
 	onShapeColorChange: (c: string) => void;
+	shapeFilled: boolean;
+	onShapeFilledChange: (filled: boolean) => void;
 }
 
 export function AppToolbar(props: AppToolbarProps): JSX.Element {
@@ -102,6 +104,8 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 		onInkWidthChange,
 		shapeColor,
 		onShapeColorChange,
+		shapeFilled,
+		onShapeFilledChange,
 	} = props;
 
 	// Zoom slider logic moved into ZoomMenu component.
@@ -145,6 +149,7 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 					pan={pan}
 					zoom={zoom}
 					shapeColor={shapeColor}
+					shapeFilled={shapeFilled}
 				/>
 				<NewSquareButton
 					items={view.root.items}
@@ -152,6 +157,7 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 					pan={pan}
 					zoom={zoom}
 					shapeColor={shapeColor}
+					shapeFilled={shapeFilled}
 				/>
 				<NewTriangleButton
 					items={view.root.items}
@@ -159,6 +165,7 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 					pan={pan}
 					zoom={zoom}
 					shapeColor={shapeColor}
+					shapeFilled={shapeFilled}
 				/>
 				<NewStarButton
 					items={view.root.items}
@@ -166,6 +173,7 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 					pan={pan}
 					zoom={zoom}
 					shapeColor={shapeColor}
+					shapeFilled={shapeFilled}
 				/>
 				{(() => {
 					// Get selected items and filter for shapes
@@ -178,6 +186,8 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 						<ShapeColorPicker
 							color={shapeColor}
 							onColorChange={onShapeColorChange}
+							filled={shapeFilled}
+							onFilledChange={onShapeFilledChange}
 							selectedShapes={selectedShapes}
 						/>
 					);

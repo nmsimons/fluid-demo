@@ -28,6 +28,7 @@ export interface UseAppKeyboardShortcutsProps {
 	pan?: { x: number; y: number };
 	zoom?: number;
 	shapeColor?: string;
+	shapeFilled?: boolean;
 	selectedItemId: string;
 	selectedItemIds: string[];
 	selectedColumnId: string;
@@ -84,6 +85,7 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 		pan,
 		zoom,
 		shapeColor,
+		shapeFilled,
 	} = props;
 
 	return [
@@ -113,7 +115,7 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 			action: () => {
 				// Use the specific color or fallback to random selection (same logic as buttons)
 				const colors = shapeColor ? [shapeColor] : SHAPE_COLORS;
-				view.root.items.createShapeItem("circle", canvasSize, colors);
+				view.root.items.createShapeItem("circle", canvasSize, colors, shapeFilled ?? true);
 				centerLastItem(view.root.items, pan, zoom, props.canvasSize, 120, 120);
 			},
 		},
@@ -122,7 +124,7 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 			action: () => {
 				// Use the specific color or fallback to random selection (same logic as buttons)
 				const colors = shapeColor ? [shapeColor] : SHAPE_COLORS;
-				view.root.items.createShapeItem("square", canvasSize, colors);
+				view.root.items.createShapeItem("square", canvasSize, colors, shapeFilled ?? true);
 				centerLastItem(view.root.items, pan, zoom, props.canvasSize, 120, 120);
 			},
 		},
@@ -131,7 +133,12 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 			action: () => {
 				// Use the specific color or fallback to random selection (same logic as buttons)
 				const colors = shapeColor ? [shapeColor] : SHAPE_COLORS;
-				view.root.items.createShapeItem("triangle", canvasSize, colors);
+				view.root.items.createShapeItem(
+					"triangle",
+					canvasSize,
+					colors,
+					shapeFilled ?? true
+				);
 				centerLastItem(view.root.items, pan, zoom, props.canvasSize, 120, 120);
 			},
 		},
@@ -140,7 +147,7 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 			action: () => {
 				// Use the specific color or fallback to random selection (same logic as buttons)
 				const colors = shapeColor ? [shapeColor] : SHAPE_COLORS;
-				view.root.items.createShapeItem("star", canvasSize, colors);
+				view.root.items.createShapeItem("star", canvasSize, colors, shapeFilled ?? true);
 				centerLastItem(view.root.items, pan, zoom, props.canvasSize, 120, 120);
 			},
 		},

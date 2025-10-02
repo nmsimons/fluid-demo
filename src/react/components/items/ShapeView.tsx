@@ -2,6 +2,13 @@ import React, { JSX } from "react";
 import { Shape } from "../../../schema/appSchema.js";
 import { useTree } from "../../hooks/useTree.js";
 
+interface ShapeRenderProps {
+	size: number;
+	fillColor: string;
+	strokeColor: string;
+	strokeWidth: number;
+}
+
 export function ShapeView(props: {
 	shape: Shape;
 	sizeOverride?: number;
@@ -11,79 +18,111 @@ export function ShapeView(props: {
 	useTree(shape);
 
 	const size = sizeOverride ?? shape.size;
-	const backgroundColor = colorOverride ?? shape.color;
+	const color = colorOverride ?? shape.color;
+	const filled = shape.filled !== false;
+	const strokeWidth = filled ? 0 : Math.max(2, Math.min(8, size * 0.08));
+	const shapeProps: ShapeRenderProps = {
+		size,
+		fillColor: filled ? color : "transparent",
+		strokeColor: color,
+		strokeWidth,
+	};
 
 	switch (shape.type) {
 		case "circle":
-			return <Circle size={size} backgroundColor={backgroundColor} />;
+			return <Circle {...shapeProps} />;
 		case "square":
-			return <Square size={size} backgroundColor={backgroundColor} />;
+			return <Square {...shapeProps} />;
 		case "triangle":
-			return <Triangle size={size} backgroundColor={backgroundColor} />;
+			return <Triangle {...shapeProps} />;
 		case "star":
-			return <Star size={size} backgroundColor={backgroundColor} />;
+			return <Star {...shapeProps} />;
 		default:
 			return <></>;
 	}
 }
 
-export function Circle(props: { size: number; backgroundColor: string }): JSX.Element {
-	const { size, backgroundColor } = props;
-
-	// Render a div with the absolute position of the item
-	// that is a circle with the x and y coordinates of the item
+function Circle({ size, fillColor, strokeColor, strokeWidth }: ShapeRenderProps): JSX.Element {
+	const radius = size / 2 - strokeWidth / 2;
 	return (
-		<div
-			style={{
-				width: size,
-				height: size,
-				backgroundColor,
-				borderRadius: "50%",
-			}}
-		></div>
+		<svg
+			width={size}
+			height={size}
+			viewBox={`0 0 ${size} ${size}`}
+			preserveAspectRatio="xMidYMid meet"
+		>
+			<circle
+				cx={size / 2}
+				cy={size / 2}
+				r={Math.max(radius, 0)}
+				fill={fillColor}
+				stroke={strokeWidth > 0 ? strokeColor : "none"}
+				strokeWidth={strokeWidth}
+			/>
+		</svg>
 	);
 }
 
-export function Square(props: { size: number; backgroundColor: string }): JSX.Element {
-	const { size, backgroundColor } = props;
-
-	// Render a div with the absolute position of the item
-	// that is a square with the x and y coordinates of the item
+function Square({ size, fillColor, strokeColor, strokeWidth }: ShapeRenderProps): JSX.Element {
+	const inset = strokeWidth / 2;
+	const edge = Math.max(size - strokeWidth, 0);
 	return (
-		<div
-			style={{
-				width: size,
-				height: size,
-				backgroundColor,
-			}}
-		></div>
+		<svg
+			width={size}
+			height={size}
+			viewBox={`0 0 ${size} ${size}`}
+			preserveAspectRatio="xMidYMid meet"
+		>
+			<rect
+				x={inset}
+				y={inset}
+				width={edge}
+				height={edge}
+				fill={fillColor}
+				stroke={strokeWidth > 0 ? strokeColor : "none"}
+				strokeWidth={strokeWidth}
+			/>
+		</svg>
 	);
 }
 
-export function Triangle(props: { size: number; backgroundColor: string }): JSX.Element {
-	const { size, backgroundColor } = props;
-	// render a div with an equilateral triangle using CSS borders
+function Triangle({ size, fillColor, strokeColor, strokeWidth }: ShapeRenderProps): JSX.Element {
+	const inset = strokeWidth / 2;
+	const points = [
+		`${size / 2},${inset}`,
+		`${size - inset},${size - inset}`,
+		`${inset},${size - inset}`,
+	].join(" ");
 	return (
-		<div
-			style={{
-				width: 0,
-				height: 0,
-				borderLeft: `${size / 2}px solid transparent`,
-				borderRight: `${size / 2}px solid transparent`,
-				borderBottom: `${size}px solid ${backgroundColor}`,
-			}}
-		></div>
-	);
-}
-
-export function Star(props: { size: number; backgroundColor: string }): JSX.Element {
-	const { size, backgroundColor } = props;
-	// Render a star shape using svg
-	return (
-		<svg width={size} height={size} viewBox="2 2 20 20">
+		<svg
+			width={size}
+			height={size}
+			viewBox={`0 0 ${size} ${size}`}
+			preserveAspectRatio="xMidYMid meet"
+		>
 			<polygon
-				points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"
-				fill={backgroundColor}
+				points={points}
+				fill={fillColor}
+				stroke={strokeWidth > 0 ? strokeColor : "none"}
+				strokeWidth={strokeWidth}
+				strokeLinejoin="round"
+			/>
+		</svg>
+	);
+}
+
+function Star({ size, fillColor, strokeColor, strokeWidth }: ShapeRenderProps): JSX.Element {
+	const viewBoxSize = 24;
+	const normalizedStroke = strokeWidth > 0 ? (strokeWidth / size) * viewBoxSize : 0;
+	return (
+		<svg width={size} height={size} viewBox="0 0 24 24" preserveAspectRatio="xMidYMid meet">
+			<polygon
+				points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26"
+				fill={fillColor}
+				stroke={normalizedStroke > 0 ? strokeColor : "none"}
+				strokeWidth={normalizedStroke}
+				strokeLinejoin="round"
+				strokeLinecap="round"
 			/>
 		</svg>
 	);

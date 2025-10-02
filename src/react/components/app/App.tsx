@@ -88,6 +88,7 @@ export function ReactApp(props: {
 	const [inkColor, setInkColor] = useState<string>("#2563eb");
 	const [inkWidth, setInkWidth] = useState<number>(4);
 	const [shapeColor, setShapeColor] = useState<string>("#FF0000"); // Default to red
+	const [shapeFilled, setShapeFilled] = useState<boolean>(true);
 
 	// Keep linter satisfied until pan is surfaced elsewhere
 	useEffect(() => {
@@ -195,6 +196,7 @@ export function ReactApp(props: {
 		pan,
 		zoom,
 		shapeColor,
+		shapeFilled,
 		selectedItemId,
 		selectedItemIds,
 		selectedColumnId,
@@ -260,6 +262,8 @@ export function ReactApp(props: {
 						onInkWidthChange={setInkWidth}
 						shapeColor={shapeColor}
 						onShapeColorChange={setShapeColor}
+						shapeFilled={shapeFilled}
+						onShapeFilledChange={setShapeFilled}
 					/>
 					{/* </div> */}
 					<div className="canvas-container flex h-[calc(100vh-96px)] w-full flex-row ">

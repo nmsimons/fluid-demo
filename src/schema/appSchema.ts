@@ -45,6 +45,11 @@ export class Shape extends sf.object("Shape", {
 	type: sf.required(sf.string, {
 		metadata: { description: `One of "circle", "square", "triangle", or "star"` },
 	}),
+	filled: sf.optional(sf.boolean, {
+		metadata: {
+			description: "Whether the shape is rendered filled (true) or outline-only (false)",
+		},
+	}),
 }) {} // The size is a number that represents the size of the shape
 
 /**
@@ -411,7 +416,8 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 	createShapeItem(
 		shapeType: "circle" | "square" | "triangle" | "star",
 		canvasSize: { width: number; height: number },
-		shapeColors: string[]
+		shapeColors: string[],
+		filled = true
 	): Item {
 		// Spawn within a moderate sub-range so new shapes aren't extreme
 		const maxSize = Math.min(SHAPE_SPAWN_MAX_SIZE, SHAPE_MAX_SIZE);
@@ -421,6 +427,7 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 			size: this.getRandomNumber(minSize, maxSize),
 			color: shapeColors[Math.floor(Math.random() * shapeColors.length)],
 			type: shapeType,
+			filled,
 		});
 
 		const item = new Item({
@@ -552,6 +559,7 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 				size: item.content.size,
 				color: item.content.color,
 				type: item.content.type,
+				filled: item.content.filled ?? true,
 			});
 		} else if (Tree.is(item.content, Note)) {
 			duplicatedContent = new Note({
