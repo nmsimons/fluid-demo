@@ -43,11 +43,13 @@ export function getGroupGridConfig(group?: Group): GroupGridLayoutConfig {
 
 export function getGridAlignmentAdjustment(
 	group: Group,
-	config: GroupGridLayoutConfig = DEFAULT_GROUP_GRID_LAYOUT
+	config?: GroupGridLayoutConfig
 ): { x: number; y: number } {
 	if (group.items.length === 0) {
 		return { x: 0, y: 0 };
 	}
+
+	const effectiveConfig = config ?? getGroupGridConfig(group);
 
 	let storedMinX = Infinity;
 	let storedMaxX = -Infinity;
@@ -61,12 +63,12 @@ export function getGridAlignmentAdjustment(
 		const storedY = child.y;
 		storedMinX = Math.min(storedMinX, storedX);
 		storedMinY = Math.min(storedMinY, storedY);
-		storedMaxX = Math.max(storedMaxX, storedX + config.itemWidth);
+		storedMaxX = Math.max(storedMaxX, storedX + effectiveConfig.itemWidth);
 
-		const gridPos = getGridPositionByIndex(index, config);
+		const gridPos = getGridPositionByIndex(index, effectiveConfig);
 		gridMinX = Math.min(gridMinX, gridPos.x);
 		gridMinY = Math.min(gridMinY, gridPos.y);
-		gridMaxX = Math.max(gridMaxX, gridPos.x + config.itemWidth);
+		gridMaxX = Math.max(gridMaxX, gridPos.x + effectiveConfig.itemWidth);
 	});
 
 	if (!isFinite(storedMinX) || !isFinite(storedMaxX) || !isFinite(storedMinY)) {
@@ -97,14 +99,15 @@ export function getGridPositionByIndex(
 export function getGridOffsetForChild(
 	group: Group,
 	child: Item,
-	config: GroupGridLayoutConfig = DEFAULT_GROUP_GRID_LAYOUT
+	config?: GroupGridLayoutConfig
 ): { x: number; y: number } | null {
 	const index = group.items.indexOf(child);
 	if (index === -1) {
 		return null;
 	}
-	const base = getGridPositionByIndex(index, config);
-	const adjustment = getGridAlignmentAdjustment(group, config);
+	const effectiveConfig = config ?? getGroupGridConfig(group);
+	const base = getGridPositionByIndex(index, effectiveConfig);
+	const adjustment = getGridAlignmentAdjustment(group, effectiveConfig);
 	return { x: base.x + adjustment.x, y: base.y + adjustment.y };
 }
 
