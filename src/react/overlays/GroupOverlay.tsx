@@ -6,6 +6,7 @@ import { usePresenceManager } from "../hooks/usePresenceManger.js";
 import { EditRegular, GridRegular } from "@fluentui/react-icons";
 import { isGroupGridEnabled } from "../layout/groupGrid.js";
 import { getGroupChildOffset } from "../utils/presenceGeometry.js";
+import { useTree } from "../hooks/useTree.js";
 
 /**
  * GroupOverlay - Renders visual bounds for group containers on the SVG overlay layer
@@ -169,6 +170,8 @@ export function GroupOverlay(props: {
 	return (
 		<>
 			{groupItems.map((groupItem) => {
+				useTree(groupItem);
+				useTree(groupItem.content);
 				const group = groupItem.content as Group;
 				const gridEnabled = isGroupGridEnabled(group);
 
