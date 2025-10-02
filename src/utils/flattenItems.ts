@@ -3,6 +3,7 @@ import { Item, Items, Group } from "../schema/appSchema.js";
 import {
 	getGroupGridConfig,
 	getGridPositionByIndex,
+	getGridAlignmentAdjustment,
 	isGroupGridEnabled,
 } from "../react/layout/groupGrid.js";
 
@@ -61,15 +62,16 @@ function flattenItem(
 
 		if (useGridView) {
 			const config = getGroupGridConfig();
+			const adjustment = getGridAlignmentAdjustment(group, config);
 
 			group.items.forEach((childItem, index) => {
 				const offset = getGridPositionByIndex(index, config);
 
-				// Use grid position instead of item's stored x/y
+				// Use grid position (with alignment adjustment) instead of item's stored x/y
 				result.push({
 					item: childItem,
-					absoluteX: item.x + offset.x,
-					absoluteY: item.y + offset.y,
+					absoluteX: item.x + offset.x + adjustment.x,
+					absoluteY: item.y + offset.y + adjustment.y,
 					parentGroup: group,
 					isGroupContainer: false,
 				});
