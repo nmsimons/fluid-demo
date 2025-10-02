@@ -67,7 +67,7 @@ export function TextView(props: { text: TextBlock; widthOverride?: number }): JS
 					width: "100%",
 					boxSizing: "border-box",
 					color: text.color,
-					backgroundColor: "yellow",
+					backgroundColor: "transparent",
 					borderRadius: 0,
 					padding: 0,
 					fontFamily: '"Inter", "Segoe UI", system-ui, -apple-system, sans-serif',
