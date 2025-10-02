@@ -10,12 +10,12 @@
 // ============================================================================
 
 import { Tree } from "fluid-framework";
-import { Item, Shape, Note, FluidTable, Group } from "../schema/appSchema.js";
+import { Item, Shape, Note, FluidTable, Group, TextBlock } from "../schema/appSchema.js";
 
 /**
  * Content type enumeration for type-safe handling
  */
-export type ContentType = "shape" | "note" | "table" | "group" | "unknown";
+export type ContentType = "shape" | "note" | "text" | "table" | "group" | "unknown";
 
 /**
  * Common interface for all content handlers
@@ -91,6 +91,35 @@ class NoteHandler implements ContentHandler {
 
 	canResize(): boolean {
 		return false;
+	}
+
+	canRotate(): boolean {
+		return true;
+	}
+
+	getRotationTransform(rotation: number): string {
+		return `rotate(${rotation}deg)`;
+	}
+}
+
+/**
+ * Handler for Text content
+ */
+class TextHandler implements ContentHandler {
+	readonly type: ContentType = "text";
+
+	constructor(private text: TextBlock) {}
+
+	getSize(): number {
+		return this.text.width;
+	}
+
+	getName(): string {
+		return "Text";
+	}
+
+	canResize(): boolean {
+		return true;
 	}
 
 	canRotate(): boolean {
@@ -199,6 +228,9 @@ export function getContentHandler(item: Item, sizeOverride?: number): ContentHan
 	if (Tree.is(item.content, Note)) {
 		return new NoteHandler(item.content);
 	}
+	if (Tree.is(item.content, TextBlock)) {
+		return new TextHandler(item.content);
+	}
 	if (Tree.is(item.content, FluidTable)) {
 		return new TableHandler(item.content);
 	}
@@ -225,6 +257,10 @@ export function isShape(item: Item): item is Item & { content: Shape } {
 
 export function isNote(item: Item): item is Item & { content: Note } {
 	return Tree.is(item.content, Note);
+}
+
+export function isText(item: Item): item is Item & { content: TextBlock } {
+	return Tree.is(item.content, TextBlock);
 }
 
 export function isTable(item: Item): item is Item & { content: FluidTable } {

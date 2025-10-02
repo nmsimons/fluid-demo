@@ -60,13 +60,15 @@ function GroupView({ item }: { item: Item & { content: Group } }) {
 // ============================================================================
 import React, { useContext, useEffect, useRef, useState } from "react";
 import { clampShapeSize } from "../../../constants/shape.js";
+import { clampTextWidth } from "../../../utils/text.js";
 import { Tree } from "fluid-framework";
-import { FluidTable, Group, Item, Note } from "../../../schema/appSchema.js";
+import { FluidTable, Group, Item, Note, TextBlock } from "../../../schema/appSchema.js";
 import { PresenceContext } from "../../contexts/PresenceContext.js";
 import { useTree, objectIdNumber } from "../../hooks/useTree.js";
 import { ShapeView } from "./ShapeView.js";
 import { NoteView } from "./NoteView.js";
 import { TableView } from "./TableView.js";
+import { TextView } from "./TextView.js";
 import { usePresenceManager } from "../../hooks/usePresenceManger.js";
 import { PresenceManager } from "../../../presence/Interfaces/PresenceManager.js";
 import { DragAndRotatePackage } from "../../../presence/drag.js";
@@ -156,25 +158,35 @@ export {
 // ============================================================================
 export function ContentElement({
 	item,
-	shapeProps,
+	contentProps,
 }: {
 	item: Item;
-	shapeProps?: { sizeOverride?: number };
+	contentProps?: { sizeOverride?: number; textWidthOverride?: number };
 }) {
 	useTree(item.content);
-	const handler = getContentHandler(item, shapeProps?.sizeOverride);
+	const overrideSize = contentProps?.sizeOverride ?? contentProps?.textWidthOverride;
+	const handler = getContentHandler(item, overrideSize);
 
 	if (handler.type === "shape" && isShape(item)) {
 		return (
 			<ShapeView
 				key={objectIdNumber(item.content)}
 				shape={item.content}
-				sizeOverride={shapeProps?.sizeOverride}
+				sizeOverride={contentProps?.sizeOverride}
 			/>
 		);
 	}
 	if (handler.type === "note" && Tree.is(item.content, Note)) {
 		return <NoteView key={objectIdNumber(item.content)} note={item.content} />;
+	}
+	if (handler.type === "text" && Tree.is(item.content, TextBlock)) {
+		return (
+			<TextView
+				key={objectIdNumber(item.content)}
+				text={item.content}
+				widthOverride={contentProps?.textWidthOverride}
+			/>
+		);
 	}
 	if (handler.type === "table" && Tree.is(item.content, FluidTable)) {
 		return <TableView key={objectIdNumber(item.content)} fluidTable={item.content} />;
@@ -183,6 +195,162 @@ export function ContentElement({
 		return <GroupView key={objectIdNumber(item.content)} item={item} />;
 	}
 	return <></>;
+}
+
+export function TextResizeHandles({
+	item,
+	padding,
+	onResizeEnd,
+	zoom,
+	groupOffsetX = 0,
+	groupOffsetY = 0,
+}: {
+	item: Item;
+	padding: number;
+	onResizeEnd?: () => void;
+	zoom?: number;
+	groupOffsetX?: number;
+	groupOffsetY?: number;
+}) {
+	if (!Tree.is(item.content, TextBlock)) return null;
+	const text = item.content;
+	useTree(text);
+	const presence = useContext(PresenceContext);
+	const [activeHandle, setActiveHandle] = useState<"left" | "right" | null>(null);
+	const scale = zoom ?? 1;
+	const startRef = useRef({
+		width: text.width,
+		pointerX: 0,
+		absX: item.x + groupOffsetX,
+		absY: item.y + groupOffsetY,
+	});
+
+	const beginResize = (side: "left" | "right", e: React.PointerEvent<HTMLDivElement>) => {
+		e.stopPropagation();
+		e.preventDefault();
+		setActiveHandle(side);
+		try {
+			(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+		} catch {
+			/* unsupported */
+		}
+		const absX = item.x + groupOffsetX;
+		const absY = item.y + groupOffsetY;
+		startRef.current = {
+			width: text.width,
+			pointerX: e.clientX,
+			absX,
+			absY,
+		};
+		presence.resize.setResizing({ id: item.id, x: absX, y: absY, size: text.width });
+		document.documentElement.dataset.manipulating = "1";
+		const move = (ev: PointerEvent) => {
+			const deltaPx = ev.clientX - startRef.current.pointerX;
+			const delta = deltaPx / scale;
+			let width = startRef.current.width;
+			let left = startRef.current.absX;
+			if (side === "right") {
+				width = clampTextWidth(startRef.current.width + delta);
+			} else {
+				width = clampTextWidth(startRef.current.width - delta);
+				left = startRef.current.absX + (startRef.current.width - width);
+			}
+			presence.resize.setResizing({
+				id: item.id,
+				x: left,
+				y: startRef.current.absY,
+				size: width,
+			});
+		};
+		const up = () => {
+			setActiveHandle(null);
+			document.removeEventListener("pointermove", move);
+			try {
+				(e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+			} catch {
+				/* ignore */
+			}
+			delete document.documentElement.dataset.manipulating;
+			const r = presence.resize.state.local;
+			if (r && r.id === item.id) {
+				Tree.runTransaction(item, () => {
+					text.width = clampTextWidth(r.size);
+					item.x = r.x - groupOffsetX;
+					item.y = r.y - groupOffsetY;
+				});
+			}
+			presence.resize.clearResizing();
+			onResizeEnd?.();
+			const canvasEl = document.getElementById("canvas") as
+				| (SVGSVGElement & { dataset: DOMStringMap })
+				| null;
+			if (canvasEl) canvasEl.dataset.suppressClearUntil = String(Date.now() + 150);
+		};
+		document.addEventListener("pointermove", move);
+		document.addEventListener("pointerup", up, { once: true });
+	};
+
+	const handleBase = (side: "left" | "right") => {
+		const offset = (activeHandle === side ? 10 : 8) * scale;
+		const wrapperSize = 120 * scale;
+		const handleSize = (activeHandle === side ? 30 : 26) * scale;
+		const position: React.CSSProperties = {
+			position: "absolute",
+			top: "50%",
+			transform: "translateY(-50%)",
+			width: wrapperSize,
+			height: wrapperSize,
+			pointerEvents: "auto",
+			touchAction: "none",
+			cursor: "ew-resize",
+			zIndex: 1000,
+		};
+		if (side === "left") {
+			position.left = -padding - offset;
+			position.marginLeft = -wrapperSize / 2;
+		} else {
+			position.right = -padding - offset;
+			position.marginRight = -wrapperSize / 2;
+		}
+		return {
+			wrapper: position,
+			handle: {
+				position: "absolute" as const,
+				width: handleSize,
+				height: handleSize,
+				borderRadius: 9999,
+				background: "#0f172a",
+				top: "50%",
+				left: "50%",
+				transform: "translate(-50%, -50%)",
+				boxShadow: "0 4px 12px rgba(15, 23, 42, 0.35)",
+				border: "2px solid #f8fafc",
+				pointerEvents: "none" as const,
+			},
+		};
+	};
+
+	const Handle = ({ side }: { side: "left" | "right" }) => {
+		const styles = handleBase(side);
+		return (
+			<div
+				style={styles.wrapper}
+				onPointerDown={(e) => beginResize(side, e)}
+				data-resize-handle
+				data-text-resize-handle={side}
+				className={`text-resize-handle text-resize-handle-${side}`}
+			>
+				<div style={styles.handle} />
+			</div>
+		);
+	};
+
+	return (
+		<>
+			<Handle side="left" />
+			<Handle side="right" />
+		</>
+	);
 }
 
 // ============================================================================
@@ -207,7 +375,10 @@ export function ItemView(props: {
 	const presence = useContext(PresenceContext);
 	const layout = useContext(LayoutContext);
 	const [selected, setSelected] = useState(presence.itemSelection.testSelection({ id: item.id }));
-	const [shapeProps, setShapeProps] = useState<{ sizeOverride?: number }>({});
+	const [contentProps, setContentProps] = useState<{
+		sizeOverride?: number;
+		textWidthOverride?: number;
+	}>({});
 	const dragRef = useRef<DragState | null>(null);
 	// (offset ref removed in delta-based drag implementation)
 	const intrinsic = useRef({ w: 0, h: 0 });
@@ -302,27 +473,40 @@ export function ItemView(props: {
 		(d: DragAndRotatePackage) => {
 			if (!d) return;
 
+			const overrideSize = contentProps.sizeOverride ?? contentProps.textWidthOverride;
+			const handler = getContentHandler(item, overrideSize);
+
+			const ensureDimensions = () => {
+				if (handler.type === "shape") {
+					const size = handler.getSize();
+					return {
+						width: intrinsic.current.w || size,
+						height: intrinsic.current.h || size,
+					};
+				}
+				return {
+					width: intrinsic.current.w,
+					height: intrinsic.current.h,
+				};
+			};
+
 			// Check if this item itself is being dragged
 			if (d.id === item.id) {
-				// Ephemeral (presence) update: we optimistically render the new position
-				// immediately for smooth remote & local collaborative movement. Commit to
-				// the authoritative Fluid tree only on pointerup / drag end.
-
-				// Presence coordinates are now in absolute canvas space
 				setView((v) => ({
 					...v,
 					left: d.x,
 					top: d.y,
-					transform: getContentHandler(item).getRotationTransform(d.rotation),
+					transform: handler.getRotationTransform(d.rotation),
 				}));
-				const handler = getContentHandler(item, shapeProps.sizeOverride);
-				const w = intrinsic.current.w || handler.getSize();
-				const h = intrinsic.current.h || handler.getSize();
-				// Update the spatial index (layout) so hit-testing / selection overlays can
-				// track live motion. This uses either measured intrinsic size (for table /
-				// note) or shape size. Only performed if dimensions are known.
-				if (w && h)
-					layout.set(item.id, { left: d.x, top: d.y, right: d.x + w, bottom: d.y + h });
+				const { width, height } = ensureDimensions();
+				if (width && height) {
+					layout.set(item.id, {
+						left: d.x,
+						top: d.y,
+						right: d.x + width,
+						bottom: d.y + height,
+					});
+				}
 				return;
 			}
 
@@ -330,20 +514,17 @@ export function ItemView(props: {
 			if (parentGroup) {
 				const groupContainer = Tree.parent(parentGroup);
 				if (groupContainer && Tree.is(groupContainer, Item) && d.id === groupContainer.id) {
-					// Parent group is being dragged - calculate new absolute position
 					const newGroupX = d.x;
 					const newGroupY = d.y;
 
 					let itemOffsetX: number;
 					let itemOffsetY: number;
 
-					// If grid view is enabled, calculate grid position instead of using stored x/y
 					if (isGroupGridEnabled(parentGroup)) {
 						const offset = getGroupChildOffset(parentGroup, item);
 						itemOffsetX = offset.x;
 						itemOffsetY = offset.y;
 					} else {
-						// Free layout: use stored x/y
 						itemOffsetX = relativeOffsetRef.current.x;
 						itemOffsetY = relativeOffsetRef.current.y;
 					}
@@ -351,7 +532,6 @@ export function ItemView(props: {
 					const newAbsoluteX = newGroupX + itemOffsetX;
 					const newAbsoluteY = newGroupY + itemOffsetY;
 
-					// In grid view, force rotation to 0 (visual only)
 					const displayRotation = isGroupGridEnabled(parentGroup) ? 0 : item.rotation;
 					const transform =
 						itemType(item) === "table" ? "rotate(0)" : `rotate(${displayRotation}deg)`;
@@ -360,36 +540,49 @@ export function ItemView(props: {
 						...v,
 						left: newAbsoluteX,
 						top: newAbsoluteY,
-						transform: transform,
+						transform,
 					}));
-					const handler = getContentHandler(item, shapeProps.sizeOverride);
-					const w = intrinsic.current.w || handler.getSize();
-					const h = intrinsic.current.h || handler.getSize();
-					if (w && h) {
+					const { width, height } = ensureDimensions();
+					if (width && height) {
 						layout.set(item.id, {
 							left: newAbsoluteX,
 							top: newAbsoluteY,
-							right: newAbsoluteX + w,
-							bottom: newAbsoluteY + h,
+							right: newAbsoluteX + width,
+							bottom: newAbsoluteY + height,
 						});
 					}
 				}
 			}
 		},
-		[item.id, parentGroup, shapeProps.sizeOverride, layout]
+		[item.id, parentGroup, contentProps.sizeOverride, contentProps.textWidthOverride, layout]
 	);
 	const applyResize = (r: ResizePackage | null) => {
-		if (r && r.id === item.id && getContentHandler(item).canResize()) {
-			// During a resize we shift the item's (x,y) so that scaling occurs around
-			// the geometric center, keeping the visual center stationary while edges
-			// expand / contract uniformly.
-
-			// Presence coordinates are in absolute canvas space
+		const handler = getContentHandler(item);
+		if (r && r.id === item.id && handler.canResize()) {
 			setView((v) => ({ ...v, left: r.x, top: r.y }));
-			setShapeProps({ sizeOverride: r.size });
-			intrinsic.current = { w: r.size, h: r.size };
-			layout.set(item.id, { left: r.x, top: r.y, right: r.x + r.size, bottom: r.y + r.size });
-		} else if (!r || r.id !== item.id) setShapeProps({});
+			if (isShape(item)) {
+				const size = r.size;
+				setContentProps({ sizeOverride: size });
+				intrinsic.current = { w: size, h: size };
+				layout.set(item.id, { left: r.x, top: r.y, right: r.x + size, bottom: r.y + size });
+			} else if (Tree.is(item.content, TextBlock)) {
+				const width = clampTextWidth(r.size);
+				setContentProps({ textWidthOverride: width });
+				intrinsic.current = {
+					w: width,
+					h: intrinsic.current.h || item.content.fontSize * 2.4 + 32,
+				};
+				const height = intrinsic.current.h || item.content.fontSize * 2.4 + 32;
+				layout.set(item.id, {
+					left: r.x,
+					top: r.y,
+					right: r.x + width,
+					bottom: r.y + height,
+				});
+			}
+		} else if (!r || r.id !== item.id) {
+			setContentProps({});
+		}
 	};
 	usePresenceManager(
 		presence.drag as PresenceManager<DragAndRotatePackage>,
@@ -538,11 +731,18 @@ export function ItemView(props: {
 				delete document.documentElement.dataset.manipulating;
 			} else {
 				// Click - focus note if applicable
-				if (itemType(item) === "note" && !st.interactiveStart) {
-					const host = (e.currentTarget as HTMLElement).querySelector(
-						"textarea"
-					) as HTMLTextAreaElement | null;
-					host?.focus();
+				if (!st.interactiveStart) {
+					if (itemType(item) === "note") {
+						const host = (e.currentTarget as HTMLElement).querySelector(
+							"textarea"
+						) as HTMLTextAreaElement | null;
+						host?.focus();
+					} else if (itemType(item) === "text") {
+						const host = (e.currentTarget as HTMLElement).querySelector(
+							".text-item-textarea"
+						) as HTMLTextAreaElement | null;
+						host?.focus();
+					}
 				}
 			}
 			dragRef.current = null;
@@ -635,11 +835,18 @@ export function ItemView(props: {
 				delete document.documentElement.dataset.manipulating;
 			} else {
 				// Touch tap - focus note if applicable
-				if (itemType(item) === "note" && !st.interactiveStart) {
-					const host = (e.currentTarget as HTMLElement).querySelector(
-						"textarea"
-					) as HTMLTextAreaElement | null;
-					host?.focus();
+				if (!st.interactiveStart) {
+					if (itemType(item) === "note") {
+						const host = (e.currentTarget as HTMLElement).querySelector(
+							"textarea"
+						) as HTMLTextAreaElement | null;
+						host?.focus();
+					} else if (itemType(item) === "text") {
+						const host = (e.currentTarget as HTMLElement).querySelector(
+							".text-item-textarea"
+						) as HTMLTextAreaElement | null;
+						host?.focus();
+					}
 				}
 			}
 			dragRef.current = null;
@@ -665,7 +872,8 @@ export function ItemView(props: {
 		const measure = () => {
 			let w = 0,
 				h = 0;
-			const handler = getContentHandler(item, shapeProps.sizeOverride);
+			const overrideSize = contentProps.sizeOverride ?? contentProps.textWidthOverride;
+			const handler = getContentHandler(item, overrideSize);
 			if (handler.type === "shape") {
 				const size = handler.getSize();
 				w = size;
@@ -708,7 +916,8 @@ export function ItemView(props: {
 		item.content,
 		view.left,
 		view.top,
-		shapeProps.sizeOverride,
+		contentProps.sizeOverride,
+		contentProps.textWidthOverride,
 		props.zoom,
 		layout,
 		props.onMeasured,
@@ -766,7 +975,7 @@ export function ItemView(props: {
 			<SelectionBox
 				selected={!!selected}
 				item={item}
-				onResizeEnd={() => setShapeProps({})}
+				onResizeEnd={() => setContentProps({})}
 				visualHidden={!!hideSelectionControls}
 				zoom={logicalZoom}
 				absoluteX={displayX}
@@ -775,7 +984,7 @@ export function ItemView(props: {
 				groupOffsetY={groupOffsetY}
 				parentGroup={parentGroup}
 			/>
-			<ContentElement item={item} shapeProps={shapeProps} />
+			<ContentElement item={item} contentProps={contentProps} />
 		</div>
 	);
 }
@@ -837,6 +1046,7 @@ export function SelectionBox({
 		</>
 	);
 }
+
 export function SelectionControls({
 	item,
 	padding,
@@ -859,10 +1069,10 @@ export function SelectionControls({
 	parentGroup?: Group;
 }) {
 	useTree(item);
-	const allowRotate = itemType(item) !== "table" && itemType(item) !== "group";
+	const handler = getContentHandler(item);
+	const allowRotate = handler.canRotate();
 	const isInGridView = isGroupGridEnabled(parentGroup);
 
-	// Don't show handles for items in grid-view groups
 	if (isInGridView) {
 		return null;
 	}
@@ -872,14 +1082,26 @@ export function SelectionControls({
 			{allowRotate && (
 				<RotateHandle item={item} zoom={zoom} absoluteX={absoluteX} absoluteY={absoluteY} />
 			)}
-			<CornerResizeHandles
-				item={item}
-				padding={padding}
-				onResizeEnd={onResizeEnd}
-				zoom={zoom}
-				groupOffsetX={groupOffsetX}
-				groupOffsetY={groupOffsetY}
-			/>
+			{handler.type === "shape" && (
+				<CornerResizeHandles
+					item={item}
+					padding={padding}
+					onResizeEnd={onResizeEnd}
+					zoom={zoom}
+					groupOffsetX={groupOffsetX}
+					groupOffsetY={groupOffsetY}
+				/>
+			)}
+			{handler.type === "text" && (
+				<TextResizeHandles
+					item={item}
+					padding={padding}
+					onResizeEnd={onResizeEnd}
+					zoom={zoom}
+					groupOffsetX={groupOffsetX}
+					groupOffsetY={groupOffsetY}
+				/>
+			)}
 		</>
 	);
 }

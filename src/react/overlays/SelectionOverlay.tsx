@@ -30,7 +30,7 @@
 //
 // ============================================================================
 import React from "react";
-import { FluidTable, Item, Shape } from "../../schema/appSchema.js";
+import { FluidTable, Item, Shape, TextBlock } from "../../schema/appSchema.js";
 import { Tree } from "fluid-framework";
 import { isGroupGridEnabled } from "../layout/groupGrid.js";
 import { resolveItemTransform } from "../utils/presenceGeometry.js";
@@ -59,11 +59,17 @@ export function SelectionOverlay(props: {
 	// Prefer live resize presence for THIS item (if shape) so the overlay matches
 	// the ephemeral size mid-drag. Layout cache may update a frame later.
 	const resizePresence = presence.resize.state?.local;
-	if (resizePresence && resizePresence.id === item.id && Tree.is(item.content, Shape)) {
-		w = resizePresence.size;
-		h = resizePresence.size;
-		left = resizePresence.x;
-		top = resizePresence.y;
+	if (resizePresence && resizePresence.id === item.id) {
+		if (Tree.is(item.content, Shape)) {
+			w = resizePresence.size;
+			h = resizePresence.size;
+			left = resizePresence.x;
+			top = resizePresence.y;
+		} else if (Tree.is(item.content, TextBlock)) {
+			w = resizePresence.size;
+			left = resizePresence.x;
+			top = resizePresence.y;
+		}
 	}
 	if (w === 0 || h === 0) {
 		const container = document.querySelector(
@@ -91,6 +97,7 @@ export function SelectionOverlay(props: {
 
 	const isTable = Tree.is(item.content, FluidTable);
 	const isShape = Tree.is(item.content, Shape);
+	const isText = Tree.is(item.content, TextBlock);
 	// Tables and items in grid view groups should have no rotation
 	if (isTable || parentGroupGridEnabled) angle = 0;
 
@@ -305,6 +312,74 @@ export function SelectionOverlay(props: {
 							</g>
 						));
 					})()}
+				</g>
+			)}
+			{isText && (
+				<g>
+					{(["left", "right"] as const).map((side) => {
+						const handleSize = 8 / zoom;
+						const half = handleSize / 2;
+						const touchSize = isIOS ? Math.max(36 / zoom, handleSize) : handleSize;
+						const touchHalf = touchSize / 2;
+						const x = side === "left" ? -outwardLocal : w + outwardLocal;
+						const y = h / 2;
+						const dispatchToHandle = (nativeEvent: PointerEvent) => {
+							const container = document.querySelector(
+								`[data-item-id='${item.id}']`
+							) as HTMLElement | null;
+							const handle = container?.querySelector(
+								`[data-text-resize-handle='${side}']`
+							) as HTMLElement | null;
+							if (handle) {
+								const evt = new PointerEvent("pointerdown", {
+									bubbles: true,
+									cancelable: true,
+									clientX: nativeEvent.clientX,
+									clientY: nativeEvent.clientY,
+									pointerType: nativeEvent.pointerType,
+									pointerId: nativeEvent.pointerId,
+									button: 0,
+									buttons: 1,
+									isPrimary: nativeEvent.isPrimary,
+								});
+								handle.dispatchEvent(evt);
+							}
+						};
+						return (
+							<g key={side}>
+								<rect
+									x={x - half}
+									y={y - half}
+									width={handleSize}
+									height={handleSize}
+									fill="#3b82f6"
+									stroke="none"
+									cursor="ew-resize"
+									onClick={(e) => e.stopPropagation()}
+									onPointerDown={(e) => {
+										e.stopPropagation();
+										dispatchToHandle(e.nativeEvent);
+									}}
+								/>
+								{isIOS && touchSize > handleSize && (
+									<rect
+										x={x - touchHalf}
+										y={y - touchHalf}
+										width={touchSize}
+										height={touchSize}
+										fill="transparent"
+										stroke="none"
+										cursor="ew-resize"
+										onClick={(e) => e.stopPropagation()}
+										onPointerDown={(e) => {
+											e.stopPropagation();
+											dispatchToHandle(e.nativeEvent);
+										}}
+									/>
+								)}
+							</g>
+						);
+					})}
 				</g>
 			)}
 		</g>

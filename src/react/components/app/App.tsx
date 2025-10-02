@@ -45,6 +45,7 @@ import { useAppKeyboardShortcuts } from "../../hooks/useAppKeyboardShortcuts.js"
 import { PaneContext } from "../../contexts/PaneContext.js";
 import { AppToolbar } from "../toolbar/AppToolbar.js";
 import { InkPresenceManager } from "../../../presence/Interfaces/InkManager.js";
+import { TEXT_DEFAULT_COLOR, TEXT_DEFAULT_FONT_SIZE } from "../../../constants/text.js";
 // Removed circle ink creation; ink tool toggles freehand drawing.
 
 // Context for comment pane actions
@@ -89,6 +90,12 @@ export function ReactApp(props: {
 	const [inkWidth, setInkWidth] = useState<number>(4);
 	const [shapeColor, setShapeColor] = useState<string>("#FF0000"); // Default to red
 	const [shapeFilled, setShapeFilled] = useState<boolean>(true);
+	const [textColor, setTextColor] = useState<string>(TEXT_DEFAULT_COLOR);
+	const [textFontSize, setTextFontSize] = useState<number>(TEXT_DEFAULT_FONT_SIZE);
+	const [textBold, setTextBold] = useState<boolean>(false);
+	const [textItalic, setTextItalic] = useState<boolean>(false);
+	const [textUnderline, setTextUnderline] = useState<boolean>(false);
+	const [textStrikethrough, setTextStrikethrough] = useState<boolean>(false);
 
 	// Keep linter satisfied until pan is surfaced elsewhere
 	useEffect(() => {
@@ -197,6 +204,12 @@ export function ReactApp(props: {
 		zoom,
 		shapeColor,
 		shapeFilled,
+		textColor,
+		textFontSize,
+		textBold,
+		textItalic,
+		textUnderline,
+		textStrikethrough,
 		selectedItemId,
 		selectedItemIds,
 		selectedColumnId,
@@ -264,6 +277,18 @@ export function ReactApp(props: {
 						onShapeColorChange={setShapeColor}
 						shapeFilled={shapeFilled}
 						onShapeFilledChange={setShapeFilled}
+						textColor={textColor}
+						onTextColorChange={setTextColor}
+						textFontSize={textFontSize}
+						onTextFontSizeChange={setTextFontSize}
+						textBold={textBold}
+						onTextBoldChange={setTextBold}
+						textItalic={textItalic}
+						onTextItalicChange={setTextItalic}
+						textUnderline={textUnderline}
+						onTextUnderlineChange={setTextUnderline}
+						textStrikethrough={textStrikethrough}
+						onTextStrikethroughChange={setTextStrikethrough}
 					/>
 					{/* </div> */}
 					<div className="canvas-container flex h-[calc(100vh-96px)] w-full flex-row ">

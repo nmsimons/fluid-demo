@@ -17,6 +17,11 @@ import {
 	getParentItems,
 } from "../../utils/itemsHelpers.js";
 import { centerLastItem } from "../../utils/centerItem.js";
+import {
+	TEXT_DEFAULT_COLOR,
+	TEXT_DEFAULT_FONT_SIZE,
+	TEXT_DEFAULT_WIDTH,
+} from "../../constants/text.js";
 
 /**
  * Props interface for the useAppKeyboardShortcuts hook.
@@ -29,6 +34,12 @@ export interface UseAppKeyboardShortcutsProps {
 	zoom?: number;
 	shapeColor?: string;
 	shapeFilled?: boolean;
+	textColor?: string;
+	textFontSize?: number;
+	textBold?: boolean;
+	textItalic?: boolean;
+	textUnderline?: boolean;
+	textStrikethrough?: boolean;
 	selectedItemId: string;
 	selectedItemIds: string[];
 	selectedColumnId: string;
@@ -58,6 +69,7 @@ export interface UseAppKeyboardShortcutsProps {
  * - T: Create triangle shape
  * - R: Create star shape
  * - N: Create note item
+ * - X: Create text item
  * - B: Create table
  * - A: Select all items
  * - Delete: Delete selected items
@@ -86,6 +98,12 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 		zoom,
 		shapeColor,
 		shapeFilled,
+		textColor,
+		textFontSize,
+		textBold,
+		textItalic,
+		textUnderline,
+		textStrikethrough,
 	} = props;
 
 	return [
@@ -156,6 +174,36 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 			action: () => {
 				view.root.items.createNoteItem(canvasSize, users.getMyself().value.id);
 				centerLastItem(view.root.items, pan, zoom, props.canvasSize, 180, 120);
+			},
+		},
+		{
+			key: "x",
+			action: () => {
+				const width = TEXT_DEFAULT_WIDTH;
+				const color = textColor ?? TEXT_DEFAULT_COLOR;
+				const fontSize = textFontSize ?? TEXT_DEFAULT_FONT_SIZE;
+				const bold = textBold ?? false;
+				const italic = textItalic ?? false;
+				const underline = textUnderline ?? false;
+				const strikethrough = textStrikethrough ?? false;
+				view.root.items.createTextItem(canvasSize, {
+					color,
+					fontSize,
+					bold,
+					italic,
+					underline,
+					strikethrough,
+					width,
+				});
+				const estimatedHeight = fontSize * 2.8 + 32;
+				centerLastItem(
+					view.root.items,
+					pan,
+					zoom,
+					props.canvasSize,
+					width,
+					estimatedHeight
+				);
 			},
 		},
 		{

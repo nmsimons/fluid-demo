@@ -5,9 +5,9 @@
 
 import React, { JSX } from "react";
 import { TreeView, Tree } from "fluid-framework";
-import { App, Shape } from "../../../schema/appSchema.js";
+import { App, Shape, TextBlock } from "../../../schema/appSchema.js";
 import { undoRedo } from "../../../undo/undo.js";
-import { isShape, isTable } from "../../../utils/contentHandlers.js";
+import { isShape, isTable, isText } from "../../../utils/contentHandlers.js";
 import { findItemsByIds } from "../../../utils/itemsHelpers.js";
 import { TypedSelection } from "../../../presence/selection.js";
 import {
@@ -18,6 +18,7 @@ import {
 	NewNoteButton,
 	NewTableButton,
 } from "./buttons/CreationButtons.js";
+import { NewTextButton, TextFormattingMenu } from "./buttons/TextButtons.js";
 import { VoteButton, DeleteButton, DuplicateButton, CommentButton } from "./buttons/EditButtons.js";
 import { ShapeColorPicker } from "./buttons/ShapeButtons.js";
 import {
@@ -74,6 +75,18 @@ export interface AppToolbarProps {
 	onShapeColorChange: (c: string) => void;
 	shapeFilled: boolean;
 	onShapeFilledChange: (filled: boolean) => void;
+	textColor: string;
+	onTextColorChange: (color: string) => void;
+	textFontSize: number;
+	onTextFontSizeChange: (size: number) => void;
+	textBold: boolean;
+	onTextBoldChange: (value: boolean) => void;
+	textItalic: boolean;
+	onTextItalicChange: (value: boolean) => void;
+	textUnderline: boolean;
+	onTextUnderlineChange: (value: boolean) => void;
+	textStrikethrough: boolean;
+	onTextStrikethroughChange: (value: boolean) => void;
 }
 
 export function AppToolbar(props: AppToolbarProps): JSX.Element {
@@ -106,7 +119,23 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 		onShapeColorChange,
 		shapeFilled,
 		onShapeFilledChange,
+		textColor,
+		onTextColorChange,
+		textFontSize,
+		onTextFontSizeChange,
+		textBold,
+		onTextBoldChange,
+		textItalic,
+		onTextItalicChange,
+		textUnderline,
+		onTextUnderlineChange,
+		textStrikethrough,
+		onTextStrikethroughChange,
 	} = props;
+
+	const selectedItems = findItemsByIds(view.root.items, selectedItemIds);
+	const selectedShapes = selectedItems.filter(isShape).map((item) => item.content as Shape);
+	const selectedTexts = selectedItems.filter(isText).map((item) => item.content as TextBlock);
 
 	// Zoom slider logic moved into ZoomMenu component.
 
@@ -175,23 +204,43 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 					shapeColor={shapeColor}
 					shapeFilled={shapeFilled}
 				/>
-				{(() => {
-					// Get selected items and filter for shapes
-					const selectedItems = findItemsByIds(view.root.items, selectedItemIds);
-					const selectedShapes = selectedItems
-						.filter((item) => isShape(item))
-						.map((item) => item.content as Shape);
-
-					return (
-						<ShapeColorPicker
-							color={shapeColor}
-							onColorChange={onShapeColorChange}
-							filled={shapeFilled}
-							onFilledChange={onShapeFilledChange}
-							selectedShapes={selectedShapes}
-						/>
-					);
-				})()}
+				<ShapeColorPicker
+					color={shapeColor}
+					onColorChange={onShapeColorChange}
+					filled={shapeFilled}
+					onFilledChange={onShapeFilledChange}
+					selectedShapes={selectedShapes}
+				/>
+			</ToolbarGroup>
+			<ToolbarDivider />
+			<ToolbarGroup>
+				<NewTextButton
+					items={view.root.items}
+					canvasSize={canvasSize}
+					pan={pan}
+					zoom={zoom}
+					textColor={textColor}
+					fontSize={textFontSize}
+					bold={textBold}
+					italic={textItalic}
+					underline={textUnderline}
+					strikethrough={textStrikethrough}
+				/>
+				<TextFormattingMenu
+					color={textColor}
+					onColorChange={onTextColorChange}
+					fontSize={textFontSize}
+					onFontSizeChange={onTextFontSizeChange}
+					bold={textBold}
+					onBoldChange={onTextBoldChange}
+					italic={textItalic}
+					onItalicChange={onTextItalicChange}
+					underline={textUnderline}
+					onUnderlineChange={onTextUnderlineChange}
+					strikethrough={textStrikethrough}
+					onStrikethroughChange={onTextStrikethroughChange}
+					selectedTexts={selectedTexts}
+				/>
 			</ToolbarGroup>
 			<ToolbarDivider />
 			{/* Note and Table creation buttons */}
@@ -210,7 +259,6 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 				/>
 			</ToolbarGroup>
 			{(() => {
-				const selectedItems = findItemsByIds(view.root.items, selectedItemIds);
 				const hasSelectedItems = selectedItems.length > 0;
 				const singleSelectedItem = selectedItems.length === 1 ? selectedItems[0] : null;
 

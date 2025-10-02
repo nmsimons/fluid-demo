@@ -48,6 +48,8 @@ export function centerLastItem(
 		const handler = getContentHandler(lastItem);
 		if (handler.type === "shape") {
 			itemWidth = itemHeight = handler.getSize();
+		} else if (handler.type === "text") {
+			itemWidth = handler.getSize();
 		}
 	} catch {
 		// Fallback: try direct size access (for compatibility)

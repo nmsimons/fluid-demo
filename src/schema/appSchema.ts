@@ -11,6 +11,12 @@ import {
 	SHAPE_SPAWN_MAX_SIZE,
 } from "../constants/shape.js";
 import {
+	TEXT_DEFAULT_FONT_SIZE,
+	TEXT_DEFAULT_COLOR,
+	TEXT_DEFAULT_WIDTH,
+} from "../constants/text.js";
+import { clampTextWidth } from "../utils/text.js";
+import {
 	TreeViewConfiguration,
 	Tree,
 	TreeNodeFromImplicitAllowedTypes,
@@ -188,6 +194,39 @@ export class Note extends sf.object(
 		}),
 	}
 ) {}
+
+export class TextBlock extends sf.object("TextBlock", {
+	text: sf.required(sf.string, {
+		metadata: { description: "The textual content displayed within the text item" },
+	}),
+	color: sf.required(sf.string, {
+		metadata: {
+			description: `The color of the text as a hexadecimal RGB string, e.g. "#111827"`,
+		},
+	}),
+	width: sf.required(sf.number, {
+		metadata: {
+			description: "The configured width of the text container in pixels",
+		},
+	}),
+	fontSize: sf.required(sf.number, {
+		metadata: {
+			description: "The font size in pixels used to render the text",
+		},
+	}),
+	bold: sf.optional(sf.boolean, {
+		metadata: { description: "Whether the text is rendered bold" },
+	}),
+	italic: sf.optional(sf.boolean, {
+		metadata: { description: "Whether the text is rendered italic" },
+	}),
+	underline: sf.optional(sf.boolean, {
+		metadata: { description: "Whether the text is underlined" },
+	}),
+	strikethrough: sf.optional(sf.boolean, {
+		metadata: { description: "Whether the text is rendered with a strikethrough" },
+	}),
+}) {}
 
 export type typeDefinition = TreeNodeFromImplicitAllowedTypes<typeof schemaTypes>;
 const schemaTypes = [sf.string, sf.number, sf.boolean, DateTime, Vote] as const;
@@ -398,7 +437,7 @@ export class Item extends sf.objectRecursive("Item", {
 	}),
 	comments: Comments,
 	votes: Vote,
-	content: [Shape, Note, FluidTable, Group],
+	content: [Shape, Note, TextBlock, FluidTable, Group],
 }) {
 	delete(): void {
 		const parent = Tree.parent(this);
@@ -566,6 +605,17 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 				text: item.content.text,
 				author: item.content.author,
 			});
+		} else if (Tree.is(item.content, TextBlock)) {
+			duplicatedContent = new TextBlock({
+				text: item.content.text,
+				color: item.content.color,
+				width: clampTextWidth(item.content.width),
+				fontSize: item.content.fontSize,
+				bold: item.content.bold ?? false,
+				italic: item.content.italic ?? false,
+				underline: item.content.underline ?? false,
+				strikethrough: item.content.strikethrough ?? false,
+			});
 		} else if (Tree.is(item.content, FluidTable)) {
 			// Create new columns with new IDs and mapping
 			const columnIdMapping: Record<string, string> = {};
@@ -633,6 +683,44 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 		return Math.floor(Math.random() * (max - min + 1)) + min;
 	}
 
+	createTextItem(
+		canvasSize: { width: number; height: number },
+		props?: {
+			text?: string;
+			color?: string;
+			width?: number;
+			fontSize?: number;
+			bold?: boolean;
+			italic?: boolean;
+			underline?: boolean;
+			strikethrough?: boolean;
+		}
+	): Item {
+		const width = clampTextWidth(props?.width ?? TEXT_DEFAULT_WIDTH);
+		const textBlock = new TextBlock({
+			text: props?.text ?? "New text",
+			color: props?.color ?? TEXT_DEFAULT_COLOR,
+			width,
+			fontSize: props?.fontSize ?? TEXT_DEFAULT_FONT_SIZE,
+			bold: props?.bold ?? false,
+			italic: props?.italic ?? false,
+			underline: props?.underline ?? false,
+			strikethrough: props?.strikethrough ?? false,
+		});
+
+		const item = new Item({
+			id: crypto.randomUUID(),
+			x: this.getRandomNumber(0, canvasSize.width - width),
+			y: this.getRandomNumber(0, canvasSize.height - 200),
+			comments: [],
+			votes: new Vote({ votes: [] }),
+			content: textBlock,
+			rotation: 0,
+		});
+
+		this.insertAtEnd(item);
+		return item;
+	}
 	/**
 	 * Move an item forward one position (higher z-order)
 	 */
