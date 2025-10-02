@@ -35,6 +35,8 @@ export function NoteText(props: { note: Note }): JSX.Element {
 
 	return (
 		<Textarea
+			id="msg"
+			name="msg"
 			className="w-full h-full"
 			rows={4}
 			value={note.text}
