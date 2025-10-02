@@ -34,6 +34,7 @@ import { FluidTable, Item, Shape, TextBlock } from "../../schema/appSchema.js";
 import { Tree } from "fluid-framework";
 import { isGroupGridEnabled } from "../layout/groupGrid.js";
 import { resolveItemTransform } from "../utils/presenceGeometry.js";
+import { useOptionalTree, useTree } from "../hooks/useTree.js";
 
 export function SelectionOverlay(props: {
 	item: Item;
@@ -42,15 +43,19 @@ export function SelectionOverlay(props: {
 	zoom: number;
 }): JSX.Element | null {
 	const { item, layout, presence, zoom } = props;
+	useTree(item);
+	useTree(item.content);
 	const transform = resolveItemTransform({
 		item,
 		layout,
 		presence,
 		includeParentGroupDrag: true,
 	});
+	const parentGroupInfo = transform.parentGroupInfo;
+	useOptionalTree(parentGroupInfo?.group);
+	useOptionalTree(parentGroupInfo?.groupItem);
 
 	let { left, top, width: w, height: h, angle } = transform;
-	const parentGroupInfo = transform.parentGroupInfo;
 	const parentGroupGridEnabled = parentGroupInfo
 		? isGroupGridEnabled(parentGroupInfo.group)
 		: false;

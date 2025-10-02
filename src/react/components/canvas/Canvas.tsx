@@ -251,6 +251,9 @@ export function Canvas(props: {
 		window.addEventListener("layout-changed", handler);
 		return () => window.removeEventListener("layout-changed", handler);
 	}, []);
+	useEffect(() => {
+		setLayoutVersion((v) => v + 1);
+	}, [itemsVersion]);
 
 	const commentPaneVisible =
 		paneContext.panes.find((p) => p.name === "comments")?.visible ?? false;

@@ -31,6 +31,7 @@ import React from "react";
 import { FluidTable, Item } from "../../schema/appSchema.js";
 import { Tree } from "fluid-framework";
 import { resolveItemTransform } from "../utils/presenceGeometry.js";
+import { useOptionalTree, useTree } from "../hooks/useTree.js";
 
 export function PresenceOverlay(props: {
 	item: Item;
@@ -54,12 +55,17 @@ export function PresenceOverlay(props: {
 		onToggleExpanded,
 		zoom,
 	} = props;
+	useTree(item);
+	useTree(item.content);
 	const transform = resolveItemTransform({
 		item,
 		layout,
 		presence,
 		includeParentGroupDrag: true,
 	});
+	const parentGroupInfo = transform.parentGroupInfo;
+	useOptionalTree(parentGroupInfo?.group);
+	useOptionalTree(parentGroupInfo?.groupItem);
 
 	if (!transform.layoutBounds) return null;
 

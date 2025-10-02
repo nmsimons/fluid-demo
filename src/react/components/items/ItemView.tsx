@@ -83,6 +83,7 @@ import {
 	isGroup,
 	isShape,
 } from "../../../utils/contentHandlers.js";
+import { scheduleLayoutInvalidation } from "../../utils/layoutInvalidation.js";
 
 // ============================================================================
 // Helpers
@@ -506,6 +507,7 @@ export function ItemView(props: {
 						right: d.x + width,
 						bottom: d.y + height,
 					});
+					scheduleLayoutInvalidation();
 				}
 				return;
 			}
@@ -550,6 +552,7 @@ export function ItemView(props: {
 							right: newAbsoluteX + width,
 							bottom: newAbsoluteY + height,
 						});
+						scheduleLayoutInvalidation();
 					}
 				}
 			}
@@ -565,6 +568,7 @@ export function ItemView(props: {
 				setContentProps({ sizeOverride: size });
 				intrinsic.current = { w: size, h: size };
 				layout.set(item.id, { left: r.x, top: r.y, right: r.x + size, bottom: r.y + size });
+				scheduleLayoutInvalidation();
 			} else if (Tree.is(item.content, TextBlock)) {
 				const width = clampTextWidth(r.size);
 				setContentProps({ textWidthOverride: width });
@@ -579,6 +583,7 @@ export function ItemView(props: {
 					right: r.x + width,
 					bottom: r.y + height,
 				});
+				scheduleLayoutInvalidation();
 			}
 		} else if (!r || r.id !== item.id) {
 			setContentProps({});
@@ -902,6 +907,7 @@ export function ItemView(props: {
 				right: view.left + w,
 				bottom: view.top + h,
 			});
+			scheduleLayoutInvalidation();
 			props.onMeasured?.(item, { width: w, height: h });
 		};
 		measure();

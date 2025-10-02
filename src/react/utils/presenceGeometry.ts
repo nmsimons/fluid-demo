@@ -121,8 +121,9 @@ export function resolveItemTransform(options: ResolveItemTransformOptions): Item
 		left = activeDrag.x;
 		top = activeDrag.y;
 	} else if (includeParentGroupDrag && parentGroupInfo) {
+		const parentGridEnabled = isGroupGridEnabled(parentGroupInfo.group);
 		const { drag: groupDrag } = getGroupActivePosition(parentGroupInfo.groupItem, presence);
-		if (groupDrag || !layoutBounds) {
+		if (groupDrag || parentGridEnabled || !layoutBounds) {
 			const pos = getGroupChildAbsolutePosition({
 				child: item,
 				groupInfo: parentGroupInfo,

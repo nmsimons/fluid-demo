@@ -71,6 +71,29 @@ export function useTree(node: TreeNode, deep: boolean = false): number {
 	return inval;
 }
 
+/**
+ * Variant of {@link useTree} that tolerates nullish nodes. The hook simply
+ * skips subscribing when the provided node is undefined, letting callers safely
+ * observe optional relationships (for example parent groups) without breaking
+ * React's rules of hooks.
+ */
+export function useOptionalTree(node: TreeNode | null | undefined, deep: boolean = false): number {
+	const [inval, setInval] = useState(0);
+
+	useEffect(() => {
+		if (!node) {
+			return;
+		}
+		const eventType = deep ? "treeChanged" : "nodeChanged";
+		const unsubscribe = Tree.on(node, eventType, () => {
+			setInval((prev) => prev + 1);
+		});
+		return unsubscribe;
+	}, [node, deep]);
+
+	return inval;
+}
+
 /** Global counter for generating unique object IDs */
 let counter = 0;
 
