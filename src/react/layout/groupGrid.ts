@@ -2,6 +2,7 @@ import { Group, Item } from "../../schema/appSchema.js";
 
 export interface GroupGridLayoutConfig {
 	columns: number;
+	rows: number;
 	padding: number;
 	itemWidth: number;
 	itemHeight: number;
@@ -11,6 +12,7 @@ export interface GroupGridLayoutConfig {
 
 export const DEFAULT_GROUP_GRID_LAYOUT: GroupGridLayoutConfig = {
 	columns: 3,
+	rows: 3,
 	padding: 40,
 	itemWidth: 200,
 	itemHeight: 150,
@@ -18,8 +20,25 @@ export const DEFAULT_GROUP_GRID_LAYOUT: GroupGridLayoutConfig = {
 	gapY: 80,
 };
 
-export function getGroupGridConfig(): GroupGridLayoutConfig {
-	return DEFAULT_GROUP_GRID_LAYOUT;
+export function getGroupGridConfig(group?: Group): GroupGridLayoutConfig {
+	if (!group) {
+		return { ...DEFAULT_GROUP_GRID_LAYOUT };
+	}
+
+	const itemCount = group.items.length;
+	if (itemCount <= 0) {
+		return { ...DEFAULT_GROUP_GRID_LAYOUT, rows: 1 };
+	}
+
+	const idealColumns = Math.ceil(Math.sqrt(itemCount));
+	const columns = Math.max(1, idealColumns);
+	const rows = Math.max(1, Math.ceil(itemCount / columns));
+
+	return {
+		...DEFAULT_GROUP_GRID_LAYOUT,
+		columns,
+		rows,
+	};
 }
 
 export function getGridAlignmentAdjustment(

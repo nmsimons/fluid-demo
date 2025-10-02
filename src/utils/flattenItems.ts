@@ -61,7 +61,7 @@ function flattenItem(
 		const useGridView = isGroupGridEnabled(group);
 
 		if (useGridView) {
-			const config = getGroupGridConfig();
+			const config = getGroupGridConfig(group);
 			const adjustment = getGridAlignmentAdjustment(group, config);
 
 			group.items.forEach((childItem, index) => {
