@@ -14,11 +14,11 @@ import {
 	MenuList,
 	MenuDivider,
 	ToolbarButton,
+	ToggleButton,
+	SpinButton,
 	Label,
-	SwatchPicker,
-	renderSwatchPickerGrid,
-	MenuGroup,
-	MenuItem,
+	Toolbar,
+	ToolbarGroup,
 } from "@fluentui/react-components";
 import { TooltipButton } from "../../forms/Button.js";
 import { Items, TextBlock } from "../../../../schema/appSchema.js";
@@ -30,6 +30,13 @@ import {
 	TEXT_FONT_SIZES,
 } from "../../../../constants/text.js";
 import { Tree } from "@fluidframework/tree";
+import { ColorPicker } from "./ShapeButtons.js";
+
+const TEXT_COLOR_SWATCH_ITEMS = TEXT_COLOR_SWATCHES.map((value) => ({
+	value,
+	color: value,
+	borderColor: "#1f2937",
+}));
 
 export function NewTextButton(props: {
 	items: Items;
@@ -154,6 +161,8 @@ export function TextFormattingMenu(props: {
 	const italicState = aggregateBoolean((t) => t.italic, italic);
 	const underlineState = aggregateBoolean((t) => t.underline, underline);
 	const strikeState = aggregateBoolean((t) => t.strikethrough, strikethrough);
+	const minFontSize = React.useMemo(() => Math.min(...TEXT_FONT_SIZES), []);
+	const maxFontSize = React.useMemo(() => Math.max(...TEXT_FONT_SIZES), []);
 	const hasMixedState =
 		colorState.mixed ||
 		sizeState.mixed ||
@@ -177,9 +186,10 @@ export function TextFormattingMenu(props: {
 	};
 
 	const handleFontSizeChange = (next: number) => {
-		onFontSizeChange(next);
+		const clamped = Math.min(maxFontSize, Math.max(minFontSize, Math.round(next)));
+		onFontSizeChange(clamped);
 		applyToSelection((text) => {
-			text.fontSize = next;
+			text.fontSize = clamped;
 		});
 	};
 
@@ -240,6 +250,8 @@ export function TextFormattingMenu(props: {
 	);
 
 	const triggerLabel = hasMixedState ? "Text formatting (mixed selection)" : "Text formatting";
+	const fontSizeLabelId = React.useId();
+	const mixedSizeMessageId = React.useId();
 
 	const mixedBadge = hasMixedState ? (
 		<span
@@ -270,119 +282,117 @@ export function TextFormattingMenu(props: {
 			</MenuTrigger>
 			<MenuPopover>
 				<MenuList>
-					<Label>Text color</Label>
-					<SwatchPicker
-						layout="grid"
-						shape="rounded"
-						size="small"
-						aria-label="Text color picker"
-						selectedValue={colorState.value}
-						onSelectionChange={(_, d) => {
-							if (d.selectedValue) {
-								handleColorChange(d.selectedValue);
-							}
-						}}
-					>
-						{renderSwatchPickerGrid({
-							items: TEXT_COLOR_SWATCHES.map((value) => ({
-								value,
-								color: value,
-								borderColor: "#1f2937",
-							})),
-							columnCount: 6,
-						})}
-					</SwatchPicker>
+					<ColorPicker
+						label="Text color"
+						ariaLabel="Text color picker"
+						selected={colorState.value}
+						setColor={handleColorChange}
+						columnCount={6}
+						shape="circular"
+						swatches={TEXT_COLOR_SWATCH_ITEMS}
+					/>
 					{colorState.mixed && (
 						<span className="text-xs text-gray-500 block mt-1">
 							Mixed selection — applying will update all selected text items
 						</span>
 					)}
 					<MenuDivider />
-					<MenuGroup>
-						{TEXT_FONT_SIZES.map((size) => {
-							const active = sizeState.value === size;
-							return (
-								<MenuItem
-									key={size}
-									role="menuitemradio"
-									aria-checked={active}
-									onClick={() => handleFontSizeChange(size)}
-									style={{ fontWeight: active ? 600 : 400 }}
-								>
-									{size}px {active ? "•" : ""}
-								</MenuItem>
-							);
-						})}
-					</MenuGroup>
+					<div style={{ display: "grid", gap: 4 }}>
+						<Label>Font size</Label>
+						<SpinButton
+							width={"100%"}
+							value={sizeState.value}
+							min={minFontSize}
+							max={maxFontSize}
+							step={1}
+							appearance="filled-darker"
+							aria-labelledby={fontSizeLabelId}
+							aria-describedby={sizeState.mixed ? mixedSizeMessageId : undefined}
+							onChange={(_event, data) => {
+								const parsedValue =
+									typeof data.value === "number"
+										? data.value
+										: Number.parseInt(data.displayValue ?? "", 10);
+								if (!Number.isNaN(parsedValue)) {
+									handleFontSizeChange(parsedValue);
+								}
+							}}
+						/>
+					</div>
 					{sizeState.mixed && (
-						<span className="text-xs text-gray-500 block mt-1">
+						<span
+							id={mixedSizeMessageId}
+							className="text-xs text-gray-500 block mt-1"
+							aria-live="polite"
+						>
 							Mixed selection — applying will update all selected text items
 						</span>
 					)}
 					<MenuDivider />
-					<MenuItem
-						icon={<TextBoldRegular />}
-						role="menuitemcheckbox"
-						aria-checked={boldState.value}
-						onClick={() =>
-							handleBooleanChange(!boldState.value, onBoldChange, (text, value) => {
-								text.bold = value;
-							})
-						}
-						style={{ fontWeight: boldState.value ? 700 : 500 }}
-					>
-						Bold {boldState.value ? "✓" : ""}
-					</MenuItem>
-					<MenuItem
-						icon={<TextItalicRegular />}
-						role="menuitemcheckbox"
-						aria-checked={italicState.value}
-						onClick={() =>
-							handleBooleanChange(
-								!italicState.value,
-								onItalicChange,
-								(text, value) => {
-									text.italic = value;
-								}
-							)
-						}
-						style={{ fontStyle: italicState.value ? "italic" : "normal" }}
-					>
-						Italic {italicState.value ? "✓" : ""}
-					</MenuItem>
-					<MenuItem
-						icon={<TextUnderlineRegular />}
-						role="menuitemcheckbox"
-						aria-checked={underlineState.value}
-						onClick={() =>
-							handleBooleanChange(
-								!underlineState.value,
-								onUnderlineChange,
-								(text, value) => {
-									text.underline = value;
-								}
-							)
-						}
-						style={{ textDecoration: underlineState.value ? "underline" : "none" }}
-					>
-						Underline {underlineState.value ? "✓" : ""}
-					</MenuItem>
-					<MenuItem
-						icon={<TextStrikethroughRegular />}
-						role="menuitemcheckbox"
-						aria-checked={strikeState.value}
-						onClick={() =>
-							handleBooleanChange(
-								!strikeState.value,
-								onStrikethroughChange,
-								(text, value) => {
-									text.strikethrough = value;
-								}
-							)
-						}
-					>
-						Strikethrough {strikeState.value ? "✓" : ""}
-					</MenuItem>
+					<Toolbar aria-label="Text style toggles">
+						<ToolbarGroup>
+							<ToggleButton
+								appearance="subtle"
+								aria-label="Toggle bold"
+								icon={<TextBoldRegular />}
+								checked={boldState.value}
+								onClick={() => {
+									handleBooleanChange(
+										!boldState.value,
+										onBoldChange,
+										(text, value) => {
+											text.bold = value;
+										}
+									);
+								}}
+							/>
+							<ToggleButton
+								appearance="subtle"
+								aria-label="Toggle italic"
+								icon={<TextItalicRegular />}
+								checked={italicState.value}
+								onClick={() => {
+									handleBooleanChange(
+										!italicState.value,
+										onItalicChange,
+										(text, value) => {
+											text.italic = value;
+										}
+									);
+								}}
+							/>
+							<ToggleButton
+								appearance="subtle"
+								aria-label="Toggle underline"
+								icon={<TextUnderlineRegular />}
+								checked={underlineState.value}
+								onClick={() => {
+									handleBooleanChange(
+										!underlineState.value,
+										onUnderlineChange,
+										(text, value) => {
+											text.underline = value;
+										}
+									);
+								}}
+							/>
+							<ToggleButton
+								appearance="subtle"
+								aria-label="Toggle strikethrough"
+								icon={<TextStrikethroughRegular />}
+								checked={strikeState.value}
+								onClick={() => {
+									handleBooleanChange(
+										!strikeState.value,
+										onStrikethroughChange,
+										(text, value) => {
+											text.strikethrough = value;
+										}
+									);
+								}}
+							/>
+						</ToolbarGroup>
+					</Toolbar>
 				</MenuList>
 			</MenuPopover>
 		</Menu>

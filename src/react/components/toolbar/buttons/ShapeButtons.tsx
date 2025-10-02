@@ -3,7 +3,7 @@
  * Licensed under the MIT License.
  */
 
-import React, { JSX } from "react";
+import React, { JSX, ComponentProps } from "react";
 import { Circle24Filled, ChevronDownRegular } from "@fluentui/react-icons";
 import {
 	Menu,
@@ -121,21 +121,58 @@ export function ShapeColorPicker(props: {
 }
 
 // Color Picker
-export function ColorPicker(props: {
+type SwatchPickerProps = ComponentProps<typeof SwatchPicker>;
+
+export type ColorPickerSwatch = {
+	value: string;
+	color?: string;
+	borderColor?: string;
+};
+
+export interface ColorPickerProps {
 	setColor: (color: string) => void;
 	selected: string | undefined;
 	ariaLabel: string;
 	columnCount?: number;
 	label: string;
-}): JSX.Element {
-	const { setColor, selected, ariaLabel, columnCount = 5, label } = props;
+	swatches?: ColorPickerSwatch[];
+	layout?: SwatchPickerProps["layout"];
+	shape?: SwatchPickerProps["shape"];
+	size?: SwatchPickerProps["size"];
+}
+
+export function ColorPicker(props: ColorPickerProps): JSX.Element {
+	const {
+		setColor,
+		selected,
+		ariaLabel,
+		columnCount = 5,
+		label,
+		swatches,
+		layout = "grid",
+		shape = "circular",
+		size = "small",
+	} = props;
+
+	const pickerItems = (
+		swatches ??
+		SHAPE_COLORS.map((value) => ({
+			value,
+			color: value,
+			borderColor: "black",
+		}))
+	).map(({ value, color, borderColor }) => ({
+		value,
+		color: color ?? value,
+		borderColor,
+	}));
 	return (
 		<>
 			<Label>{label}</Label>
 			<SwatchPicker
-				layout="grid"
-				shape="circular"
-				size="small"
+				layout={layout}
+				shape={shape}
+				size={size}
 				aria-label={ariaLabel}
 				selectedValue={selected}
 				onSelectionChange={(_, d) => {
@@ -143,11 +180,7 @@ export function ColorPicker(props: {
 				}}
 			>
 				{renderSwatchPickerGrid({
-					items: SHAPE_COLORS.map((color) => ({
-						value: color,
-						color,
-						borderColor: "black",
-					})),
+					items: pickerItems,
 					columnCount: columnCount,
 				})}
 			</SwatchPicker>

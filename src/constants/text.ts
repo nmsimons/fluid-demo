@@ -1,8 +1,8 @@
 export const TEXT_DEFAULT_WIDTH = 240;
 export const TEXT_MIN_WIDTH = 120;
-export const TEXT_MAX_WIDTH = 640;
+export const TEXT_MAX_WIDTH = 1024;
 export const TEXT_DEFAULT_FONT_SIZE = 20;
-export const TEXT_FONT_SIZES = [14, 16, 18, 20, 24, 30, 36];
+export const TEXT_FONT_SIZES = [14, 16, 18, 20, 24, 30, 36, 48, 60, 72, 84];
 export const TEXT_DEFAULT_COLOR = "#111827";
 
 export const TEXT_COLOR_SWATCHES = [
