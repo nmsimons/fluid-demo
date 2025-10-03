@@ -377,7 +377,7 @@ export function ItemView(props: {
 	parentGroup?: Group;
 }) {
 	const { item, index, hideSelectionControls, absoluteX, absoluteY, parentGroup } = props;
-	
+
 	useTree(item);
 	const presence = useContext(PresenceContext);
 	const layout = useContext(LayoutContext);
@@ -492,13 +492,14 @@ export function ItemView(props: {
 	// Presence listeners
 	const applyDrag = React.useCallback(
 		(d: DragAndRotatePackage) => {
-		if (!d) return;
+			if (!d) return;
 
-		const currentItem = itemRef.current;
-		const currentItemId = currentItem.id;
-		
-		const overrideSize = contentProps.sizeOverride ?? contentProps.textWidthOverride;
-		const handler = getContentHandler(currentItem, overrideSize);			const ensureDimensions = () => {
+			const currentItem = itemRef.current;
+			const currentItemId = currentItem.id;
+
+			const overrideSize = contentProps.sizeOverride ?? contentProps.textWidthOverride;
+			const handler = getContentHandler(currentItem, overrideSize);
+			const ensureDimensions = () => {
 				if (handler.type === "shape") {
 					const size = handler.getSize();
 					return {
@@ -511,7 +512,7 @@ export function ItemView(props: {
 					height: intrinsic.current.h,
 				};
 			};
-			
+
 			// Check if this item itself is being dragged
 			if (d.id === currentItemId) {
 				setView((v) => ({
@@ -520,7 +521,7 @@ export function ItemView(props: {
 					top: d.y,
 					transform: handler.getRotationTransform(d.rotation),
 				}));
-				
+
 				const { width, height } = ensureDimensions();
 				if (width && height) {
 					layout.set(currentItemId, {
@@ -556,9 +557,13 @@ export function ItemView(props: {
 					const newAbsoluteX = newGroupX + itemOffsetX;
 					const newAbsoluteY = newGroupY + itemOffsetY;
 
-					const displayRotation = isGroupGridEnabled(parentGroup) ? 0 : currentItem.rotation;
+					const displayRotation = isGroupGridEnabled(parentGroup)
+						? 0
+						: currentItem.rotation;
 					const transform =
-						itemType(currentItem) === "table" ? "rotate(0)" : `rotate(${displayRotation}deg)`;
+						itemType(currentItem) === "table"
+							? "rotate(0)"
+							: `rotate(${displayRotation}deg)`;
 
 					setView((v) => ({
 						...v,
@@ -590,7 +595,12 @@ export function ItemView(props: {
 				const size = r.size;
 				setContentProps({ sizeOverride: size });
 				intrinsic.current = { w: size, h: size };
-				layout.set(currentItem.id, { left: r.x, top: r.y, right: r.x + size, bottom: r.y + size });
+				layout.set(currentItem.id, {
+					left: r.x,
+					top: r.y,
+					right: r.x + size,
+					bottom: r.y + size,
+				});
 				scheduleLayoutInvalidation();
 			} else if (Tree.is(currentItem.content, TextBlock)) {
 				const width = clampTextWidth(r.size);
@@ -786,7 +796,7 @@ export function ItemView(props: {
 				const nextY = st.startItemY + dy;
 				st.latestItemX = nextX;
 				st.latestItemY = nextY;
-				
+
 				// Simply update presence - applyDrag will handle the visual update
 				const currentItem = itemRef.current;
 				presence.drag.setDragging({
@@ -802,10 +812,10 @@ export function ItemView(props: {
 		const finish = () => {
 			const st = dragRef.current;
 			if (!st) return;
-			
+
 			if (st.started) {
 				const currentItem = itemRef.current;
-				
+
 				// Don't allow dragging items in grid-view groups
 				if (isGroupGridEnabled(parentGroup)) {
 					presence.drag.clearDragging();
@@ -822,7 +832,7 @@ export function ItemView(props: {
 					currentItem.x = finalX;
 					currentItem.y = finalY;
 				});
-				
+
 				// Clear presence state
 				presence.drag.clearDragging();
 				delete document.documentElement.dataset.manipulating;
@@ -835,11 +845,11 @@ export function ItemView(props: {
 					focusEditableElement(null, e.currentTarget as HTMLElement);
 				}
 			}
-			
+
 			dragRef.current = null;
 			document.removeEventListener("mousemove", docMove);
 			document.removeEventListener("mouseup", finish);
-			
+
 			// Clear the global cleanup reference
 			if (activeMouseDragCleanup === cleanup) {
 				activeMouseDragCleanup = null;
@@ -941,7 +951,7 @@ export function ItemView(props: {
 				const nextY = st.startItemY + dy;
 				st.latestItemX = nextX;
 				st.latestItemY = nextY;
-				
+
 				// Simply update presence - applyDrag will handle the visual update
 				const currentItem = itemRef.current;
 				presence.drag.setDragging({
@@ -957,10 +967,10 @@ export function ItemView(props: {
 		const finish = () => {
 			const st = dragRef.current;
 			if (!st) return;
-			
+
 			if (st.started) {
 				const currentItem = itemRef.current;
-				
+
 				// Don't allow dragging items in grid-view groups
 				if (isGroupGridEnabled(parentGroup)) {
 					presence.drag.clearDragging();
@@ -977,7 +987,7 @@ export function ItemView(props: {
 					currentItem.x = finalX;
 					currentItem.y = finalY;
 				});
-				
+
 				// Clear presence state
 				presence.drag.clearDragging();
 				delete document.documentElement.dataset.manipulating;
@@ -993,7 +1003,7 @@ export function ItemView(props: {
 			document.removeEventListener("touchmove", docMove);
 			document.removeEventListener("touchend", finish);
 			document.removeEventListener("touchcancel", finish);
-			
+
 			// Clear the global cleanup reference
 			if (activeTouchDragCleanup === cleanup) {
 				activeTouchDragCleanup = null;
@@ -1314,7 +1324,9 @@ export function RotateHandle({
 		});
 		// Global manipulating flag as additional safeguard against background pan
 		document.documentElement.dataset.manipulating = "1";
-		const el = document.querySelector(`[data-item-id="${currentItem.id}"]`) as HTMLElement | null;
+		const el = document.querySelector(
+			`[data-item-id="${currentItem.id}"]`
+		) as HTMLElement | null;
 		if (!el) return;
 		const move = (ev: PointerEvent) => {
 			// Rotation math:
