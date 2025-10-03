@@ -251,6 +251,115 @@ npx playwright test --trace on
 npx playwright show-report
 ```
 
+## Item Interactions Test Suite
+
+### Overview
+
+The `ItemInteractions.test.ts` file contains comprehensive end-to-end tests for all drag, rotate, resize, and focus operations. These tests validate the complex interaction behaviors that were recently fixed and enhanced.
+
+### Test Categories in ItemInteractions.test.ts
+
+#### 1. Drag Operations
+
+Tests for dragging items (shapes, notes) across the canvas:
+
+- **Basic shape dragging**: Validates that shapes can be dragged to new positions
+- **Note dragging**: Ensures sticky notes can be dragged without interfering with text editing
+- **Click vs drag detection**: Verifies that simple clicks don't trigger drag operations
+- **Single item drag**: Tests the global cleanup mechanism to ensure only one item drags at a time (no ghost drags)
+- **Movement threshold**: Validates that small mouse movements below the threshold don't start drag operations
+
+**Key Scenarios:**
+
+- Drag a shape 150px horizontally and 100px vertically
+- Verify position changes are accurate (within 10px tolerance)
+- Ensure clicking without moving doesn't change position
+- Prevent multiple items from dragging simultaneously
+
+#### 2. Rotation Operations
+
+Tests for rotating shapes using rotation handles:
+
+- **Shape rotation**: Validates rotation handle functionality
+- **No drag on rotate**: Ensures clicking/dragging rotation handles doesn't start a drag operation
+- **Transform application**: Verifies that rotation applies CSS transforms correctly
+
+#### 3. Resize Operations
+
+Tests for resizing shapes and text blocks using resize handles:
+
+- **Shape resizing**: Validates resize handles can scale shapes
+- **No drag on resize**: Ensures resize operations don't trigger drag
+- **Center stability**: Verifies shapes grow from center during resize
+- **Text block resizing**: Tests width adjustment for text elements
+
+#### 4. Focus and Text Interaction
+
+Tests for textarea focus behavior and text editing:
+
+- **Textarea focus**: Validates clicking on textarea properly focuses it
+- **Type without drag**: Ensures typing in textarea doesn't start drag operations
+- **Pre-focused interaction**: Tests clicking in already-focused textarea
+- **Focus after selection**: Validates focus works even after item selection
+- **Cursor position**: Ensures cursor position is maintained during clicks
+
+**Critical Bug Fix Validation:**
+
+These tests specifically validate the fix for the React synthetic event recycling issue where `e.currentTarget` became null, breaking textarea focus.
+
+#### 5. Grid View Restrictions
+
+Placeholder tests for grid view mode:
+
+- **No handles in grid view**: Validates resize/rotate handles are hidden
+- **No drag in grid view**: Ensures items can't be dragged in grid view mode
+
+_Note: Currently skipped as grid view creation requires additional UI implementation._
+
+#### 6. Multi-selection
+
+Tests for selecting multiple items with Ctrl+click functionality.
+
+#### 7. Edge Cases and Error Handling
+
+Tests for robustness:
+
+- **Rapid interactions**: Validates rapid click-drag sequences don't crash
+- **Mouse up outside canvas**: Tests drag completion when mouse is released outside canvas
+- **Mode switching**: Ensures smooth transitions between rotate, resize, and drag modes
+
+#### 8. Performance and Stability
+
+Tests for performance with multiple items (5+ items) to ensure interactions remain smooth.
+
+### Bug Fixes Validated
+
+These tests specifically validate the following bug fixes:
+
+1. **Ghost drag bug**: Fixed by implementing global cleanup mechanism (`activeMouseDragCleanup`)
+2. **Resize/rotate causing drag**: Fixed by lazy listener initialization (only attach drag listeners on first mousemove)
+3. **Textarea focus broken**: Fixed by storing `containerElement` in drag state instead of using recycled `e.currentTarget`
+4. **Grid view handles showing**: Fixed by adding `parentGroupGridEnabled` checks to SelectionOverlay
+
+### Running Interaction Tests
+
+```bash
+# Run only interaction tests
+npx playwright test ItemInteractions.test.ts
+
+# Run specific test category
+npx playwright test ItemInteractions.test.ts -g "Drag Operations"
+
+# Run in UI mode (interactive)
+npx playwright test ItemInteractions.test.ts --ui
+
+# Run in headed mode (watch browser)
+npx playwright test ItemInteractions.test.ts --headed
+
+# Debug a specific test
+npx playwright test ItemInteractions.test.ts --debug -g "should focus textarea"
+```
+
 ## Contributing
 
 When adding new features to the application:
@@ -260,3 +369,4 @@ When adding new features to the application:
 3. **Test accessibility** aspects with keyboard navigation
 4. **Verify performance** with larger datasets
 5. **Update this documentation** with any new test patterns
+6. **Add interaction tests** to `ItemInteractions.test.ts` for drag/resize/rotate features
