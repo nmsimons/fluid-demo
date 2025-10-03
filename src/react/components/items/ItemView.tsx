@@ -655,6 +655,7 @@ export function ItemView(props: {
 		interactiveStart: boolean;
 		initialTarget: HTMLElement | null;
 		focusTarget: HTMLTextAreaElement | null;
+		containerElement: HTMLElement;
 	}
 
 	const DRAG_THRESHOLD_PX = 6;
@@ -772,6 +773,7 @@ export function ItemView(props: {
 			interactiveStart: interactive,
 			initialTarget: textAreaTarget ?? null,
 			focusTarget: needsFocusAfterClick ? textAreaTarget : null,
+			containerElement: e.currentTarget as HTMLElement,
 		};
 
 		let listenersAdded = false;
@@ -866,14 +868,13 @@ export function ItemView(props: {
 				delete document.documentElement.dataset.manipulating;
 			} else {
 				// Handle focus for text elements when clicking (not dragging)
-				const { focusTarget } = st;
+				const { focusTarget, containerElement } = st;
 				if (focusTarget && focusTarget.isConnected) {
-					focusEditableElement(focusTarget, e.currentTarget as HTMLElement);
+					focusEditableElement(focusTarget, containerElement);
 				} else if (!st.interactiveStart) {
-					focusEditableElement(null, e.currentTarget as HTMLElement);
+					focusEditableElement(null, containerElement);
 				}
 			}
-
 			dragRef.current = null;
 			document.removeEventListener("mousemove", initialMove);
 			if (listenersAdded) {
@@ -958,6 +959,7 @@ export function ItemView(props: {
 			interactiveStart: interactive,
 			initialTarget: textAreaTarget ?? null,
 			focusTarget: needsFocusAfterTap ? textAreaTarget : null,
+			containerElement: e.currentTarget as HTMLElement,
 		};
 
 		const docMove = (ev: TouchEvent) => {
@@ -1035,11 +1037,11 @@ export function ItemView(props: {
 				presence.drag.clearDragging();
 				delete document.documentElement.dataset.manipulating;
 			} else {
-				const { focusTarget } = st;
+				const { focusTarget, containerElement } = st;
 				if (focusTarget && focusTarget.isConnected) {
-					focusEditableElement(focusTarget, e.currentTarget as HTMLElement);
+					focusEditableElement(focusTarget, containerElement);
 				} else if (!st.interactiveStart) {
-					focusEditableElement(null, e.currentTarget as HTMLElement);
+					focusEditableElement(null, containerElement);
 				}
 			}
 			dragRef.current = null;
