@@ -67,19 +67,6 @@ export function ShapeColorPicker(props: {
 		onFilledChange(nextFilled);
 	};
 
-	const selectedFillStates = selectedShapes.map((shape) => shape.filled !== false);
-	const allFilled = selectedFillStates.length > 0 && selectedFillStates.every((state) => state);
-	const allOutline = selectedFillStates.length > 0 && selectedFillStates.every((state) => !state);
-	const hasMixedSelection = selectedFillStates.length > 0 && !(allFilled || allOutline);
-	const effectiveFilled =
-		selectedFillStates.length > 0
-			? allFilled
-				? true
-				: allOutline
-					? false
-					: undefined
-			: filled;
-
 	return (
 		<Menu>
 			<MenuTrigger>
@@ -97,23 +84,7 @@ export function ShapeColorPicker(props: {
 						label="Shape Color"
 					/>
 					<MenuDivider></MenuDivider>
-					<ShapeFillToggle
-						color={color}
-						onChange={handleFilledChange}
-						state={effectiveFilled === undefined ? "mixed" : effectiveFilled}
-					/>
-					{hasMixedSelection && (
-						<span
-							style={{
-								display: "block",
-								fontSize: "12px",
-								color: "#616161",
-								marginTop: "4px",
-							}}
-						>
-							Mixed selection — applying a choice updates all selected shapes
-						</span>
-					)}
+					<ShapeFillToggle color={color} onChange={handleFilledChange} state={filled} />
 				</MenuList>
 			</MenuPopover>
 		</Menu>

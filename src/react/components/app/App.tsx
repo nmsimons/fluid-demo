@@ -46,6 +46,8 @@ import { PaneContext } from "../../contexts/PaneContext.js";
 import { AppToolbar } from "../toolbar/AppToolbar.js";
 import { InkPresenceManager } from "../../../presence/Interfaces/InkManager.js";
 import { TEXT_DEFAULT_COLOR, TEXT_DEFAULT_FONT_SIZE } from "../../../constants/text.js";
+import { findItemById } from "../../../utils/itemsHelpers.js";
+import { isShape } from "../../../utils/contentHandlers.js";
 // Removed circle ink creation; ink tool toggles freehand drawing.
 
 // Context for comment pane actions
@@ -109,6 +111,56 @@ export function ReactApp(props: {
 	const [canUndo, setCanUndo] = useState(false);
 	const [canRedo, setCanRedo] = useState(false);
 	const commentPaneRef = useRef<CommentPaneRef>(null);
+	const shapeSelectionAnalysis = (() => {
+		let firstColor: string | null = null;
+		let firstFilled: boolean | null = null;
+		const signatureParts: string[] = [];
+
+		for (const id of selectedItemIds) {
+			const item = findItemById(view.root.items, id);
+			if (!item) {
+				signatureParts.push(id);
+				continue;
+			}
+			if (isShape(item)) {
+				const shape = item.content;
+				const filled = shape.filled !== false;
+				signatureParts.push(`${id}:${shape.color}:${filled ? "1" : "0"}`);
+				if (firstColor === null) {
+					firstColor = shape.color;
+					firstFilled = filled;
+				}
+			} else {
+				signatureParts.push(id);
+			}
+		}
+
+		return {
+			color: firstColor,
+			filled: firstFilled,
+			signature: signatureParts.join("|") || "",
+		};
+	})();
+	const {
+		color: firstSelectedShapeColor,
+		filled: firstSelectedShapeFilled,
+		signature: selectedShapesSignature,
+	} = shapeSelectionAnalysis;
+
+	useEffect(() => {
+		if (firstSelectedShapeColor !== null && firstSelectedShapeColor !== shapeColor) {
+			setShapeColor(firstSelectedShapeColor);
+		}
+		if (firstSelectedShapeFilled !== null && firstSelectedShapeFilled !== shapeFilled) {
+			setShapeFilled(firstSelectedShapeFilled);
+		}
+	}, [
+		selectedShapesSignature,
+		firstSelectedShapeColor,
+		firstSelectedShapeFilled,
+		shapeColor,
+		shapeFilled,
+	]);
 
 	// Function to open comment pane and focus input
 	const openCommentPaneAndFocus = (itemId: string) => {
