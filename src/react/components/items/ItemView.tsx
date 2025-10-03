@@ -463,6 +463,16 @@ export function ItemView(props: {
 		};
 	}, []);
 
+	useEffect(() => {
+		if (selected) return;
+		const textArea = ref.current?.querySelector(
+			"[data-item-editable]"
+		) as HTMLTextAreaElement | null;
+		if (textArea && document.activeElement === textArea) {
+			textArea.blur();
+		}
+	}, [selected]);
+
 	// Store the relative offset (item.x, item.y) in a ref so it's stable during drag
 	const relativeOffsetRef = React.useRef({ x: item.x, y: item.y });
 	React.useEffect(() => {
@@ -616,6 +626,8 @@ export function ItemView(props: {
 		startCanvasX: number;
 		startCanvasY: number;
 		interactiveStart: boolean;
+		initialTarget: HTMLElement | null;
+		focusTarget: HTMLTextAreaElement | null;
 	}
 
 	// Shared logic for both mouse and touch
@@ -663,10 +675,37 @@ export function ItemView(props: {
 		return { targetEl, interactive, isAnyHandle };
 	};
 
+	const focusEditableElement = (
+		preferred: HTMLTextAreaElement | null,
+		container: HTMLElement
+	) => {
+		const target =
+			preferred && preferred.isConnected
+				? preferred
+				: (container.querySelector("[data-item-editable]") as HTMLTextAreaElement | null);
+		if (!target) return;
+		target.focus();
+		try {
+			const len = target.value.length;
+			target.setSelectionRange(len, len);
+		} catch {
+			// Some editable controls may not support selection APIs
+		}
+	};
+
 	const onMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
 		if (e.button !== 0) return;
 
-		const { interactive } = handleItemInteraction(e, false);
+		const { interactive, targetEl } = handleItemInteraction(e, false);
+		const textAreaTarget = targetEl.closest(
+			"[data-item-editable]"
+		) as HTMLTextAreaElement | null;
+		const textAreaFocused = !!(textAreaTarget && document.activeElement === textAreaTarget);
+		const needsFocusAfterClick = !!(textAreaTarget && !textAreaFocused);
+		if (needsFocusAfterClick) {
+			// Prevent the browser from giving focus immediately; we'll manage focus on click release.
+			e.preventDefault();
+		}
 		const start = coordsCanvas(e);
 
 		// For drag, use absolute display coordinates
@@ -678,12 +717,22 @@ export function ItemView(props: {
 			startCanvasX: start.x,
 			startCanvasY: start.y,
 			interactiveStart: interactive,
+			initialTarget: textAreaTarget ?? null,
+			focusTarget: needsFocusAfterClick ? textAreaTarget : null,
 		};
 
 		const THRESHOLD_BASE = 4;
 		const docMove = (ev: MouseEvent) => {
 			const st = dragRef.current;
 			if (!st) return;
+			if (
+				!st.started &&
+				st.interactiveStart &&
+				st.initialTarget &&
+				document.activeElement === st.initialTarget
+			) {
+				return;
+			}
 			const cur = coordsCanvas(ev);
 			const dx = cur.x - st.startCanvasX;
 			const dy = cur.y - st.startCanvasY;
@@ -735,19 +784,11 @@ export function ItemView(props: {
 				presence.drag.clearDragging();
 				delete document.documentElement.dataset.manipulating;
 			} else {
-				// Click - focus note if applicable
-				if (!st.interactiveStart) {
-					if (itemType(item) === "note") {
-						const host = (e.currentTarget as HTMLElement).querySelector(
-							"textarea"
-						) as HTMLTextAreaElement | null;
-						host?.focus();
-					} else if (itemType(item) === "text") {
-						const host = (e.currentTarget as HTMLElement).querySelector(
-							".text-item-textarea"
-						) as HTMLTextAreaElement | null;
-						host?.focus();
-					}
+				const { focusTarget } = st;
+				if (focusTarget && focusTarget.isConnected) {
+					focusEditableElement(focusTarget, e.currentTarget as HTMLElement);
+				} else if (!st.interactiveStart) {
+					focusEditableElement(null, e.currentTarget as HTMLElement);
 				}
 			}
 			dragRef.current = null;
@@ -764,7 +805,15 @@ export function ItemView(props: {
 		if (e.touches.length !== 1) return;
 
 		const touch = e.touches[0];
-		const { interactive } = handleItemInteraction(e, true);
+		const { interactive, targetEl } = handleItemInteraction(e, true);
+		const textAreaTarget = targetEl.closest(
+			"[data-item-editable]"
+		) as HTMLTextAreaElement | null;
+		const textAreaFocused = !!(textAreaTarget && document.activeElement === textAreaTarget);
+		const needsFocusAfterTap = !!(textAreaTarget && !textAreaFocused);
+		if (needsFocusAfterTap) {
+			e.preventDefault();
+		}
 		const start = coordsCanvas(touch);
 
 		// For drag, use absolute display coordinates
@@ -776,6 +825,8 @@ export function ItemView(props: {
 			startCanvasX: start.x,
 			startCanvasY: start.y,
 			interactiveStart: interactive,
+			initialTarget: textAreaTarget ?? null,
+			focusTarget: needsFocusAfterTap ? textAreaTarget : null,
 		};
 
 		const THRESHOLD_BASE = 4;
@@ -791,6 +842,13 @@ export function ItemView(props: {
 			const dx = cur.x - st.startCanvasX;
 			const dy = cur.y - st.startCanvasY;
 			if (!st.started) {
+				if (
+					st.interactiveStart &&
+					st.initialTarget &&
+					document.activeElement === st.initialTarget
+				) {
+					return;
+				}
 				// Don't allow dragging items in grid-view groups
 				if (isGroupGridEnabled(parentGroup)) return;
 				// Use same threshold for touch to keep behavior consistent
@@ -839,19 +897,11 @@ export function ItemView(props: {
 				presence.drag.clearDragging();
 				delete document.documentElement.dataset.manipulating;
 			} else {
-				// Touch tap - focus note if applicable
-				if (!st.interactiveStart) {
-					if (itemType(item) === "note") {
-						const host = (e.currentTarget as HTMLElement).querySelector(
-							"textarea"
-						) as HTMLTextAreaElement | null;
-						host?.focus();
-					} else if (itemType(item) === "text") {
-						const host = (e.currentTarget as HTMLElement).querySelector(
-							".text-item-textarea"
-						) as HTMLTextAreaElement | null;
-						host?.focus();
-					}
+				const { focusTarget } = st;
+				if (focusTarget && focusTarget.isConnected) {
+					focusEditableElement(focusTarget, e.currentTarget as HTMLElement);
+				} else if (!st.interactiveStart) {
+					focusEditableElement(null, e.currentTarget as HTMLElement);
 				}
 			}
 			dragRef.current = null;

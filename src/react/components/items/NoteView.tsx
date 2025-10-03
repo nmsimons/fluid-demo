@@ -37,7 +37,7 @@ export function NoteText(props: { note: Note }): JSX.Element {
 		<Textarea
 			id="msg"
 			name="msg"
-			className="w-full h-full"
+			className="w-full h-full note-item-textarea"
 			rows={4}
 			value={note.text}
 			onChange={handleChange}
@@ -46,6 +46,7 @@ export function NoteText(props: { note: Note }): JSX.Element {
 			size="large"
 			style={{ resize: "none", backgroundColor: "#feff68" }}
 			autoComplete="off"
+			data-item-editable
 		/>
 	);
 }

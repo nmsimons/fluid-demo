@@ -62,6 +62,7 @@ export function TextView(props: { text: TextBlock; widthOverride?: number }): JS
 				}}
 				onInput={updateHeight}
 				className="text-item-textarea"
+				data-item-editable
 				spellCheck
 				style={{
 					width: "100%",
