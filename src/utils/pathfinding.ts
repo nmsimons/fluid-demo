@@ -2,7 +2,7 @@
  * A* pathfinding algorithm for routing connection lines around obstacles
  */
 
-import type { Point, Rect } from "./connections.js";
+import type { Point, Rect, ConnectionSide } from "./connections.js";
 
 interface Node {
 	x: number;
@@ -211,6 +211,238 @@ function simplifyPath(path: Point[]): Point[] {
 
 		// If not collinear, keep the point
 		if (Math.abs(dx1 * dy2 - dy1 * dx2) > 0.1) {
+			simplified.push(current);
+		}
+	}
+
+	simplified.push(path[path.length - 1]);
+	return simplified;
+}
+
+/**
+ * Generate orthogonal (90-degree only) waypoints around obstacles
+ * Routes using only horizontal and vertical line segments
+ * Exits perpendicular from connection points
+ */
+export function generateOrthogonalWaypoints(
+	start: Point,
+	end: Point,
+	obstacles: Rect[],
+	padding: number = 20,
+	startSide?: ConnectionSide,
+	endSide?: ConnectionSide
+): Point[] {
+	// Calculate perpendicular exit/entry points
+	const exitDistance = padding * 2; // Distance to extend perpendicular from connection point
+
+	// Start point with perpendicular exit
+	let actualStart = start;
+	if (startSide) {
+		switch (startSide) {
+			case "top":
+				actualStart = { x: start.x, y: start.y - exitDistance };
+				break;
+			case "bottom":
+				actualStart = { x: start.x, y: start.y + exitDistance };
+				break;
+			case "left":
+				actualStart = { x: start.x - exitDistance, y: start.y };
+				break;
+			case "right":
+				actualStart = { x: start.x + exitDistance, y: start.y };
+				break;
+		}
+	}
+
+	// End point with perpendicular entry
+	let actualEnd = end;
+	if (endSide) {
+		switch (endSide) {
+			case "top":
+				actualEnd = { x: end.x, y: end.y - exitDistance };
+				break;
+			case "bottom":
+				actualEnd = { x: end.x, y: end.y + exitDistance };
+				break;
+			case "left":
+				actualEnd = { x: end.x - exitDistance, y: end.y };
+				break;
+			case "right":
+				actualEnd = { x: end.x + exitDistance, y: end.y };
+				break;
+		}
+	}
+
+	// Check if direct orthogonal path (H then V or V then H) is clear
+	const hThenV = [actualStart, { x: actualEnd.x, y: actualStart.y }, actualEnd];
+	const vThenH = [actualStart, { x: actualStart.x, y: actualEnd.y }, actualEnd];
+
+	const hThenVClear = checkOrthogonalPath(hThenV, obstacles);
+	const vThenHClear = checkOrthogonalPath(vThenH, obstacles);
+
+	if (hThenVClear && vThenHClear) {
+		// Both work, choose shorter
+		const hDist = Math.abs(actualEnd.x - actualStart.x) + Math.abs(actualEnd.y - actualStart.y);
+		const path = hDist < vThenH.length ? hThenV : vThenH;
+		// Add back the original start/end points
+		return [start, ...path.slice(1, -1), end];
+	} else if (hThenVClear) {
+		return [start, ...hThenV.slice(1, -1), end];
+	} else if (vThenHClear) {
+		return [start, ...vThenH.slice(1, -1), end];
+	}
+
+	// Need to route around obstacles - generate orthogonal waypoints
+	const waypoints: Point[] = [];
+
+	for (const obstacle of obstacles) {
+		// Add orthogonal corner points with padding
+		const left = obstacle.x - padding;
+		const right = obstacle.x + obstacle.width + padding;
+		const top = obstacle.y - padding;
+		const bottom = obstacle.y + obstacle.height + padding;
+
+		// Add edge points for orthogonal routing
+		waypoints.push(
+			{ x: left, y: top },
+			{ x: right, y: top },
+			{ x: right, y: bottom },
+			{ x: left, y: bottom },
+			// Add midpoints for better routing
+			{ x: left, y: actualStart.y },
+			{ x: right, y: actualStart.y },
+			{ x: actualStart.x, y: top },
+			{ x: actualStart.x, y: bottom },
+			{ x: left, y: actualEnd.y },
+			{ x: right, y: actualEnd.y },
+			{ x: actualEnd.x, y: top },
+			{ x: actualEnd.x, y: bottom }
+		);
+	}
+
+	// Find orthogonal path using A* with orthogonal constraint
+	const path = findOrthogonalPath(actualStart, actualEnd, waypoints, obstacles);
+
+	// Add back the original start/end points
+	return [start, ...path.slice(1, -1), end];
+}
+
+/**
+ * Check if an orthogonal path is clear of obstacles
+ */
+function checkOrthogonalPath(path: Point[], obstacles: Rect[]): boolean {
+	for (let i = 0; i < path.length - 1; i++) {
+		if (!obstacles.every((obs) => !lineIntersectsRect(path[i], path[i + 1], obs))) {
+			return false;
+		}
+	}
+	return true;
+}
+
+/**
+ * A* pathfinding with orthogonal constraint (only horizontal/vertical moves)
+ */
+function findOrthogonalPath(
+	start: Point,
+	end: Point,
+	waypoints: Point[],
+	obstacles: Rect[]
+): Point[] {
+	const allPoints = [start, ...waypoints, end];
+	const openSet: Node[] = [];
+	const closedSet: Set<string> = new Set();
+
+	const startNode: Node = {
+		x: start.x,
+		y: start.y,
+		g: 0,
+		h: heuristic(start, end),
+		f: heuristic(start, end),
+		parent: null,
+	};
+
+	openSet.push(startNode);
+
+	while (openSet.length > 0) {
+		openSet.sort((a, b) => a.f - b.f);
+		const current = openSet.shift()!;
+
+		const key = `${current.x},${current.y}`;
+		if (closedSet.has(key)) continue;
+		closedSet.add(key);
+
+		if (Math.abs(current.x - end.x) < 1 && Math.abs(current.y - end.y) < 1) {
+			// Reconstruct path
+			const path: Point[] = [];
+			let node: Node | null = current;
+			while (node) {
+				path.unshift({ x: node.x, y: node.y });
+				node = node.parent;
+			}
+			return simplifyOrthogonalPath(path);
+		}
+
+		// Only consider neighbors that create orthogonal paths
+		for (const neighbor of allPoints) {
+			const neighborKey = `${neighbor.x},${neighbor.y}`;
+			if (closedSet.has(neighborKey)) continue;
+
+			// Only allow horizontal or vertical moves
+			const isOrthogonal =
+				(Math.abs(neighbor.x - current.x) > 0.1 &&
+					Math.abs(neighbor.y - current.y) < 0.1) ||
+				(Math.abs(neighbor.y - current.y) > 0.1 && Math.abs(neighbor.x - current.x) < 0.1);
+
+			if (!isOrthogonal) continue;
+
+			// Check if path to neighbor is clear
+			if (!obstacles.every((obs) => !lineIntersectsRect(current, neighbor, obs))) {
+				continue;
+			}
+
+			const g =
+				current.g + Math.abs(neighbor.x - current.x) + Math.abs(neighbor.y - current.y);
+			const h = heuristic(neighbor, end);
+			const f = g + h;
+
+			const existing = openSet.find(
+				(n) => Math.abs(n.x - neighbor.x) < 1 && Math.abs(n.y - neighbor.y) < 1
+			);
+			if (existing && existing.g <= g) continue;
+
+			openSet.push({
+				x: neighbor.x,
+				y: neighbor.y,
+				g,
+				h,
+				f,
+				parent: current,
+			});
+		}
+	}
+
+	// Fallback to direct orthogonal path
+	return [start, { x: end.x, y: start.y }, end];
+}
+
+/**
+ * Simplify orthogonal path by removing redundant points
+ */
+function simplifyOrthogonalPath(path: Point[]): Point[] {
+	if (path.length <= 2) return path;
+
+	const simplified: Point[] = [path[0]];
+
+	for (let i = 1; i < path.length - 1; i++) {
+		const prev = simplified[simplified.length - 1];
+		const current = path[i];
+		const next = path[i + 1];
+
+		// Keep point if it changes direction
+		const horizontalBefore = Math.abs(current.y - prev.y) < 0.1;
+		const horizontalAfter = Math.abs(next.y - current.y) < 0.1;
+
+		if (horizontalBefore !== horizontalAfter) {
 			simplified.push(current);
 		}
 	}

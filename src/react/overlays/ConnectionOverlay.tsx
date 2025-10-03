@@ -8,7 +8,7 @@ import {
 	type ConnectionSide,
 	type Rect,
 } from "../../utils/connections.js";
-import { generateWaypoints } from "../../utils/pathfinding.js";
+import { generateOrthogonalWaypoints } from "../../utils/pathfinding.js";
 
 interface LayoutBounds {
 	left: number;
@@ -311,7 +311,14 @@ function ConnectionLine(props: ConnectionLineProps): JSX.Element | null {
 	const obstacles = getObstacles([fromItem.id, toItem.id], hitAreaStrokeWidth / 2);
 	// Use reasonable base clearance
 	const clearance = 10 / zoom;
-	const waypoints = generateWaypoints(start, end, obstacles, clearance);
+	const waypoints = generateOrthogonalWaypoints(
+		start,
+		end,
+		obstacles,
+		clearance,
+		fromSide,
+		toSide
+	);
 
 	// Create SVG path - arrow connects to line, with gap from connection point
 	const arrowSize = 24 / zoom;
