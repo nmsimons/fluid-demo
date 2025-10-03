@@ -437,6 +437,7 @@ export class Item extends sf.objectRecursive("Item", {
 	}),
 	comments: Comments,
 	votes: Vote,
+	connections: sf.array(sf.string),
 	content: [Shape, Note, TextBlock, FluidTable, Group],
 }) {
 	delete(): void {
@@ -444,6 +445,44 @@ export class Item extends sf.objectRecursive("Item", {
 		if (Tree.is(parent, Items)) {
 			parent.removeAt(parent.indexOf(this));
 		}
+	}
+
+	/**
+	 * Add a directional connection TO this item from another item
+	 * @param fromItemId The ID of the item connecting to this item
+	 */
+	addConnection(fromItemId: string): void {
+		if (!this.connections.includes(fromItemId)) {
+			this.connections.insertAtEnd(fromItemId);
+		}
+	}
+
+	/**
+	 * Remove a directional connection TO this item from another item
+	 * @param fromItemId The ID of the item to remove connection from
+	 */
+	removeConnection(fromItemId: string): void {
+		const index = this.connections.indexOf(fromItemId);
+		if (index !== -1) {
+			this.connections.removeAt(index);
+		}
+	}
+
+	/**
+	 * Check if this item has a connection from a specific item
+	 * @param fromItemId The ID of the item to check
+	 * @returns true if the connection exists
+	 */
+	hasConnection(fromItemId: string): boolean {
+		return this.connections.includes(fromItemId);
+	}
+
+	/**
+	 * Get all item IDs that connect TO this item
+	 * @returns Array of item IDs
+	 */
+	getConnections(): string[] {
+		return Array.from(this.connections);
 	}
 }
 
@@ -475,6 +514,7 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 			y: this.getRandomNumber(0, canvasSize.height - maxSize - minSize),
 			comments: [],
 			votes: new Vote({ votes: [] }),
+			connections: [],
 			content: shape,
 			rotation:
 				this.getRandomNumber(0, 1) === 0
@@ -501,6 +541,7 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 			y: this.getRandomNumber(0, canvasSize.height - 200),
 			comments: [],
 			votes: new Vote({ votes: [] }),
+			connections: [],
 			content: note,
 			rotation:
 				this.getRandomNumber(0, 1) === 0
@@ -524,6 +565,7 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 			y: this.getRandomNumber(0, canvasSize.height - 200),
 			comments: [],
 			votes: new Vote({ votes: [] }),
+			connections: [],
 			content: table,
 			rotation: 0,
 		});
@@ -668,6 +710,7 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 			y: newY,
 			comments: [],
 			votes: new Vote({ votes: [] }),
+			connections: [],
 			content: duplicatedContent,
 			rotation: item.rotation,
 		});
@@ -714,6 +757,7 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 			y: this.getRandomNumber(0, canvasSize.height - 200),
 			comments: [],
 			votes: new Vote({ votes: [] }),
+			connections: [],
 			content: textBlock,
 			rotation: 0,
 		});

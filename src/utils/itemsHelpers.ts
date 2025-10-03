@@ -227,6 +227,7 @@ export function groupItems(items: Item[]): Item | undefined {
 			rotation: 0,
 			comments: [],
 			votes: new Vote({ votes: [] }),
+			connections: [],
 			content: groupContent,
 		});
 		parent.insertAtEnd(groupItem);
