@@ -725,16 +725,25 @@ export function ItemView(props: {
 	const onMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
 		if (e.button !== 0) return;
 
-		// Cancel any active drag from another item
+		const { interactive, targetEl, isAnyHandle } = handleItemInteraction(e, false);
+
+		// Don't set up drag if clicking on a resize/rotate handle
+		if (isAnyHandle) {
+			// Clean up any pending drag state from THIS item
+			if (activeMouseDragCleanup) {
+				activeMouseDragCleanup();
+				activeMouseDragCleanup = null;
+			}
+			dragRef.current = null;
+			return;
+		}
+
+		// Cancel any active drag from another item (but not handles!)
 		if (activeMouseDragCleanup) {
 			activeMouseDragCleanup();
 			activeMouseDragCleanup = null;
 		}
 
-		// Clear any existing drag state from presence
-		presence.drag.clearDragging();
-
-		const { interactive, targetEl } = handleItemInteraction(e, false);
 		const textAreaTarget = targetEl.closest(
 			"[data-item-editable]"
 		) as HTMLTextAreaElement | null;
@@ -746,9 +755,10 @@ export function ItemView(props: {
 		}
 		const start = coordsCanvas(e);
 
-		// For drag, use absolute display coordinates
+		// Store drag potential, but don't set up listeners yet
+		// Listeners will be added on first mousemove to avoid interfering with handles
 		dragRef.current = {
-			pointerId: -1, // Use -1 for mouse to distinguish from touch
+			pointerId: -1,
 			started: false,
 			startItemX: displayX,
 			startItemY: displayY,
@@ -763,10 +773,13 @@ export function ItemView(props: {
 			focusTarget: needsFocusAfterClick ? textAreaTarget : null,
 		};
 
+		let listenersAdded = false;
+
 		const docMove = (ev: MouseEvent) => {
 			const st = dragRef.current;
 			if (!st) return;
 			if (ev.buttons !== undefined && (ev.buttons & 1) === 0) {
+				cleanup();
 				return;
 			}
 			if (
@@ -809,6 +822,20 @@ export function ItemView(props: {
 			}
 		};
 
+		const initialMove = (ev: MouseEvent) => {
+			// On first mousemove, check if we should start tracking drag
+			// This prevents interfering with handle clicks
+			const screenDx = ev.clientX - e.clientX;
+			const screenDy = ev.clientY - e.clientY;
+			// If mouse moved at all, set up full drag tracking
+			if (Math.hypot(screenDx, screenDy) > 0) {
+				document.removeEventListener("mousemove", initialMove);
+				document.addEventListener("mousemove", docMove);
+				listenersAdded = true;
+				docMove(ev); // Process this move event
+			}
+		};
+
 		const finish = () => {
 			const st = dragRef.current;
 			if (!st) return;
@@ -847,7 +874,10 @@ export function ItemView(props: {
 			}
 
 			dragRef.current = null;
-			document.removeEventListener("mousemove", docMove);
+			document.removeEventListener("mousemove", initialMove);
+			if (listenersAdded) {
+				document.removeEventListener("mousemove", docMove);
+			}
 			document.removeEventListener("mouseup", finish);
 
 			// Clear the global cleanup reference
@@ -857,7 +887,10 @@ export function ItemView(props: {
 		};
 
 		const cleanup = () => {
-			document.removeEventListener("mousemove", docMove);
+			document.removeEventListener("mousemove", initialMove);
+			if (listenersAdded) {
+				document.removeEventListener("mousemove", docMove);
+			}
 			document.removeEventListener("mouseup", finish);
 			if (dragRef.current) {
 				presence.drag.clearDragging();
@@ -871,7 +904,7 @@ export function ItemView(props: {
 		// Store cleanup function globally so other items can cancel this drag
 		activeMouseDragCleanup = cleanup;
 
-		document.addEventListener("mousemove", docMove);
+		document.addEventListener("mousemove", initialMove);
 		document.addEventListener("mouseup", finish);
 	};
 
@@ -879,17 +912,26 @@ export function ItemView(props: {
 		// Only handle single touch for now
 		if (e.touches.length !== 1) return;
 
-		// Cancel any active touch drag from another item
+		const touch = e.touches[0];
+		const { interactive, targetEl, isAnyHandle } = handleItemInteraction(e, true);
+
+		// Don't set up drag if touching a resize/rotate handle
+		if (isAnyHandle) {
+			// Clean up any pending drag state from THIS item
+			if (activeTouchDragCleanup) {
+				activeTouchDragCleanup();
+				activeTouchDragCleanup = null;
+			}
+			dragRef.current = null;
+			return;
+		}
+
+		// Cancel any active touch drag from another item (but not handles!)
 		if (activeTouchDragCleanup) {
 			activeTouchDragCleanup();
 			activeTouchDragCleanup = null;
 		}
 
-		// Clear any existing drag state from presence
-		presence.drag.clearDragging();
-
-		const touch = e.touches[0];
-		const { interactive, targetEl } = handleItemInteraction(e, true);
 		const textAreaTarget = targetEl.closest(
 			"[data-item-editable]"
 		) as HTMLTextAreaElement | null;
