@@ -706,8 +706,9 @@ export function ItemView(props: {
 
 	const focusEditableElement = (
 		preferred: HTMLTextAreaElement | null,
-		container: HTMLElement
+		container: HTMLElement | null
 	) => {
+		if (!container) return;
 		const target =
 			preferred && preferred.isConnected
 				? preferred

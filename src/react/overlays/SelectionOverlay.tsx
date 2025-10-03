@@ -131,7 +131,7 @@ export function SelectionOverlay(props: {
 					opacity={0.9}
 				/>
 			</g>
-			{!isTable && (
+			{!isTable && !parentGroupGridEnabled && (
 				<g transform={`translate(${w / 2}, ${-rotationOffsetLocal})`}>
 					{/* Visible rotation handle */}
 					<circle
@@ -203,7 +203,7 @@ export function SelectionOverlay(props: {
 					)}
 				</g>
 			)}
-			{isShape && (
+			{isShape && !parentGroupGridEnabled && (
 				<g>
 					{(() => {
 						const handleSize = 8 / zoom;
@@ -319,7 +319,7 @@ export function SelectionOverlay(props: {
 					})()}
 				</g>
 			)}
-			{isText && (
+			{isText && !parentGroupGridEnabled && (
 				<g>
 					{(["left", "right"] as const).map((side) => {
 						const handleSize = 8 / zoom;
