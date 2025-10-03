@@ -496,6 +496,7 @@ function ConnectionLine(props: ConnectionLineProps): JSX.Element | null {
 				stroke={isHovered ? "#2563eb" : "#3b82f6"}
 				strokeWidth={isHovered ? 4 / zoom : 3 / zoom}
 				fill="none"
+				opacity={isHovered ? 0.8 : 0.6}
 				style={{ pointerEvents: "none" }}
 			/>
 			{/* Arrow head - solid triangle */}
@@ -506,6 +507,7 @@ function ConnectionLine(props: ConnectionLineProps): JSX.Element | null {
 					Z`}
 				fill={isHovered ? "#2563eb" : "#3b82f6"}
 				stroke="none"
+				opacity={isHovered ? 0.8 : 0.6}
 				style={{ pointerEvents: "none" }}
 			/>
 			{/* Invisible wider hit area for hover and right-click */}
