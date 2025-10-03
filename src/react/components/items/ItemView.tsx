@@ -17,6 +17,11 @@
 //      intentionally removed to reduce complexity and eliminate jump / stutter
 //      issues with foreignObject (SVG / HTML overlay) elements like tables.
 
+// Global cleanup function for active drag operations
+// This ensures only one item can be dragged at a time
+let activeMouseDragCleanup: (() => void) | null = null;
+let activeTouchDragCleanup: (() => void) | null = null;
+
 /**
  * GroupView - Simple visual representation for a group item
  * The actual child items are rendered directly on the main canvas with adjusted positions.
@@ -372,6 +377,7 @@ export function ItemView(props: {
 	parentGroup?: Group;
 }) {
 	const { item, index, hideSelectionControls, absoluteX, absoluteY, parentGroup } = props;
+	
 	useTree(item);
 	const presence = useContext(PresenceContext);
 	const layout = useContext(LayoutContext);
@@ -383,6 +389,10 @@ export function ItemView(props: {
 	const dragRef = useRef<DragState | null>(null);
 	// (offset ref removed in delta-based drag implementation)
 	const intrinsic = useRef({ w: 0, h: 0 });
+	const itemRef = useRef(item);
+	useEffect(() => {
+		itemRef.current = item;
+	}, [item]);
 
 	// Calculate group offset if this item is in a group
 	// parentGroup is the Group object; its parent is the Item that contains it
@@ -482,12 +492,13 @@ export function ItemView(props: {
 	// Presence listeners
 	const applyDrag = React.useCallback(
 		(d: DragAndRotatePackage) => {
-			if (!d) return;
+		if (!d) return;
 
-			const overrideSize = contentProps.sizeOverride ?? contentProps.textWidthOverride;
-			const handler = getContentHandler(item, overrideSize);
-
-			const ensureDimensions = () => {
+		const currentItem = itemRef.current;
+		const currentItemId = currentItem.id;
+		
+		const overrideSize = contentProps.sizeOverride ?? contentProps.textWidthOverride;
+		const handler = getContentHandler(currentItem, overrideSize);			const ensureDimensions = () => {
 				if (handler.type === "shape") {
 					const size = handler.getSize();
 					return {
@@ -500,18 +511,19 @@ export function ItemView(props: {
 					height: intrinsic.current.h,
 				};
 			};
-
+			
 			// Check if this item itself is being dragged
-			if (d.id === item.id) {
+			if (d.id === currentItemId) {
 				setView((v) => ({
 					...v,
 					left: d.x,
 					top: d.y,
 					transform: handler.getRotationTransform(d.rotation),
 				}));
+				
 				const { width, height } = ensureDimensions();
 				if (width && height) {
-					layout.set(item.id, {
+					layout.set(currentItemId, {
 						left: d.x,
 						top: d.y,
 						right: d.x + width,
@@ -533,7 +545,7 @@ export function ItemView(props: {
 					let itemOffsetY: number;
 
 					if (isGroupGridEnabled(parentGroup)) {
-						const offset = getGroupChildOffset(parentGroup, item);
+						const offset = getGroupChildOffset(parentGroup, currentItem);
 						itemOffsetX = offset.x;
 						itemOffsetY = offset.y;
 					} else {
@@ -544,9 +556,9 @@ export function ItemView(props: {
 					const newAbsoluteX = newGroupX + itemOffsetX;
 					const newAbsoluteY = newGroupY + itemOffsetY;
 
-					const displayRotation = isGroupGridEnabled(parentGroup) ? 0 : item.rotation;
+					const displayRotation = isGroupGridEnabled(parentGroup) ? 0 : currentItem.rotation;
 					const transform =
-						itemType(item) === "table" ? "rotate(0)" : `rotate(${displayRotation}deg)`;
+						itemType(currentItem) === "table" ? "rotate(0)" : `rotate(${displayRotation}deg)`;
 
 					setView((v) => ({
 						...v,
@@ -556,7 +568,7 @@ export function ItemView(props: {
 					}));
 					const { width, height } = ensureDimensions();
 					if (width && height) {
-						layout.set(item.id, {
+						layout.set(currentItemId, {
 							left: newAbsoluteX,
 							top: newAbsoluteY,
 							right: newAbsoluteX + width,
@@ -567,27 +579,28 @@ export function ItemView(props: {
 				}
 			}
 		},
-		[item.id, parentGroup, contentProps.sizeOverride, contentProps.textWidthOverride, layout]
+		[parentGroup, contentProps.sizeOverride, contentProps.textWidthOverride, layout]
 	);
 	const applyResize = (r: ResizePackage | null) => {
-		const handler = getContentHandler(item);
-		if (r && r.id === item.id && handler.canResize()) {
+		const currentItem = itemRef.current;
+		const handler = getContentHandler(currentItem);
+		if (r && r.id === currentItem.id && handler.canResize()) {
 			setView((v) => ({ ...v, left: r.x, top: r.y }));
-			if (isShape(item)) {
+			if (isShape(currentItem)) {
 				const size = r.size;
 				setContentProps({ sizeOverride: size });
 				intrinsic.current = { w: size, h: size };
-				layout.set(item.id, { left: r.x, top: r.y, right: r.x + size, bottom: r.y + size });
+				layout.set(currentItem.id, { left: r.x, top: r.y, right: r.x + size, bottom: r.y + size });
 				scheduleLayoutInvalidation();
-			} else if (Tree.is(item.content, TextBlock)) {
+			} else if (Tree.is(currentItem.content, TextBlock)) {
 				const width = clampTextWidth(r.size);
 				setContentProps({ textWidthOverride: width });
 				intrinsic.current = {
 					w: width,
-					h: intrinsic.current.h || item.content.fontSize * 2.4 + 32,
+					h: intrinsic.current.h || currentItem.content.fontSize * 2.4 + 32,
 				};
-				const height = intrinsic.current.h || item.content.fontSize * 2.4 + 32;
-				layout.set(item.id, {
+				const height = intrinsic.current.h || currentItem.content.fontSize * 2.4 + 32;
+				layout.set(currentItem.id, {
 					left: r.x,
 					top: r.y,
 					right: r.x + width,
@@ -595,14 +608,14 @@ export function ItemView(props: {
 				});
 				scheduleLayoutInvalidation();
 			}
-		} else if (!r || r.id !== item.id) {
+		} else if (!r || r.id !== currentItem.id) {
 			setContentProps({});
 		}
 	};
 	usePresenceManager(
 		presence.drag as PresenceManager<DragAndRotatePackage>,
 		(u) => u && applyDrag(u),
-		applyDrag
+		(u) => u && applyDrag(u) // Same handler for both local and remote
 	);
 	usePresenceManager(
 		presence.resize as PresenceManager<ResizePackage | null>,
@@ -625,10 +638,16 @@ export function ItemView(props: {
 		startItemY: number;
 		startCanvasX: number;
 		startCanvasY: number;
+		startClientX: number;
+		startClientY: number;
+		latestItemX: number;
+		latestItemY: number;
 		interactiveStart: boolean;
 		initialTarget: HTMLElement | null;
 		focusTarget: HTMLTextAreaElement | null;
 	}
+
+	const DRAG_THRESHOLD_PX = 6;
 
 	// Shared logic for both mouse and touch
 	const handleItemInteraction = (
@@ -696,6 +715,15 @@ export function ItemView(props: {
 	const onMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
 		if (e.button !== 0) return;
 
+		// Cancel any active drag from another item
+		if (activeMouseDragCleanup) {
+			activeMouseDragCleanup();
+			activeMouseDragCleanup = null;
+		}
+
+		// Clear any existing drag state from presence
+		presence.drag.clearDragging();
+
 		const { interactive, targetEl } = handleItemInteraction(e, false);
 		const textAreaTarget = targetEl.closest(
 			"[data-item-editable]"
@@ -716,15 +744,21 @@ export function ItemView(props: {
 			startItemY: displayY,
 			startCanvasX: start.x,
 			startCanvasY: start.y,
+			startClientX: e.clientX,
+			startClientY: e.clientY,
+			latestItemX: displayX,
+			latestItemY: displayY,
 			interactiveStart: interactive,
 			initialTarget: textAreaTarget ?? null,
 			focusTarget: needsFocusAfterClick ? textAreaTarget : null,
 		};
 
-		const THRESHOLD_BASE = 4;
 		const docMove = (ev: MouseEvent) => {
 			const st = dragRef.current;
 			if (!st) return;
+			if (ev.buttons !== undefined && (ev.buttons & 1) === 0) {
+				return;
+			}
 			if (
 				!st.started &&
 				st.interactiveStart &&
@@ -733,24 +767,33 @@ export function ItemView(props: {
 			) {
 				return;
 			}
-			const cur = coordsCanvas(ev);
-			const dx = cur.x - st.startCanvasX;
-			const dy = cur.y - st.startCanvasY;
 			if (!st.started) {
 				// Don't allow dragging items in grid-view groups
 				if (isGroupGridEnabled(parentGroup)) return;
-				const threshold = st.interactiveStart ? THRESHOLD_BASE * 2 : THRESHOLD_BASE;
-				if (Math.hypot(dx, dy) < threshold) return;
+				const screenDx = ev.clientX - st.startClientX;
+				const screenDy = ev.clientY - st.startClientY;
+				const threshold = st.interactiveStart ? DRAG_THRESHOLD_PX * 2 : DRAG_THRESHOLD_PX;
+				if (Math.hypot(screenDx, screenDy) < threshold) return;
 				st.started = true;
 				document.documentElement.dataset.manipulating = "1";
 				ev.preventDefault();
 			}
 			if (st.started) {
+				const cur = coordsCanvas(ev);
+				const dx = cur.x - st.startCanvasX;
+				const dy = cur.y - st.startCanvasY;
+				const nextX = st.startItemX + dx;
+				const nextY = st.startItemY + dy;
+				st.latestItemX = nextX;
+				st.latestItemY = nextY;
+				
+				// Simply update presence - applyDrag will handle the visual update
+				const currentItem = itemRef.current;
 				presence.drag.setDragging({
-					id: item.id,
-					x: st.startItemX + dx,
-					y: st.startItemY + dy,
-					rotation: item.rotation,
+					id: currentItem.id,
+					x: nextX,
+					y: nextY,
+					rotation: currentItem.rotation,
 					branch: presence.branch,
 				});
 			}
@@ -759,7 +802,10 @@ export function ItemView(props: {
 		const finish = () => {
 			const st = dragRef.current;
 			if (!st) return;
+			
 			if (st.started) {
+				const currentItem = itemRef.current;
+				
 				// Don't allow dragging items in grid-view groups
 				if (isGroupGridEnabled(parentGroup)) {
 					presence.drag.clearDragging();
@@ -768,22 +814,20 @@ export function ItemView(props: {
 					return;
 				}
 
-				const cur = { x: st.startItemX, y: st.startItemY };
-				const dragState = presence.drag.state.local;
-				if (dragState && dragState.id === item.id) {
-					cur.x = dragState.x;
-					cur.y = dragState.y;
-				}
-				// Convert absolute canvas coordinates back to relative coordinates for items in groups
-				const finalX = cur.x - groupOffsetX;
-				const finalY = cur.y - groupOffsetY;
-				Tree.runTransaction(item, () => {
-					item.x = finalX;
-					item.y = finalY;
+				// Commit the final position to the tree
+				const finalX = st.latestItemX - groupOffsetX;
+				const finalY = st.latestItemY - groupOffsetY;
+				const transactionTarget = Tree.parent(currentItem) ?? currentItem;
+				Tree.runTransaction(transactionTarget, () => {
+					currentItem.x = finalX;
+					currentItem.y = finalY;
 				});
+				
+				// Clear presence state
 				presence.drag.clearDragging();
 				delete document.documentElement.dataset.manipulating;
 			} else {
+				// Handle focus for text elements when clicking (not dragging)
 				const { focusTarget } = st;
 				if (focusTarget && focusTarget.isConnected) {
 					focusEditableElement(focusTarget, e.currentTarget as HTMLElement);
@@ -791,10 +835,31 @@ export function ItemView(props: {
 					focusEditableElement(null, e.currentTarget as HTMLElement);
 				}
 			}
+			
 			dragRef.current = null;
 			document.removeEventListener("mousemove", docMove);
 			document.removeEventListener("mouseup", finish);
+			
+			// Clear the global cleanup reference
+			if (activeMouseDragCleanup === cleanup) {
+				activeMouseDragCleanup = null;
+			}
 		};
+
+		const cleanup = () => {
+			document.removeEventListener("mousemove", docMove);
+			document.removeEventListener("mouseup", finish);
+			if (dragRef.current) {
+				presence.drag.clearDragging();
+				if (dragRef.current.started) {
+					delete document.documentElement.dataset.manipulating;
+				}
+				dragRef.current = null;
+			}
+		};
+
+		// Store cleanup function globally so other items can cancel this drag
+		activeMouseDragCleanup = cleanup;
 
 		document.addEventListener("mousemove", docMove);
 		document.addEventListener("mouseup", finish);
@@ -803,6 +868,15 @@ export function ItemView(props: {
 	const onTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
 		// Only handle single touch for now
 		if (e.touches.length !== 1) return;
+
+		// Cancel any active touch drag from another item
+		if (activeTouchDragCleanup) {
+			activeTouchDragCleanup();
+			activeTouchDragCleanup = null;
+		}
+
+		// Clear any existing drag state from presence
+		presence.drag.clearDragging();
 
 		const touch = e.touches[0];
 		const { interactive, targetEl } = handleItemInteraction(e, true);
@@ -824,12 +898,15 @@ export function ItemView(props: {
 			startItemY: displayY,
 			startCanvasX: start.x,
 			startCanvasY: start.y,
+			startClientX: touch.clientX,
+			startClientY: touch.clientY,
+			latestItemX: displayX,
+			latestItemY: displayY,
 			interactiveStart: interactive,
 			initialTarget: textAreaTarget ?? null,
 			focusTarget: needsFocusAfterTap ? textAreaTarget : null,
 		};
 
-		const THRESHOLD_BASE = 4;
 		const docMove = (ev: TouchEvent) => {
 			const st = dragRef.current;
 			if (!st) return;
@@ -837,10 +914,6 @@ export function ItemView(props: {
 			// Find our touch
 			const touch = Array.from(ev.touches).find((t) => t.identifier === st.pointerId);
 			if (!touch) return;
-
-			const cur = coordsCanvas(touch);
-			const dx = cur.x - st.startCanvasX;
-			const dy = cur.y - st.startCanvasY;
 			if (!st.started) {
 				if (
 					st.interactiveStart &&
@@ -852,18 +925,30 @@ export function ItemView(props: {
 				// Don't allow dragging items in grid-view groups
 				if (isGroupGridEnabled(parentGroup)) return;
 				// Use same threshold for touch to keep behavior consistent
-				const threshold = st.interactiveStart ? THRESHOLD_BASE * 2 : THRESHOLD_BASE;
-				if (Math.hypot(dx, dy) < threshold) return;
+				const screenDx = touch.clientX - st.startClientX;
+				const screenDy = touch.clientY - st.startClientY;
+				const threshold = st.interactiveStart ? DRAG_THRESHOLD_PX * 2 : DRAG_THRESHOLD_PX;
+				if (Math.hypot(screenDx, screenDy) < threshold) return;
 				st.started = true;
 				document.documentElement.dataset.manipulating = "1";
 				ev.preventDefault();
 			}
 			if (st.started) {
+				const cur = coordsCanvas(touch);
+				const dx = cur.x - st.startCanvasX;
+				const dy = cur.y - st.startCanvasY;
+				const nextX = st.startItemX + dx;
+				const nextY = st.startItemY + dy;
+				st.latestItemX = nextX;
+				st.latestItemY = nextY;
+				
+				// Simply update presence - applyDrag will handle the visual update
+				const currentItem = itemRef.current;
 				presence.drag.setDragging({
-					id: item.id,
-					x: st.startItemX + dx,
-					y: st.startItemY + dy,
-					rotation: item.rotation,
+					id: currentItem.id,
+					x: nextX,
+					y: nextY,
+					rotation: currentItem.rotation,
 					branch: presence.branch,
 				});
 			}
@@ -872,7 +957,10 @@ export function ItemView(props: {
 		const finish = () => {
 			const st = dragRef.current;
 			if (!st) return;
+			
 			if (st.started) {
+				const currentItem = itemRef.current;
+				
 				// Don't allow dragging items in grid-view groups
 				if (isGroupGridEnabled(parentGroup)) {
 					presence.drag.clearDragging();
@@ -881,19 +969,16 @@ export function ItemView(props: {
 					return;
 				}
 
-				const cur = { x: st.startItemX, y: st.startItemY };
-				const dragState = presence.drag.state.local;
-				if (dragState && dragState.id === item.id) {
-					cur.x = dragState.x;
-					cur.y = dragState.y;
-				}
-				// Convert absolute canvas coordinates back to relative coordinates for items in groups
-				const finalX = cur.x - groupOffsetX;
-				const finalY = cur.y - groupOffsetY;
-				Tree.runTransaction(item, () => {
-					item.x = finalX;
-					item.y = finalY;
+				// Commit the final position to the tree
+				const finalX = st.latestItemX - groupOffsetX;
+				const finalY = st.latestItemY - groupOffsetY;
+				const transactionTarget = Tree.parent(currentItem) ?? currentItem;
+				Tree.runTransaction(transactionTarget, () => {
+					currentItem.x = finalX;
+					currentItem.y = finalY;
 				});
+				
+				// Clear presence state
 				presence.drag.clearDragging();
 				delete document.documentElement.dataset.manipulating;
 			} else {
@@ -908,7 +993,28 @@ export function ItemView(props: {
 			document.removeEventListener("touchmove", docMove);
 			document.removeEventListener("touchend", finish);
 			document.removeEventListener("touchcancel", finish);
+			
+			// Clear the global cleanup reference
+			if (activeTouchDragCleanup === cleanup) {
+				activeTouchDragCleanup = null;
+			}
 		};
+
+		const cleanup = () => {
+			document.removeEventListener("touchmove", docMove);
+			document.removeEventListener("touchend", finish);
+			document.removeEventListener("touchcancel", finish);
+			if (dragRef.current) {
+				presence.drag.clearDragging();
+				if (dragRef.current.started) {
+					delete document.documentElement.dataset.manipulating;
+				}
+				dragRef.current = null;
+			}
+		};
+
+		// Store cleanup function globally so other items can cancel this drag
+		activeTouchDragCleanup = cleanup;
 
 		document.addEventListener("touchmove", docMove, { passive: false });
 		document.addEventListener("touchend", finish);
@@ -1179,6 +1285,10 @@ export function RotateHandle({
 	const presence = useContext(PresenceContext);
 	useTree(item);
 	const [active, setActive] = useState(false);
+	const itemRef = useRef(item);
+	useEffect(() => {
+		itemRef.current = item;
+	}, [item]);
 	const scale = zoom ?? 1;
 	// Use absolute position for rotation
 	const displayX = absoluteX ?? item.x;
@@ -1194,16 +1304,17 @@ export function RotateHandle({
 			/* unsupported */
 		}
 		// Set initial drag presence with absolute coordinates
+		const currentItem = itemRef.current;
 		presence.drag.setDragging({
-			id: item.id,
+			id: currentItem.id,
 			x: displayX,
 			y: displayY,
-			rotation: item.rotation,
+			rotation: currentItem.rotation,
 			branch: presence.branch,
 		});
 		// Global manipulating flag as additional safeguard against background pan
 		document.documentElement.dataset.manipulating = "1";
-		const el = document.querySelector(`[data-item-id="${item.id}"]`) as HTMLElement | null;
+		const el = document.querySelector(`[data-item-id="${currentItem.id}"]`) as HTMLElement | null;
 		if (!el) return;
 		const move = (ev: PointerEvent) => {
 			// Rotation math:
@@ -1226,7 +1337,7 @@ export function RotateHandle({
 			deg %= 360;
 			if (deg < 0) deg += 360;
 			presence.drag.setDragging({
-				id: item.id,
+				id: currentItem.id,
 				x: displayX,
 				y: displayY,
 				rotation: deg,
@@ -1244,8 +1355,8 @@ export function RotateHandle({
 			delete document.documentElement.dataset.manipulating;
 			const st = presence.drag.state.local;
 			if (st) {
-				Tree.runTransaction(item, () => {
-					item.rotation = st.rotation;
+				Tree.runTransaction(currentItem, () => {
+					currentItem.rotation = st.rotation;
 				});
 				presence.drag.clearDragging();
 				const canvasEl = document.getElementById("canvas") as
