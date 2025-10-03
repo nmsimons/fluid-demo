@@ -366,7 +366,7 @@ function ConnectionLine(props: ConnectionLineProps): JSX.Element | null {
 				strokeWidth={1 / zoom}
 				style={{ pointerEvents: "none" }}
 			/>
-			{/* Invisible wider hit area for easier clicking */}
+			{/* Invisible wider hit area for hover and right-click */}
 			<path
 				d={pathData}
 				stroke="transparent"
@@ -374,9 +374,16 @@ function ConnectionLine(props: ConnectionLineProps): JSX.Element | null {
 				strokeLinecap="round"
 				strokeLinejoin="round"
 				fill="none"
-				style={{ cursor: "pointer", pointerEvents: "all" }}
+				pointerEvents="stroke"
+				style={{ cursor: "default" }}
 				onMouseEnter={() => setIsHovered(true)}
 				onMouseLeave={() => setIsHovered(false)}
+				onPointerDown={(e) => {
+					// Only stop propagation for right-clicks
+					if (e.button === 2) {
+						e.stopPropagation();
+					}
+				}}
 				onContextMenu={(e) => {
 					e.stopPropagation();
 					e.preventDefault();
