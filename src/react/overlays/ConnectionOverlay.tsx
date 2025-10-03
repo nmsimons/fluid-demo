@@ -88,6 +88,7 @@ function calculateGroupBounds(groupItem: Item, layout: LayoutMap, zoom: number):
 export function ConnectionOverlay(props: ConnectionOverlayProps): JSX.Element {
 	const { items, layout, zoom, pan, svgRef } = props;
 	const [dragState, setDragState] = useState<DragState | null>(null);
+	const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
 
 	// Convert screen coords to logical SVG coordinates
 	const toLogical = (clientX: number, clientY: number): { x: number; y: number } => {
@@ -97,6 +98,28 @@ export function ConnectionOverlay(props: ConnectionOverlayProps): JSX.Element {
 		const sy = clientY - rect.top;
 		return { x: (sx - pan.x) / zoom, y: (sy - pan.y) / zoom };
 	};
+
+	// Track cursor position for proximity detection
+	React.useEffect(() => {
+		const handlePointerMove = (e: PointerEvent) => {
+			const pos = toLogical(e.clientX, e.clientY);
+			setCursorPos(pos);
+		};
+
+		const handlePointerLeave = () => {
+			setCursorPos(null);
+		};
+
+		const svg = svgRef.current;
+		if (svg) {
+			svg.addEventListener("pointermove", handlePointerMove);
+			svg.addEventListener("pointerleave", handlePointerLeave);
+			return () => {
+				svg.removeEventListener("pointermove", handlePointerMove);
+				svg.removeEventListener("pointerleave", handlePointerLeave);
+			};
+		}
+	}, [zoom, pan]);
 
 	// Filter to only group items
 	const groupItems = items.filter((item) => Tree.is(item.content, Group));
@@ -198,40 +221,64 @@ export function ConnectionOverlay(props: ConnectionOverlayProps): JSX.Element {
 
 	return (
 		<g className="connection-overlay">
-			{/* Render all existing connections */}
-			{groupItems.map((toItem) => {
-				return toItem.getConnections().map((fromItemId) => {
-					const fromItem = items.find((item) => item.id === fromItemId);
-					if (!fromItem) return null;
+			{/* Render all existing connections and collect which sides are used */}
+			{(() => {
+				const activeSides = new Map<string, Set<ConnectionSide>>();
 
-					return (
-						<ConnectionLine
-							key={`${fromItemId}-${toItem.id}`}
-							fromItem={fromItem}
-							toItem={toItem}
-							getRect={getRect}
-							getObstacles={getObstacles}
-							zoom={zoom}
-						/>
-					);
+				const connectionElements = groupItems.map((toItem) => {
+					return toItem.getConnections().map((fromItemId) => {
+						const fromItem = items.find((item) => item.id === fromItemId);
+						if (!fromItem) return null;
+
+						return (
+							<ConnectionLine
+								key={`${fromItemId}-${toItem.id}`}
+								fromItem={fromItem}
+								toItem={toItem}
+								getRect={getRect}
+								getObstacles={getObstacles}
+								zoom={zoom}
+								onSidesCalculated={(fromId, fromSide, toId, toSide) => {
+									if (!activeSides.has(fromId))
+										activeSides.set(fromId, new Set());
+									if (!activeSides.has(toId)) activeSides.set(toId, new Set());
+									activeSides.get(fromId)!.add(fromSide);
+									activeSides.get(toId)!.add(toSide);
+								}}
+							/>
+						);
+					});
 				});
-			})}
 
-			{/* Render temporary drag line */}
-			{dragState && (
-				<TempConnectionLine dragState={dragState} getRect={getRect} zoom={zoom} />
-			)}
+				return (
+					<>
+						{connectionElements}
 
-			{/* Render connection points on groups */}
-			{groupItems.map((item) => (
-				<ConnectionPoints
-					key={item.id}
-					item={item}
-					getRect={getRect}
-					onDragStart={handleConnectionDragStart}
-					zoom={zoom}
-				/>
-			))}
+						{/* Render temporary drag line */}
+						{dragState && (
+							<TempConnectionLine
+								dragState={dragState}
+								getRect={getRect}
+								zoom={zoom}
+							/>
+						)}
+
+						{/* Render connection points on groups */}
+						{groupItems.map((item) => (
+							<ConnectionPoints
+								key={item.id}
+								item={item}
+								getRect={getRect}
+								onDragStart={handleConnectionDragStart}
+								zoom={zoom}
+								cursorPos={cursorPos}
+								isDragging={dragState !== null}
+								activeSides={activeSides.get(item.id) || new Set()}
+							/>
+						))}
+					</>
+				);
+			})()}
 		</g>
 	);
 }
@@ -241,10 +288,13 @@ interface ConnectionPointsProps {
 	getRect: (itemId: string) => Rect | null;
 	onDragStart: (e: React.PointerEvent, itemId: string, side: ConnectionSide) => void;
 	zoom: number;
+	cursorPos: { x: number; y: number } | null;
+	isDragging: boolean;
+	activeSides: Set<ConnectionSide>;
 }
 
 function ConnectionPoints(props: ConnectionPointsProps): JSX.Element | null {
-	const { item, getRect, onDragStart, zoom } = props;
+	const { item, getRect, onDragStart, zoom, cursorPos, isDragging, activeSides } = props;
 	useTree(item);
 
 	const rect = getRect(item.id);
@@ -252,10 +302,38 @@ function ConnectionPoints(props: ConnectionPointsProps): JSX.Element | null {
 
 	const sides: ConnectionSide[] = ["top", "right", "bottom", "left"];
 
+	// Proximity threshold in logical units
+	const proximityThreshold = 100 / zoom;
+
 	return (
 		<g className="connection-points" style={{ pointerEvents: "all" }}>
 			{sides.map((side) => {
 				const point = getConnectionPoint(rect, side);
+
+				// Calculate opacity based on proximity or if dragging
+				let opacity = 0;
+
+				if (isDragging) {
+					// Show all sides when dragging
+					opacity = 1;
+				} else if (activeSides.has(side)) {
+					// Always show sides that have active connections
+					opacity = 1;
+				} else if (cursorPos) {
+					// Fade in based on distance to cursor
+					const distance = Math.sqrt(
+						Math.pow(cursorPos.x - point.x, 2) + Math.pow(cursorPos.y - point.y, 2)
+					);
+
+					if (distance < proximityThreshold) {
+						// Fade from 0 at threshold to 1 at 0 distance
+						opacity = 1 - distance / proximityThreshold;
+					}
+				}
+
+				// Don't render if completely transparent
+				if (opacity < 0.01) return null;
+
 				return (
 					<circle
 						key={side}
@@ -265,7 +343,11 @@ function ConnectionPoints(props: ConnectionPointsProps): JSX.Element | null {
 						fill="#ffffff"
 						stroke="#3b82f6"
 						strokeWidth={3 / zoom}
-						style={{ cursor: "crosshair", pointerEvents: "all" }}
+						opacity={opacity}
+						style={{
+							cursor: "crosshair",
+							pointerEvents: opacity > 0.3 ? "all" : "none",
+						}}
 						onPointerDown={(e) => onDragStart(e, item.id, side)}
 						data-connection-item={item.id}
 						data-connection-side={side}
@@ -282,10 +364,16 @@ interface ConnectionLineProps {
 	getRect: (itemId: string) => Rect | null;
 	getObstacles: (expandBy?: number) => Rect[];
 	zoom: number;
+	onSidesCalculated: (
+		fromId: string,
+		fromSide: ConnectionSide,
+		toId: string,
+		toSide: ConnectionSide
+	) => void;
 }
 
 function ConnectionLine(props: ConnectionLineProps): JSX.Element | null {
-	const { fromItem, toItem, getRect, getObstacles, zoom } = props;
+	const { fromItem, toItem, getRect, getObstacles, zoom, onSidesCalculated } = props;
 	useTree(fromItem);
 	useTree(toItem);
 
@@ -305,6 +393,8 @@ function ConnectionLine(props: ConnectionLineProps): JSX.Element | null {
 	const sides: ConnectionSide[] = ["top", "right", "bottom", "left"];
 	let bestPath: Point[] | null = null;
 	let bestPathLength = Infinity;
+	let bestFromSide: ConnectionSide = "right";
+	let bestToSide: ConnectionSide = "left";
 
 	for (const fromSide of sides) {
 		for (const toSide of sides) {
@@ -336,9 +426,14 @@ function ConnectionLine(props: ConnectionLineProps): JSX.Element | null {
 			if (adjustedLength < bestPathLength) {
 				bestPathLength = adjustedLength;
 				bestPath = waypoints;
+				bestFromSide = fromSide;
+				bestToSide = toSide;
 			}
 		}
 	}
+
+	// Notify which sides were chosen
+	onSidesCalculated(fromItem.id, bestFromSide, toItem.id, bestToSide);
 
 	// Use the best path found
 	const waypoints = bestPath || [];
@@ -348,6 +443,7 @@ function ConnectionLine(props: ConnectionLineProps): JSX.Element | null {
 	// Create SVG path - arrow connects to line, with gap from connection point
 	const arrowSize = 12 / zoom; // Smaller chevron size
 	const arrowGap = 12 / zoom; // Gap between arrow tip and connection point
+	const startGap = 8 / zoom; // Gap between line start and group border
 
 	// Calculate arrow head at the end pointing toward the target
 	const lastSegment = waypoints[waypoints.length - 1];
@@ -360,19 +456,32 @@ function ConnectionLine(props: ConnectionLineProps): JSX.Element | null {
 		y: lastSegment.y - arrowGap * Math.sin(angle),
 	};
 
-	// Line ends at the base of the arrow to prevent overlap
-	// We need to cut back by arrow gap + half the arrow size to avoid overlap with perpendicular segments
+	// Adjust waypoints: add gap at start and cut back at end
 	let adjustedWaypoints = [...waypoints];
+
+	// Add gap at the start of the line
 	if (waypoints.length >= 2) {
-		const last = waypoints[waypoints.length - 1];
-		const secondLast = waypoints[waypoints.length - 2];
-		const angle = Math.atan2(last.y - secondLast.y, last.x - secondLast.x);
+		const first = waypoints[0];
+		const second = waypoints[1];
+		const startAngle = Math.atan2(second.y - first.y, second.x - first.x);
+		const adjustedStart = {
+			x: first.x + startGap * Math.cos(startAngle),
+			y: first.y + startGap * Math.sin(startAngle),
+		};
+		adjustedWaypoints = [adjustedStart, ...waypoints.slice(1)];
+	}
+
+	// Cut back at the end for the arrow
+	if (adjustedWaypoints.length >= 2) {
+		const last = adjustedWaypoints[adjustedWaypoints.length - 1];
+		const secondLast = adjustedWaypoints[adjustedWaypoints.length - 2];
+		const endAngle = Math.atan2(last.y - secondLast.y, last.x - secondLast.x);
 		const cutbackDistance = arrowGap + arrowSize * 0.8; // Extra cutback to clear the arrow wings
 		const adjustedEnd = {
-			x: last.x - cutbackDistance * Math.cos(angle),
-			y: last.y - cutbackDistance * Math.sin(angle),
+			x: last.x - cutbackDistance * Math.cos(endAngle),
+			y: last.y - cutbackDistance * Math.sin(endAngle),
 		};
-		adjustedWaypoints = [...waypoints.slice(0, -1), adjustedEnd];
+		adjustedWaypoints = [...adjustedWaypoints.slice(0, -1), adjustedEnd];
 	}
 
 	const pathData = adjustedWaypoints
