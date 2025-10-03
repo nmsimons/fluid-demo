@@ -47,7 +47,7 @@ import { AppToolbar } from "../toolbar/AppToolbar.js";
 import { InkPresenceManager } from "../../../presence/Interfaces/InkManager.js";
 import { TEXT_DEFAULT_COLOR, TEXT_DEFAULT_FONT_SIZE } from "../../../constants/text.js";
 import { findItemById } from "../../../utils/itemsHelpers.js";
-import { isShape } from "../../../utils/contentHandlers.js";
+import { isShape, isText } from "../../../utils/contentHandlers.js";
 // Removed circle ink creation; ink tool toggles freehand drawing.
 
 // Context for comment pane actions
@@ -146,6 +146,64 @@ export function ReactApp(props: {
 		filled: firstSelectedShapeFilled,
 		signature: selectedShapesSignature,
 	} = shapeSelectionAnalysis;
+	const textSelectionAnalysis = (() => {
+		let firstColor: string | null = null;
+		let firstFontSize: number | null = null;
+		let firstBold: boolean | null = null;
+		let firstItalic: boolean | null = null;
+		let firstUnderline: boolean | null = null;
+		let firstStrikethrough: boolean | null = null;
+		const signatureParts: string[] = [];
+
+		for (const id of selectedItemIds) {
+			const item = findItemById(view.root.items, id);
+			if (!item) {
+				signatureParts.push(id);
+				continue;
+			}
+			if (isText(item)) {
+				const text = item.content;
+				const color = text.color ?? TEXT_DEFAULT_COLOR;
+				const fontSize = text.fontSize ?? TEXT_DEFAULT_FONT_SIZE;
+				const bold = text.bold === true;
+				const italic = text.italic === true;
+				const underline = text.underline === true;
+				const strikethrough = text.strikethrough === true;
+				signatureParts.push(
+					`${id}:${color}:${fontSize}:${bold ? 1 : 0}:${italic ? 1 : 0}:${underline ? 1 : 0}:${strikethrough ? 1 : 0}`
+				);
+				if (firstColor === null) {
+					firstColor = color;
+					firstFontSize = fontSize;
+					firstBold = bold;
+					firstItalic = italic;
+					firstUnderline = underline;
+					firstStrikethrough = strikethrough;
+				}
+			} else {
+				signatureParts.push(id);
+			}
+		}
+
+		return {
+			color: firstColor,
+			fontSize: firstFontSize,
+			bold: firstBold,
+			italic: firstItalic,
+			underline: firstUnderline,
+			strikethrough: firstStrikethrough,
+			signature: signatureParts.join("|") || "",
+		};
+	})();
+	const {
+		color: firstSelectedTextColor,
+		fontSize: firstSelectedTextFontSize,
+		bold: firstSelectedTextBold,
+		italic: firstSelectedTextItalic,
+		underline: firstSelectedTextUnderline,
+		strikethrough: firstSelectedTextStrikethrough,
+		signature: selectedTextsSignature,
+	} = textSelectionAnalysis;
 
 	useEffect(() => {
 		if (firstSelectedShapeColor !== null && firstSelectedShapeColor !== shapeColor) {
@@ -160,6 +218,44 @@ export function ReactApp(props: {
 		firstSelectedShapeFilled,
 		shapeColor,
 		shapeFilled,
+	]);
+
+	useEffect(() => {
+		if (firstSelectedTextColor !== null && firstSelectedTextColor !== textColor) {
+			setTextColor(firstSelectedTextColor);
+		}
+		if (firstSelectedTextFontSize !== null && firstSelectedTextFontSize !== textFontSize) {
+			setTextFontSize(firstSelectedTextFontSize);
+		}
+		if (firstSelectedTextBold !== null && firstSelectedTextBold !== textBold) {
+			setTextBold(firstSelectedTextBold);
+		}
+		if (firstSelectedTextItalic !== null && firstSelectedTextItalic !== textItalic) {
+			setTextItalic(firstSelectedTextItalic);
+		}
+		if (firstSelectedTextUnderline !== null && firstSelectedTextUnderline !== textUnderline) {
+			setTextUnderline(firstSelectedTextUnderline);
+		}
+		if (
+			firstSelectedTextStrikethrough !== null &&
+			firstSelectedTextStrikethrough !== textStrikethrough
+		) {
+			setTextStrikethrough(firstSelectedTextStrikethrough);
+		}
+	}, [
+		selectedTextsSignature,
+		firstSelectedTextColor,
+		firstSelectedTextFontSize,
+		firstSelectedTextBold,
+		firstSelectedTextItalic,
+		firstSelectedTextUnderline,
+		firstSelectedTextStrikethrough,
+		textColor,
+		textFontSize,
+		textBold,
+		textItalic,
+		textUnderline,
+		textStrikethrough,
 	]);
 
 	// Function to open comment pane and focus input
