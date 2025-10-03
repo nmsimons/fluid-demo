@@ -9,7 +9,7 @@ Items in the Fluid Demo app now support directional connections between each oth
 Each `Item` has a `connections` field that is an array of item IDs:
 
 ```typescript
-connections: sf.array(sf.string)
+connections: sf.array(sf.string);
 ```
 
 ### Directional Connections
@@ -17,9 +17,10 @@ connections: sf.array(sf.string)
 The `connections` array represents **items that connect TO this item**. In other words, if item A's ID is in item B's connections array, there is a connection from A → B.
 
 **Example:**
+
 ```typescript
 // Item A connects to Item B
-itemB.connections // Contains itemA.id
+itemB.connections; // Contains itemA.id
 
 // This represents: A → B
 ```
@@ -29,10 +30,11 @@ itemB.connections // Contains itemA.id
 For a bidirectional connection, both items must include each other's ID in their connections arrays:
 
 **Example:**
+
 ```typescript
 // Bidirectional connection between A and B
-itemA.connections // Contains itemB.id
-itemB.connections // Contains itemA.id
+itemA.connections; // Contains itemB.id
+itemB.connections; // Contains itemA.id
 
 // This represents: A ↔ B
 ```
@@ -42,6 +44,7 @@ itemB.connections // Contains itemA.id
 The `Item` class provides helper methods for managing connections:
 
 ### `addConnection(fromItemId: string): void`
+
 Adds a directional connection TO this item from another item.
 
 ```typescript
@@ -49,6 +52,7 @@ itemB.addConnection(itemA.id); // Creates A → B
 ```
 
 ### `removeConnection(fromItemId: string): void`
+
 Removes a connection from a specific item.
 
 ```typescript
@@ -56,15 +60,17 @@ itemB.removeConnection(itemA.id); // Removes A → B
 ```
 
 ### `hasConnection(fromItemId: string): boolean`
+
 Check if a connection exists from a specific item.
 
 ```typescript
 if (itemB.hasConnection(itemA.id)) {
-  console.log("A connects to B");
+	console.log("A connects to B");
 }
 ```
 
 ### `getConnections(): string[]`
+
 Get all item IDs that connect TO this item.
 
 ```typescript
@@ -105,9 +111,9 @@ const incomingConnections = targetItem.getConnections();
 
 // Find all items that this item connects TO (requires iteration)
 function findOutgoingConnections(item: Item, allItems: Items): string[] {
-  return allItems
-    .filter(otherItem => otherItem.hasConnection(item.id))
-    .map(otherItem => otherItem.id);
+	return allItems
+		.filter((otherItem) => otherItem.hasConnection(item.id))
+		.map((otherItem) => otherItem.id);
 }
 ```
 
