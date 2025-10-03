@@ -84,7 +84,7 @@ export function ReactApp(props: {
 	const [zoom, setZoom] = useState(1);
 	const [pan, setPan] = useState({ x: 0, y: 0 });
 	// Start with ink mode enabled by default so users can draw immediately.
-	const [inkActive, setInkActive] = useState(true);
+	const [inkActive, setInkActive] = useState(false);
 	const [eraserActive, setEraserActive] = useState(false);
 	const [inkColor, setInkColor] = useState<string>("#2563eb");
 	const [inkWidth, setInkWidth] = useState<number>(4);
