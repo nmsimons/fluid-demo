@@ -4,8 +4,8 @@ import { Item, Group } from "../../schema/appSchema.js";
 import { useTree } from "../hooks/useTree.js";
 import {
 	getConnectionPoint,
-	calculateConnectionSides,
 	type ConnectionSide,
+	type Point,
 	type Rect,
 } from "../../utils/connections.js";
 import { generateOrthogonalWaypoints } from "../../utils/pathfinding.js";
@@ -120,18 +120,14 @@ export function ConnectionOverlay(props: ConnectionOverlayProps): JSX.Element {
 		};
 	};
 
-	// Get all obstacles for pathfinding (all items except those involved in connection)
-	// Expand obstacles by half the hit area stroke width to account for stroke extending from path
-	const getObstacles = (excludeIds: string[], expandBy: number = 0): Rect[] => {
+	// Get all obstacles for pathfinding - include ALL items as obstacles
+	const getObstacles = (expandBy: number = 0): Rect[] => {
 		const obstacles: Rect[] = [];
-		const excludeSet = new Set(excludeIds);
 
 		for (const item of items) {
-			if (excludeSet.has(item.id)) continue;
-
 			const rect = getRect(item.id);
 			if (rect) {
-				// Expand rectangle by the stroke width buffer
+				// Expand rectangle by the buffer
 				obstacles.push({
 					x: rect.x - expandBy,
 					y: rect.y - expandBy,
@@ -284,7 +280,7 @@ interface ConnectionLineProps {
 	fromItem: Item;
 	toItem: Item;
 	getRect: (itemId: string) => Rect | null;
-	getObstacles: (excludeIds: string[], expandBy?: number) => Rect[];
+	getObstacles: (expandBy?: number) => Rect[];
 	zoom: number;
 }
 
@@ -300,25 +296,54 @@ function ConnectionLine(props: ConnectionLineProps): JSX.Element | null {
 
 	if (!fromRect || !toRect) return null;
 
-	// Calculate which sides to connect
-	const [fromSide, toSide] = calculateConnectionSides(fromRect, toRect);
-	const start = getConnectionPoint(fromRect, fromSide);
-	const end = getConnectionPoint(toRect, toSide);
-
-	// Get obstacles and generate path
-	// Expand obstacles by half the hit area stroke width so the stroke doesn't overlap obstacles
+	// Get all obstacles (including connected items)
 	const hitAreaStrokeWidth = 8 / zoom;
-	const obstacles = getObstacles([fromItem.id, toItem.id], hitAreaStrokeWidth / 2);
-	// Use reasonable base clearance
 	const clearance = 10 / zoom;
-	const waypoints = generateOrthogonalWaypoints(
-		start,
-		end,
-		obstacles,
-		clearance,
-		fromSide,
-		toSide
-	);
+	const obstaclesExpanded = getObstacles(hitAreaStrokeWidth / 2);
+
+	// Try all reasonable side combinations and pick the one with shortest path
+	const sides: ConnectionSide[] = ["top", "right", "bottom", "left"];
+	let bestPath: Point[] | null = null;
+	let bestPathLength = Infinity;
+
+	for (const fromSide of sides) {
+		for (const toSide of sides) {
+			const start = getConnectionPoint(fromRect, fromSide);
+			const end = getConnectionPoint(toRect, toSide);
+
+			// Try to generate path for this combination
+			const waypoints = generateOrthogonalWaypoints(
+				start,
+				end,
+				obstaclesExpanded,
+				clearance,
+				fromSide,
+				toSide
+			);
+
+			// Calculate total path length
+			let pathLength = 0;
+			for (let i = 1; i < waypoints.length; i++) {
+				const dx = waypoints[i].x - waypoints[i - 1].x;
+				const dy = waypoints[i].y - waypoints[i - 1].y;
+				pathLength += Math.abs(dx) + Math.abs(dy);
+			}
+
+			// Prefer paths with fewer waypoints (simpler routes) when lengths are similar
+			const complexity = waypoints.length * 0.1;
+			const adjustedLength = pathLength + complexity;
+
+			if (adjustedLength < bestPathLength) {
+				bestPathLength = adjustedLength;
+				bestPath = waypoints;
+			}
+		}
+	}
+
+	// Use the best path found
+	const waypoints = bestPath || [];
+
+	if (waypoints.length === 0) return null;
 
 	// Create SVG path - arrow connects to line, with gap from connection point
 	const arrowSize = 12 / zoom; // Smaller chevron size
@@ -335,15 +360,17 @@ function ConnectionLine(props: ConnectionLineProps): JSX.Element | null {
 		y: lastSegment.y - arrowGap * Math.sin(angle),
 	};
 
-	// Line ends at the base of the arrow (no gap between line and arrow)
+	// Line ends at the base of the arrow to prevent overlap
+	// We need to cut back by arrow gap + half the arrow size to avoid overlap with perpendicular segments
 	let adjustedWaypoints = [...waypoints];
 	if (waypoints.length >= 2) {
 		const last = waypoints[waypoints.length - 1];
 		const secondLast = waypoints[waypoints.length - 2];
 		const angle = Math.atan2(last.y - secondLast.y, last.x - secondLast.x);
+		const cutbackDistance = arrowGap + arrowSize * 0.8; // Extra cutback to clear the arrow wings
 		const adjustedEnd = {
-			x: last.x - arrowGap * Math.cos(angle),
-			y: last.y - arrowGap * Math.sin(angle),
+			x: last.x - cutbackDistance * Math.cos(angle),
+			y: last.y - cutbackDistance * Math.sin(angle),
 		};
 		adjustedWaypoints = [...waypoints.slice(0, -1), adjustedEnd];
 	}
@@ -362,16 +389,14 @@ function ConnectionLine(props: ConnectionLineProps): JSX.Element | null {
 				fill="none"
 				style={{ pointerEvents: "none" }}
 			/>
-			{/* Arrow head - chevron (V-shape) */}
+			{/* Arrow head - solid triangle */}
 			<path
 				d={`M ${arrowTip.x - arrowSize * Math.cos(angle - Math.PI / 4)} ${arrowTip.y - arrowSize * Math.sin(angle - Math.PI / 4)}
 					L ${arrowTip.x} ${arrowTip.y}
-					L ${arrowTip.x - arrowSize * Math.cos(angle + Math.PI / 4)} ${arrowTip.y - arrowSize * Math.sin(angle + Math.PI / 4)}`}
-				fill="none"
-				stroke={isHovered ? "#2563eb" : "#3b82f6"}
-				strokeWidth={isHovered ? 4 / zoom : 3 / zoom}
-				strokeLinecap="round"
-				strokeLinejoin="round"
+					L ${arrowTip.x - arrowSize * Math.cos(angle + Math.PI / 4)} ${arrowTip.y - arrowSize * Math.sin(angle + Math.PI / 4)}
+					Z`}
+				fill={isHovered ? "#2563eb" : "#3b82f6"}
+				stroke="none"
 				style={{ pointerEvents: "none" }}
 			/>
 			{/* Invisible wider hit area for hover and right-click */}

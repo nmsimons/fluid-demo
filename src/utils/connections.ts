@@ -75,9 +75,79 @@ export function getOppositeSide(side: ConnectionSide): ConnectionSide {
  * Returns [fromSide, toSide]
  */
 export function calculateConnectionSides(from: Rect, to: Rect): [ConnectionSide, ConnectionSide] {
-	const fromSide = getClosestSide(from, to);
-	const toSide = getOppositeSide(fromSide);
-	return [fromSide, toSide];
+	// Calculate all possible side combinations and their direct distances
+	const sides: ConnectionSide[] = ["top", "right", "bottom", "left"];
+	let bestDistance = Infinity;
+	let bestFromSide: ConnectionSide = "right";
+	let bestToSide: ConnectionSide = "left";
+
+	for (const fromSide of sides) {
+		for (const toSide of sides) {
+			const fromPoint = getConnectionPoint(from, fromSide);
+			const toPoint = getConnectionPoint(to, toSide);
+
+			// Calculate Manhattan distance (since we use orthogonal routing)
+			const distance = Math.abs(toPoint.x - fromPoint.x) + Math.abs(toPoint.y - fromPoint.y);
+
+			// Prefer connections where sides face each other (opposite sides)
+			// Give a bonus to opposite-facing sides
+			const areOpposite = toSide === getOppositeSide(fromSide);
+			const adjustedDistance = areOpposite ? distance * 0.8 : distance;
+
+			if (adjustedDistance < bestDistance) {
+				bestDistance = adjustedDistance;
+				bestFromSide = fromSide;
+				bestToSide = toSide;
+			}
+		}
+	}
+
+	return [bestFromSide, bestToSide];
+}
+
+/**
+ * Adjust connection side to avoid parallel routing
+ * If the next waypoint would create a line parallel to the edge, move to nearest corner side
+ */
+export function adjustSideForOrthogonalRouting(
+	rect: Rect,
+	side: ConnectionSide,
+	nextPoint: Point
+): ConnectionSide {
+	const connectionPoint = getConnectionPoint(rect, side);
+
+	// Determine if the next segment would be parallel to the edge
+	const dx = nextPoint.x - connectionPoint.x;
+	const dy = nextPoint.y - connectionPoint.y;
+
+	// For top/bottom edges, check if line goes horizontally (parallel)
+	if ((side === "top" || side === "bottom") && Math.abs(dy) < Math.abs(dx)) {
+		// Line is horizontal, should exit from left/right instead
+		// Choose left or right based on which direction we're going
+		if (dx > 0) {
+			// Going right, use right side if it's closer to the target
+			return "right";
+		} else {
+			// Going left, use left side
+			return "left";
+		}
+	}
+
+	// For left/right edges, check if line goes vertically (parallel)
+	if ((side === "left" || side === "right") && Math.abs(dx) < Math.abs(dy)) {
+		// Line is vertical, should exit from top/bottom instead
+		// Choose top or bottom based on which direction we're going
+		if (dy > 0) {
+			// Going down, use bottom side
+			return "bottom";
+		} else {
+			// Going up, use top side
+			return "top";
+		}
+	}
+
+	// No adjustment needed
+	return side;
 }
 
 /**

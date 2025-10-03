@@ -22,19 +22,20 @@ function heuristic(a: Point, b: Point): number {
 
 /**
  * Check if a line segment intersects with a rectangle
+ * Points exactly on the edge of the rectangle are not considered inside
  */
-function lineIntersectsRect(p1: Point, p2: Point, rect: Rect): boolean {
-	// Check if either endpoint is inside the rectangle
-	if (
-		(p1.x >= rect.x &&
-			p1.x <= rect.x + rect.width &&
-			p1.y >= rect.y &&
-			p1.y <= rect.y + rect.height) ||
-		(p2.x >= rect.x &&
-			p2.x <= rect.x + rect.width &&
-			p2.y >= rect.y &&
-			p2.y <= rect.y + rect.height)
-	) {
+function lineIntersectsRect(p1: Point, p2: Point, rect: Rect, tolerance: number = 0.1): boolean {
+	const isPointStrictlyInside = (p: Point): boolean => {
+		return (
+			p.x > rect.x + tolerance &&
+			p.x < rect.x + rect.width - tolerance &&
+			p.y > rect.y + tolerance &&
+			p.y < rect.y + rect.height - tolerance
+		);
+	};
+
+	// Check if either endpoint is strictly inside the rectangle (not on edge)
+	if (isPointStrictlyInside(p1) || isPointStrictlyInside(p2)) {
 		return true;
 	}
 
@@ -233,23 +234,24 @@ export function generateOrthogonalWaypoints(
 	endSide?: ConnectionSide
 ): Point[] {
 	// Calculate perpendicular exit/entry points
-	const exitDistance = padding * 2; // Distance to extend perpendicular from connection point
+	// Use a larger minimum distance to ensure visible perpendicular segments
+	const minPerpendicularDistance = Math.max(padding * 3, 30);
 
 	// Start point with perpendicular exit
 	let actualStart = start;
 	if (startSide) {
 		switch (startSide) {
 			case "top":
-				actualStart = { x: start.x, y: start.y - exitDistance };
+				actualStart = { x: start.x, y: start.y - minPerpendicularDistance };
 				break;
 			case "bottom":
-				actualStart = { x: start.x, y: start.y + exitDistance };
+				actualStart = { x: start.x, y: start.y + minPerpendicularDistance };
 				break;
 			case "left":
-				actualStart = { x: start.x - exitDistance, y: start.y };
+				actualStart = { x: start.x - minPerpendicularDistance, y: start.y };
 				break;
 			case "right":
-				actualStart = { x: start.x + exitDistance, y: start.y };
+				actualStart = { x: start.x + minPerpendicularDistance, y: start.y };
 				break;
 		}
 	}
@@ -259,16 +261,16 @@ export function generateOrthogonalWaypoints(
 	if (endSide) {
 		switch (endSide) {
 			case "top":
-				actualEnd = { x: end.x, y: end.y - exitDistance };
+				actualEnd = { x: end.x, y: end.y - minPerpendicularDistance };
 				break;
 			case "bottom":
-				actualEnd = { x: end.x, y: end.y + exitDistance };
+				actualEnd = { x: end.x, y: end.y + minPerpendicularDistance };
 				break;
 			case "left":
-				actualEnd = { x: end.x - exitDistance, y: end.y };
+				actualEnd = { x: end.x - minPerpendicularDistance, y: end.y };
 				break;
 			case "right":
-				actualEnd = { x: end.x + exitDistance, y: end.y };
+				actualEnd = { x: end.x + minPerpendicularDistance, y: end.y };
 				break;
 		}
 	}
@@ -280,39 +282,31 @@ export function generateOrthogonalWaypoints(
 	const hThenVClear = checkOrthogonalPath(hThenV, obstacles);
 	const vThenHClear = checkOrthogonalPath(vThenH, obstacles);
 
+	let simplePath: Point[] | null = null;
+
 	if (hThenVClear && vThenHClear) {
 		// Both work, choose shorter
 		const hDist = Math.abs(actualEnd.x - actualStart.x) + Math.abs(actualEnd.y - actualStart.y);
-		const path = hDist < vThenH.length ? hThenV : vThenH;
-		// Add back the original start/end points with perpendicular segments
-		if (startSide && endSide) {
-			return [start, ...path, end];
-		} else if (startSide) {
-			return [start, ...path.slice(0, -1), end];
-		} else if (endSide) {
-			return [start, ...path.slice(1), end];
-		} else {
-			return [start, ...path.slice(1, -1), end];
-		}
+		simplePath = hDist < vThenH.length ? hThenV : vThenH;
 	} else if (hThenVClear) {
-		if (startSide && endSide) {
-			return [start, ...hThenV, end];
-		} else if (startSide) {
-			return [start, ...hThenV.slice(0, -1), end];
-		} else if (endSide) {
-			return [start, ...hThenV.slice(1), end];
-		} else {
-			return [start, ...hThenV.slice(1, -1), end];
-		}
+		simplePath = hThenV;
 	} else if (vThenHClear) {
+		simplePath = vThenH;
+	}
+
+	// If we found a simple path, add the perpendicular segments
+	if (simplePath) {
 		if (startSide && endSide) {
-			return [start, ...vThenH, end];
+			// Both perpendicular: start -> actualStart -> middle points -> actualEnd -> end
+			return [start, actualStart, ...simplePath.slice(1, -1), actualEnd, end];
 		} else if (startSide) {
-			return [start, ...vThenH.slice(0, -1), end];
+			// Only start perpendicular: start -> actualStart -> middle points -> end
+			return [start, actualStart, ...simplePath.slice(1, -1), end];
 		} else if (endSide) {
-			return [start, ...vThenH.slice(1), end];
+			// Only end perpendicular: start -> middle points -> actualEnd -> end
+			return [start, ...simplePath.slice(1, -1), actualEnd, end];
 		} else {
-			return [start, ...vThenH.slice(1, -1), end];
+			return simplePath;
 		}
 	}
 
@@ -348,15 +342,24 @@ export function generateOrthogonalWaypoints(
 	const path = findOrthogonalPath(actualStart, actualEnd, waypoints, obstacles);
 
 	// Add back the original start/end points with perpendicular segments
+	// The path includes actualStart and actualEnd, so we need to add the perpendicular segments
+	let finalPath: Point[] = [];
+
 	if (startSide && endSide) {
-		return [start, ...path, end];
+		// Both perpendicular segments: start -> actualStart -> path -> actualEnd -> end
+		finalPath = [start, actualStart, ...path.slice(1, -1), actualEnd, end];
 	} else if (startSide) {
-		return [start, ...path.slice(0, -1), end];
+		// Only start perpendicular: start -> actualStart -> path -> end
+		finalPath = [start, actualStart, ...path.slice(1, -1), end];
 	} else if (endSide) {
-		return [start, ...path.slice(1), end];
+		// Only end perpendicular: start -> path -> actualEnd -> end
+		finalPath = [start, ...path.slice(1, -1), actualEnd, end];
 	} else {
-		return [start, ...path.slice(1, -1), end];
+		// No perpendicular segments
+		finalPath = path;
 	}
+
+	return finalPath;
 }
 
 /**
