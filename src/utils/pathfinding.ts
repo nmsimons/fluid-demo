@@ -284,12 +284,36 @@ export function generateOrthogonalWaypoints(
 		// Both work, choose shorter
 		const hDist = Math.abs(actualEnd.x - actualStart.x) + Math.abs(actualEnd.y - actualStart.y);
 		const path = hDist < vThenH.length ? hThenV : vThenH;
-		// Add back the original start/end points
-		return [start, ...path.slice(1, -1), end];
+		// Add back the original start/end points with perpendicular segments
+		if (startSide && endSide) {
+			return [start, ...path, end];
+		} else if (startSide) {
+			return [start, ...path.slice(0, -1), end];
+		} else if (endSide) {
+			return [start, ...path.slice(1), end];
+		} else {
+			return [start, ...path.slice(1, -1), end];
+		}
 	} else if (hThenVClear) {
-		return [start, ...hThenV.slice(1, -1), end];
+		if (startSide && endSide) {
+			return [start, ...hThenV, end];
+		} else if (startSide) {
+			return [start, ...hThenV.slice(0, -1), end];
+		} else if (endSide) {
+			return [start, ...hThenV.slice(1), end];
+		} else {
+			return [start, ...hThenV.slice(1, -1), end];
+		}
 	} else if (vThenHClear) {
-		return [start, ...vThenH.slice(1, -1), end];
+		if (startSide && endSide) {
+			return [start, ...vThenH, end];
+		} else if (startSide) {
+			return [start, ...vThenH.slice(0, -1), end];
+		} else if (endSide) {
+			return [start, ...vThenH.slice(1), end];
+		} else {
+			return [start, ...vThenH.slice(1, -1), end];
+		}
 	}
 
 	// Need to route around obstacles - generate orthogonal waypoints
@@ -323,8 +347,16 @@ export function generateOrthogonalWaypoints(
 	// Find orthogonal path using A* with orthogonal constraint
 	const path = findOrthogonalPath(actualStart, actualEnd, waypoints, obstacles);
 
-	// Add back the original start/end points
-	return [start, ...path.slice(1, -1), end];
+	// Add back the original start/end points with perpendicular segments
+	if (startSide && endSide) {
+		return [start, ...path, end];
+	} else if (startSide) {
+		return [start, ...path.slice(0, -1), end];
+	} else if (endSide) {
+		return [start, ...path.slice(1), end];
+	} else {
+		return [start, ...path.slice(1, -1), end];
+	}
 }
 
 /**

@@ -321,7 +321,7 @@ function ConnectionLine(props: ConnectionLineProps): JSX.Element | null {
 	);
 
 	// Create SVG path - arrow connects to line, with gap from connection point
-	const arrowSize = 24 / zoom;
+	const arrowSize = 12 / zoom; // Smaller chevron size
 	const arrowGap = 12 / zoom; // Gap between arrow tip and connection point
 
 	// Calculate arrow head at the end pointing toward the target
@@ -362,15 +362,16 @@ function ConnectionLine(props: ConnectionLineProps): JSX.Element | null {
 				fill="none"
 				style={{ pointerEvents: "none" }}
 			/>
-			{/* Arrow head - filled triangle */}
+			{/* Arrow head - chevron (V-shape) */}
 			<path
-				d={`M ${arrowTip.x} ${arrowTip.y} 
-					L ${arrowTip.x - arrowSize * Math.cos(angle - Math.PI / 6)} ${arrowTip.y - arrowSize * Math.sin(angle - Math.PI / 6)}
-					L ${arrowTip.x - arrowSize * Math.cos(angle + Math.PI / 6)} ${arrowTip.y - arrowSize * Math.sin(angle + Math.PI / 6)}
-					Z`}
-				fill={isHovered ? "#2563eb" : "#3b82f6"}
+				d={`M ${arrowTip.x - arrowSize * Math.cos(angle - Math.PI / 4)} ${arrowTip.y - arrowSize * Math.sin(angle - Math.PI / 4)}
+					L ${arrowTip.x} ${arrowTip.y}
+					L ${arrowTip.x - arrowSize * Math.cos(angle + Math.PI / 4)} ${arrowTip.y - arrowSize * Math.sin(angle + Math.PI / 4)}`}
+				fill="none"
 				stroke={isHovered ? "#2563eb" : "#3b82f6"}
-				strokeWidth={1 / zoom}
+				strokeWidth={isHovered ? 4 / zoom : 3 / zoom}
+				strokeLinecap="round"
+				strokeLinejoin="round"
 				style={{ pointerEvents: "none" }}
 			/>
 			{/* Invisible wider hit area for hover and right-click */}
