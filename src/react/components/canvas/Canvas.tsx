@@ -55,6 +55,7 @@ import { PresenceOverlay } from "../../overlays/PresenceOverlay.js";
 import { CommentOverlay } from "../../overlays/CommentOverlay.js";
 import { CursorOverlay } from "../../overlays/CursorOverlay.js";
 import { GroupOverlay } from "../../overlays/GroupOverlay.js";
+import { ConnectionOverlay } from "../../overlays/ConnectionOverlay.js";
 import { useCanvasNavigation } from "../../hooks/useCanvasNavigation.js";
 import { useOverlayRerenders } from "../../hooks/useOverlayRerenders.js";
 import { ItemsHtmlLayer } from "./ItemsHtmlLayer.js";
@@ -970,6 +971,20 @@ export function Canvas(props: {
 								/>
 							);
 						})}
+				</g>
+				{/* Connection overlays - render connection points and lines (after selection so they're on top) */}
+				<g
+					transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}
+					style={{ pointerEvents: "auto" }}
+					data-layer="connection-overlays"
+				>
+					<ConnectionOverlay
+						items={Array.from(items)}
+						layout={layout}
+						zoom={zoom}
+						pan={pan}
+						svgRef={svgRef}
+					/>
 				</g>
 				{marqueeRect && (
 					<g
