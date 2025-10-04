@@ -36,23 +36,25 @@ interface DragState {
 
 /**
  * Calculate bounds for a group based on its children
- * Includes the title bar height above the group content area
+ * Uses VISUAL bounds with zoom-dependent padding for connection points
  */
-function calculateGroupBounds(groupItem: Item, layout: LayoutMap, zoom: number): Rect | null {
+function calculateGroupVisualBounds(groupItem: Item, layout: LayoutMap): Rect | null {
 	const group = groupItem.content as Group;
 
-	const titleBarHeight = 28 / zoom;
-	const titleBarGap = 4 / zoom;
+	const borderStrokeWidth = 5; // Unselected border width (matches GroupOverlay)
+	const titleBarHeight = 34;
+	const titleBarGap = borderStrokeWidth * 0.85;
 	const titleBarTotalHeight = titleBarHeight + titleBarGap;
 
 	if (group.items.length === 0) {
 		// Empty group has fixed size
-		const padding = 10 / zoom;
-		const minSize = 100 / zoom;
+		const padding = 12;
+		const minSize = 100;
+		const titleBarWidth = minSize + borderStrokeWidth;
 		return {
-			x: groupItem.x - padding,
+			x: groupItem.x - padding - borderStrokeWidth / 2,
 			y: groupItem.y - padding - titleBarTotalHeight,
-			width: minSize,
+			width: titleBarWidth,
 			height: minSize + titleBarTotalHeight,
 		};
 	}
@@ -76,12 +78,70 @@ function calculateGroupBounds(groupItem: Item, layout: LayoutMap, zoom: number):
 		return null;
 	}
 
-	const padding = 32 / zoom;
+	const padding = 32;
+	const width = maxX - minX + padding * 2;
+	const titleBarWidth = width + borderStrokeWidth;
 	return {
-		x: minX - padding,
+		x: minX - padding - borderStrokeWidth / 2,
 		y: minY - padding - titleBarTotalHeight,
-		width: maxX - minX + padding * 2,
+		width: titleBarWidth,
 		height: maxY - minY + padding * 2 + titleBarTotalHeight,
+	};
+}
+
+/**
+ * Calculate bounds for a group based on its children
+ * Uses FIXED LOGICAL coordinates for consistent pathfinding at all zoom levels.
+ * The obstacle bounds should be LARGER than visual bounds to provide breathing room
+ * for connection line routing.
+ */
+function calculateGroupBounds(groupItem: Item, layout: LayoutMap): Rect | null {
+	const group = groupItem.content as Group;
+
+	// Use fixed logical coordinates (not zoom-dependent)
+	const titleBarHeight = 34; // Match visual bounds
+	const titleBarGap = 5 * 0.85; // Match visual bounds (borderStrokeWidth * 0.85)
+	const titleBarTotalHeight = titleBarHeight + titleBarGap;
+	const routingMargin = 12; // Extra margin around groups for routing breathing room
+
+	if (group.items.length === 0) {
+		// Empty group has fixed size
+		const padding = 12; // Match visual padding
+		const minSize = 100;
+		return {
+			x: groupItem.x - padding - routingMargin,
+			y: groupItem.y - padding - titleBarTotalHeight - routingMargin,
+			width: minSize + routingMargin * 2,
+			height: minSize + titleBarTotalHeight + routingMargin * 2,
+		};
+	}
+
+	let minX = Infinity;
+	let minY = Infinity;
+	let maxX = -Infinity;
+	let maxY = -Infinity;
+
+	for (const childItem of group.items) {
+		const childBounds = layout.get(childItem.id);
+		if (childBounds) {
+			minX = Math.min(minX, childBounds.left);
+			minY = Math.min(minY, childBounds.top);
+			maxX = Math.max(maxX, childBounds.right);
+			maxY = Math.max(maxY, childBounds.bottom);
+		}
+	}
+
+	if (!isFinite(minX) || !isFinite(minY)) {
+		return null;
+	}
+
+	// Match visual padding and add routing margin
+	const padding = 32; // Match visual padding
+	return {
+		x: minX - padding - routingMargin,
+		y: minY - padding - titleBarTotalHeight - routingMargin,
+		width: maxX - minX + padding * 2 + routingMargin * 2,
+		height: maxY - minY + padding * 2 + titleBarTotalHeight + routingMargin * 2,
 	};
 }
 
@@ -124,12 +184,31 @@ export function ConnectionOverlay(props: ConnectionOverlayProps): JSX.Element {
 	// Filter to only group items
 	const groupItems = items.filter((item) => Tree.is(item.content, Group));
 
-	// Helper to get rect from layout bounds
-	const getRect = (itemId: string): Rect | null => {
+	// Helper to get VISUAL rect for connection points (zoom-dependent)
+	const getVisualRect = (itemId: string): Rect | null => {
 		// Check if this is a group
 		const item = items.find((i) => i.id === itemId);
 		if (item && Tree.is(item.content, Group)) {
-			return calculateGroupBounds(item, layout, zoom);
+			return calculateGroupVisualBounds(item, layout);
+		}
+
+		// Regular item - get from layout
+		const bounds = layout.get(itemId);
+		if (!bounds) return null;
+		return {
+			x: bounds.left,
+			y: bounds.top,
+			width: bounds.right - bounds.left,
+			height: bounds.bottom - bounds.top,
+		};
+	};
+
+	// Helper to get LOGICAL rect for obstacles (zoom-independent)
+	const getObstacleRect = (itemId: string): Rect | null => {
+		// Check if this is a group
+		const item = items.find((i) => i.id === itemId);
+		if (item && Tree.is(item.content, Group)) {
+			return calculateGroupBounds(item, layout);
 		}
 
 		// Regular item - get from layout
@@ -148,7 +227,7 @@ export function ConnectionOverlay(props: ConnectionOverlayProps): JSX.Element {
 		const obstacles: Rect[] = [];
 
 		for (const item of items) {
-			const rect = getRect(item.id);
+			const rect = getObstacleRect(item.id);
 			if (rect) {
 				// Expand rectangle by the buffer
 				obstacles.push({
@@ -224,20 +303,25 @@ export function ConnectionOverlay(props: ConnectionOverlayProps): JSX.Element {
 			{/* Render all existing connections and collect which sides are used */}
 			{(() => {
 				const activeSides = new Map<string, Set<ConnectionSide>>();
+				const allPaths = new Map<string, Point[]>(); // Track all connection paths
 
 				const connectionElements = groupItems.map((toItem) => {
 					return toItem.getConnections().map((fromItemId) => {
 						const fromItem = items.find((item) => item.id === fromItemId);
 						if (!fromItem) return null;
 
+						const connectionKey = `${fromItemId}-${toItem.id}`;
+
 						return (
 							<ConnectionLine
-								key={`${fromItemId}-${toItem.id}`}
+								key={connectionKey}
 								fromItem={fromItem}
 								toItem={toItem}
-								getRect={getRect}
+								getRect={getVisualRect}
 								getObstacles={getObstacles}
 								zoom={zoom}
+								allPaths={allPaths}
+								connectionKey={connectionKey}
 								onSidesCalculated={(fromId, fromSide, toId, toSide) => {
 									if (!activeSides.has(fromId))
 										activeSides.set(fromId, new Set());
@@ -258,7 +342,7 @@ export function ConnectionOverlay(props: ConnectionOverlayProps): JSX.Element {
 						{dragState && (
 							<TempConnectionLine
 								dragState={dragState}
-								getRect={getRect}
+								getRect={getVisualRect}
 								zoom={zoom}
 							/>
 						)}
@@ -268,7 +352,7 @@ export function ConnectionOverlay(props: ConnectionOverlayProps): JSX.Element {
 							<ConnectionPoints
 								key={item.id}
 								item={item}
-								getRect={getRect}
+								getRect={getVisualRect}
 								onDragStart={handleConnectionDragStart}
 								zoom={zoom}
 								cursorPos={cursorPos}
@@ -294,7 +378,7 @@ interface ConnectionPointsProps {
 }
 
 function ConnectionPoints(props: ConnectionPointsProps): JSX.Element | null {
-	const { item, getRect, onDragStart, zoom, cursorPos, isDragging, activeSides } = props;
+	const { item, getRect, onDragStart, cursorPos, isDragging, activeSides } = props;
 	useTree(item);
 
 	const rect = getRect(item.id);
@@ -303,7 +387,7 @@ function ConnectionPoints(props: ConnectionPointsProps): JSX.Element | null {
 	const sides: ConnectionSide[] = ["top", "right", "bottom", "left"];
 
 	// Proximity threshold in logical units
-	const proximityThreshold = 100 / zoom;
+	const proximityThreshold = 100;
 
 	return (
 		<g className="connection-points" style={{ pointerEvents: "all" }}>
@@ -339,10 +423,10 @@ function ConnectionPoints(props: ConnectionPointsProps): JSX.Element | null {
 						key={side}
 						cx={point.x}
 						cy={point.y}
-						r={8 / zoom}
+						r={12}
 						fill="#ffffff"
 						stroke="#3b82f6"
-						strokeWidth={3 / zoom}
+						strokeWidth={5}
 						opacity={opacity}
 						style={{
 							cursor: "crosshair",
@@ -358,12 +442,202 @@ function ConnectionPoints(props: ConnectionPointsProps): JSX.Element | null {
 	);
 }
 
+/**
+ * Check if two segments overlap (are parallel and on the same line)
+ */
+function segmentsOverlap(p1Start: Point, p1End: Point, p2Start: Point, p2End: Point): boolean {
+	const tolerance = 0.5;
+
+	const dx1 = p1End.x - p1Start.x;
+	const dy1 = p1End.y - p1Start.y;
+	const dx2 = p2End.x - p2Start.x;
+	const dy2 = p2End.y - p2Start.y;
+
+	// Both horizontal
+	if (
+		Math.abs(dy1) < tolerance &&
+		Math.abs(dy2) < tolerance &&
+		Math.abs(p1Start.y - p2Start.y) < tolerance
+	) {
+		const minX1 = Math.min(p1Start.x, p1End.x);
+		const maxX1 = Math.max(p1Start.x, p1End.x);
+		const minX2 = Math.min(p2Start.x, p2End.x);
+		const maxX2 = Math.max(p2Start.x, p2End.x);
+
+		// Check if X ranges overlap
+		return minX1 < maxX2 && maxX1 > minX2;
+	}
+
+	// Both vertical
+	if (
+		Math.abs(dx1) < tolerance &&
+		Math.abs(dx2) < tolerance &&
+		Math.abs(p1Start.x - p2Start.x) < tolerance
+	) {
+		const minY1 = Math.min(p1Start.y, p1End.y);
+		const maxY1 = Math.max(p1Start.y, p1End.y);
+		const minY2 = Math.min(p2Start.y, p2End.y);
+		const maxY2 = Math.max(p2Start.y, p2End.y);
+
+		// Check if Y ranges overlap
+		return minY1 < maxY2 && maxY1 > minY2;
+	}
+
+	return false;
+}
+
+/**
+ * Offset a path with segment-specific offsets based on overlapping connections.
+ * Maintains orthogonal routing by applying offsets perpendicular to each segment.
+ * Properly handles corners to ensure segments remain horizontal or vertical.
+ */
+function offsetPathBySegment(
+	path: Point[],
+	connectionKey: string,
+	allPaths: Map<string, Point[]>,
+	lineSpacing: number
+): Point[] {
+	if (path.length < 2) return path;
+
+	// For each segment, find which connections share it and calculate offset
+	const segmentOffsets: number[] = [];
+
+	for (let i = 0; i < path.length - 1; i++) {
+		const segStart = path[i];
+		const segEnd = path[i + 1];
+
+		// Find all connections that overlap this segment
+		const overlappingOnSegment: string[] = [connectionKey];
+
+		for (const [otherKey, otherPath] of allPaths) {
+			if (otherKey === connectionKey) continue;
+
+			// Check each segment in the other path
+			for (let j = 0; j < otherPath.length - 1; j++) {
+				if (segmentsOverlap(segStart, segEnd, otherPath[j], otherPath[j + 1])) {
+					overlappingOnSegment.push(otherKey);
+					break; // Only add once per connection
+				}
+			}
+		}
+
+		// Calculate centered offset for this segment
+		let offset = 0;
+		if (overlappingOnSegment.length > 1) {
+			overlappingOnSegment.sort();
+			const myIndex = overlappingOnSegment.indexOf(connectionKey);
+			const total = overlappingOnSegment.length;
+			const centerOffset = (total - 1) / 2;
+			offset = (myIndex - centerOffset) * lineSpacing;
+		}
+
+		segmentOffsets.push(offset);
+	}
+
+	// Apply offsets to create new path, maintaining strict orthogonal routing
+	// We build the path segment by segment, ensuring each segment is properly offset
+	// and corners are at the intersection of the offset segments
+	const result: Point[] = [];
+
+	for (let i = 0; i < path.length; i++) {
+		const point = path[i];
+
+		if (i === 0) {
+			// First point: offset perpendicular to first segment
+			const offset = segmentOffsets[0];
+			const next = path[1];
+			const dx = next.x - point.x;
+			const dy = next.y - point.y;
+			const isHorizontal = Math.abs(dx) > Math.abs(dy);
+
+			if (isHorizontal) {
+				// Horizontal segment: offset vertically (y changes, x stays same)
+				result.push({ x: point.x, y: point.y + offset });
+			} else {
+				// Vertical segment: offset horizontally (x changes, y stays same)
+				result.push({ x: point.x + offset, y: point.y });
+			}
+		} else if (i === path.length - 1) {
+			// Last point: must connect from the previous offset segment
+			// Calculate based on the direction of the last segment and its offset
+			const prevResult = result[result.length - 1];
+			const prev = path[i - 1];
+			const dx = point.x - prev.x;
+			const dy = point.y - prev.y;
+			const isHorizontal = Math.abs(dx) > Math.abs(dy);
+
+			if (isHorizontal) {
+				// Horizontal segment: offset was applied vertically
+				// So Y is determined by the offset, X extends from previous point
+				result.push({ x: point.x, y: prevResult.y });
+			} else {
+				// Vertical segment: offset was applied horizontally
+				// So X is determined by the offset, Y extends from previous point
+				result.push({ x: prevResult.x, y: point.y });
+			}
+		} else {
+			// Middle point (corner): intersection of two offset segments
+			// The previous segment determines one coordinate, the next segment determines the other
+			const prevResult = result[result.length - 1];
+			const prev = path[i - 1];
+			const next = path[i + 1];
+			const offsetBefore = segmentOffsets[i - 1];
+			const offsetAfter = segmentOffsets[i];
+
+			// Determine direction of incoming segment
+			const dxBefore = point.x - prev.x;
+			const dyBefore = point.y - prev.y;
+			const isHorizontalBefore = Math.abs(dxBefore) > Math.abs(dyBefore);
+
+			// Determine direction of outgoing segment
+			const dxAfter = next.x - point.x;
+			const dyAfter = next.y - point.y;
+			const isHorizontalAfter = Math.abs(dxAfter) > Math.abs(dyAfter);
+
+			let newX: number;
+			let newY: number;
+
+			if (isHorizontalBefore && !isHorizontalAfter) {
+				// Incoming horizontal, outgoing vertical
+				// Horizontal segment determines Y (from previous point)
+				// Vertical segment determines X (offset from original)
+				newY = prevResult.y; // Y stays same as end of horizontal segment
+				newX = point.x + offsetAfter; // X is offset for the vertical segment
+			} else if (!isHorizontalBefore && isHorizontalAfter) {
+				// Incoming vertical, outgoing horizontal
+				// Vertical segment determines X (from previous point)
+				// Horizontal segment determines Y (offset from original)
+				newX = prevResult.x; // X stays same as end of vertical segment
+				newY = point.y + offsetAfter; // Y is offset for the horizontal segment
+			} else {
+				// Both segments go in the same direction (rare case)
+				// This shouldn't happen in properly generated orthogonal paths
+				if (isHorizontalBefore) {
+					// Both horizontal
+					newX = point.x;
+					newY = point.y + (offsetBefore + offsetAfter) / 2;
+				} else {
+					// Both vertical
+					newX = point.x + (offsetBefore + offsetAfter) / 2;
+					newY = point.y;
+				}
+			}
+
+			result.push({ x: newX, y: newY });
+		}
+	}
+
+	return result;
+}
+
 interface ConnectionLineProps {
 	fromItem: Item;
 	toItem: Item;
 	getRect: (itemId: string) => Rect | null;
 	getObstacles: (expandBy?: number) => Rect[];
 	zoom: number;
+	allPaths: Map<string, Point[]>;
+	connectionKey: string;
 	onSidesCalculated: (
 		fromId: string,
 		fromSide: ConnectionSide,
@@ -373,7 +647,8 @@ interface ConnectionLineProps {
 }
 
 function ConnectionLine(props: ConnectionLineProps): JSX.Element | null {
-	const { fromItem, toItem, getRect, getObstacles, zoom, onSidesCalculated } = props;
+	const { fromItem, toItem, getRect, getObstacles, allPaths, connectionKey, onSidesCalculated } =
+		props;
 	useTree(fromItem);
 	useTree(toItem);
 
@@ -385,9 +660,10 @@ function ConnectionLine(props: ConnectionLineProps): JSX.Element | null {
 	if (!fromRect || !toRect) return null;
 
 	// Get all obstacles (including connected items)
-	const hitAreaStrokeWidth = 8 / zoom;
-	const clearance = 10 / zoom;
-	const obstaclesExpanded = getObstacles(hitAreaStrokeWidth / 2);
+	// Use fixed logical coordinates for pathfinding - don't divide by zoom
+	// This ensures routing is consistent at all zoom levels
+	const clearance = 10; // Logical coordinate clearance for pathfinding
+	const obstaclesExpanded = getObstacles(4); // Fixed logical expansion, not zoom-dependent
 
 	// Try all reasonable side combinations and pick the one with shortest path
 	const sides: ConnectionSide[] = ["top", "right", "bottom", "left"];
@@ -411,7 +687,7 @@ function ConnectionLine(props: ConnectionLineProps): JSX.Element | null {
 				toSide
 			);
 
-			// Calculate total path length
+			// Calculate path quality metrics
 			let pathLength = 0;
 			for (let i = 1; i < waypoints.length; i++) {
 				const dx = waypoints[i].x - waypoints[i - 1].x;
@@ -419,12 +695,23 @@ function ConnectionLine(props: ConnectionLineProps): JSX.Element | null {
 				pathLength += Math.abs(dx) + Math.abs(dy);
 			}
 
-			// Prefer paths with fewer waypoints (simpler routes) when lengths are similar
-			const complexity = waypoints.length * 0.1;
-			const adjustedLength = pathLength + complexity;
+			// Prefer simpler routes with fewer turns
+			const numTurns = waypoints.length - 2; // Number of corners
+			const complexityPenalty = numTurns * 50; // Penalize each turn
 
-			if (adjustedLength < bestPathLength) {
-				bestPathLength = adjustedLength;
+			// Prefer paths where sides face each other (opposite directions)
+			const sidesOpposite =
+				(fromSide === "right" && toSide === "left") ||
+				(fromSide === "left" && toSide === "right") ||
+				(fromSide === "top" && toSide === "bottom") ||
+				(fromSide === "bottom" && toSide === "top");
+			const directionBonus = sidesOpposite ? -100 : 0;
+
+			// Calculate total score (lower is better)
+			const score = pathLength + complexityPenalty + directionBonus;
+
+			if (score < bestPathLength) {
+				bestPathLength = score;
 				bestPath = waypoints;
 				bestFromSide = fromSide;
 				bestToSide = toSide;
@@ -436,14 +723,21 @@ function ConnectionLine(props: ConnectionLineProps): JSX.Element | null {
 	onSidesCalculated(fromItem.id, bestFromSide, toItem.id, bestToSide);
 
 	// Use the best path found
-	const waypoints = bestPath || [];
+	let waypoints = bestPath || [];
 
 	if (waypoints.length === 0) return null;
 
+	// Store this path for overlap detection
+	allPaths.set(connectionKey, waypoints);
+
+	// Calculate offset for each segment based on which connections share that segment
+	const lineSpacing = 18; // Space between parallel lines
+	waypoints = offsetPathBySegment(waypoints, connectionKey, allPaths, lineSpacing);
+
 	// Create SVG path - arrow connects to line, with gap from connection point
-	const arrowSize = 12 / zoom; // Smaller chevron size
-	const arrowGap = 12 / zoom; // Gap between arrow tip and connection point
-	const startGap = 8 / zoom; // Gap between line start and group border
+	const arrowSize = 12; // Smaller chevron size
+	const arrowGap = 12; // Gap between arrow tip and connection point
+	const startGap = 8; // Gap between line start and group border
 
 	// Calculate arrow head at the end pointing toward the target
 	const lastSegment = waypoints[waypoints.length - 1];
@@ -494,7 +788,7 @@ function ConnectionLine(props: ConnectionLineProps): JSX.Element | null {
 			<path
 				d={pathData}
 				stroke={isHovered ? "#2563eb" : "#3b82f6"}
-				strokeWidth={isHovered ? 4 / zoom : 3 / zoom}
+				strokeWidth={isHovered ? 6 : 5}
 				fill="none"
 				opacity={isHovered ? 0.8 : 0.6}
 				style={{ pointerEvents: "none" }}
@@ -514,7 +808,7 @@ function ConnectionLine(props: ConnectionLineProps): JSX.Element | null {
 			<path
 				d={pathData}
 				stroke="transparent"
-				strokeWidth={8 / zoom}
+				strokeWidth={12}
 				strokeLinecap="round"
 				strokeLinejoin="round"
 				fill="none"
@@ -523,10 +817,8 @@ function ConnectionLine(props: ConnectionLineProps): JSX.Element | null {
 				onMouseEnter={() => setIsHovered(true)}
 				onMouseLeave={() => setIsHovered(false)}
 				onPointerDown={(e) => {
-					// Only stop propagation for right-clicks
-					if (e.button === 2) {
-						e.stopPropagation();
-					}
+					// Stop propagation for all clicks to prevent interference
+					e.stopPropagation();
 				}}
 				onContextMenu={(e) => {
 					e.stopPropagation();
@@ -547,7 +839,7 @@ interface TempConnectionLineProps {
 }
 
 function TempConnectionLine(props: TempConnectionLineProps): JSX.Element | null {
-	const { dragState, getRect, zoom } = props;
+	const { dragState, getRect } = props;
 
 	const fromRect = getRect(dragState.fromItemId);
 	if (!fromRect) return null;
@@ -562,8 +854,8 @@ function TempConnectionLine(props: TempConnectionLineProps): JSX.Element | null 
 			x2={end.x}
 			y2={end.y}
 			stroke="#3b82f6"
-			strokeWidth={3 / zoom}
-			strokeDasharray={`${8 / zoom} ${4 / zoom}`}
+			strokeWidth={5}
+			strokeDasharray="8 4"
 			opacity={0.6}
 		/>
 	);

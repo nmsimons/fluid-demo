@@ -285,9 +285,9 @@ export function generateOrthogonalWaypoints(
 	let simplePath: Point[] | null = null;
 
 	if (hThenVClear && vThenHClear) {
-		// Both work, choose shorter
-		const hDist = Math.abs(actualEnd.x - actualStart.x) + Math.abs(actualEnd.y - actualStart.y);
-		simplePath = hDist < vThenH.length ? hThenV : vThenH;
+		// Both work - they have the same total distance
+		// Prefer horizontal-first for consistency
+		simplePath = hThenV;
 	} else if (hThenVClear) {
 		simplePath = hThenV;
 	} else if (vThenHClear) {
@@ -310,23 +310,61 @@ export function generateOrthogonalWaypoints(
 		}
 	}
 
-	// Need to route around obstacles - generate orthogonal waypoints
-	const waypoints: Point[] = [];
+	// Need to route around obstacles - use grid-based A* for better pathfinding
+	// Create a grid-based approach with orthogonal moves
+	return findGridBasedOrthogonalPath(
+		actualStart,
+		actualEnd,
+		obstacles,
+		padding,
+		start,
+		end,
+		startSide,
+		endSide
+	);
+}
+
+/**
+ * Grid-based A* pathfinding for orthogonal routing
+ * Creates a visibility graph and finds the optimal path
+ */
+function findGridBasedOrthogonalPath(
+	actualStart: Point,
+	actualEnd: Point,
+	obstacles: Rect[],
+	padding: number,
+	start: Point,
+	end: Point,
+	startSide?: ConnectionSide,
+	endSide?: ConnectionSide
+): Point[] {
+	// Generate comprehensive waypoints that enable good routing
+	const waypoints: Point[] = [actualStart, actualEnd];
+
+	// Add strategic intermediate points for cleaner routing
+	// These create opportunities for simple L-shapes and Z-shapes
+	waypoints.push(
+		{ x: actualStart.x, y: actualEnd.y }, // L-shape point 1
+		{ x: actualEnd.x, y: actualStart.y } // L-shape point 2
+	);
 
 	for (const obstacle of obstacles) {
-		// Add orthogonal corner points with padding
 		const left = obstacle.x - padding;
 		const right = obstacle.x + obstacle.width + padding;
 		const top = obstacle.y - padding;
 		const bottom = obstacle.y + obstacle.height + padding;
 
-		// Add edge points for orthogonal routing
+		// Add corners (essential for routing around obstacles)
 		waypoints.push(
 			{ x: left, y: top },
 			{ x: right, y: top },
 			{ x: right, y: bottom },
-			{ x: left, y: bottom },
-			// Add midpoints for better routing
+			{ x: left, y: bottom }
+		);
+
+		// Add alignment points with start/end for cleaner routing
+		// These help avoid unnecessary zigzags
+		waypoints.push(
 			{ x: left, y: actualStart.y },
 			{ x: right, y: actualStart.y },
 			{ x: actualStart.x, y: top },
@@ -336,26 +374,50 @@ export function generateOrthogonalWaypoints(
 			{ x: actualEnd.x, y: top },
 			{ x: actualEnd.x, y: bottom }
 		);
+
+		// Add cross-alignment points between obstacles for better routing
+		for (const other of obstacles) {
+			if (other === obstacle) continue;
+
+			const otherLeft = other.x - padding;
+			const otherRight = other.x + other.width + padding;
+			const otherTop = other.y - padding;
+			const otherBottom = other.y + other.height + padding;
+
+			// Add strategic points that align edges of different obstacles
+			waypoints.push(
+				{ x: left, y: otherTop },
+				{ x: left, y: otherBottom },
+				{ x: right, y: otherTop },
+				{ x: right, y: otherBottom },
+				{ x: otherLeft, y: top },
+				{ x: otherRight, y: top },
+				{ x: otherLeft, y: bottom },
+				{ x: otherRight, y: bottom }
+			);
+		}
 	}
 
-	// Find orthogonal path using A* with orthogonal constraint
-	const path = findOrthogonalPath(actualStart, actualEnd, waypoints, obstacles);
+	// Remove duplicate waypoints
+	const uniqueWaypoints = waypoints.filter(
+		(point, index, self) =>
+			index ===
+			self.findIndex((p) => Math.abs(p.x - point.x) < 0.1 && Math.abs(p.y - point.y) < 0.1)
+	);
+
+	// Use A* to find the best orthogonal path
+	const path = findOrthogonalPath(actualStart, actualEnd, uniqueWaypoints, obstacles);
 
 	// Add back the original start/end points with perpendicular segments
-	// The path includes actualStart and actualEnd, so we need to add the perpendicular segments
 	let finalPath: Point[] = [];
 
 	if (startSide && endSide) {
-		// Both perpendicular segments: start -> actualStart -> path -> actualEnd -> end
 		finalPath = [start, actualStart, ...path.slice(1, -1), actualEnd, end];
 	} else if (startSide) {
-		// Only start perpendicular: start -> actualStart -> path -> end
 		finalPath = [start, actualStart, ...path.slice(1, -1), end];
 	} else if (endSide) {
-		// Only end perpendicular: start -> path -> actualEnd -> end
 		finalPath = [start, ...path.slice(1, -1), actualEnd, end];
 	} else {
-		// No perpendicular segments
 		finalPath = path;
 	}
 

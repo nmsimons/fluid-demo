@@ -7,7 +7,7 @@ import React, { JSX } from "react";
 import { TreeView, Tree } from "fluid-framework";
 import { App, Shape, TextBlock } from "../../../schema/appSchema.js";
 import { undoRedo } from "../../../undo/undo.js";
-import { isShape, isTable, isText } from "../../../utils/contentHandlers.js";
+import { isShape, isTable, isText, isGroup } from "../../../utils/contentHandlers.js";
 import { findItemsByIds } from "../../../utils/itemsHelpers.js";
 import { TypedSelection } from "../../../presence/selection.js";
 import {
@@ -40,7 +40,12 @@ import { UndoButton, RedoButton, ClearAllButton } from "./buttons/ActionButtons.
 import { CommentsPaneToggleButton } from "./buttons/PaneButtons.js";
 import { ZoomMenu } from "./buttons/ViewButtons.js";
 import { DeleteSelectedRowsButton } from "./buttons/TableButtons.js";
-import { GroupButton, UngroupButton } from "./buttons/GroupButtons.js";
+import {
+	GroupButton,
+	UngroupButton,
+	RenameGroupButton,
+	ToggleGridLayoutButton,
+} from "./buttons/GroupButtons.js";
 // All toolbar button UIs now componentized; direct TooltipButton usage removed.
 import { MessageBar, MessageBarBody, MessageBarTitle } from "@fluentui/react-message-bar";
 import { Toolbar, ToolbarDivider, ToolbarGroup } from "@fluentui/react-toolbar";
@@ -364,6 +369,28 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 										table={singleSelectedItem.content}
 										selectedRowId={selectedRowId}
 									/>
+								</ToolbarGroup>
+							</div>
+						)}
+						{singleSelectedItem && isGroup(singleSelectedItem) && (
+							<div className="flex items-center h-full toolbar-slide-in-delayed bg-purple-100 border-l-2 border-purple-500 pl-4 pr-4 ml-4">
+								{/* Group-specific controls with distinct visual styling */}
+								<div className="px-1 py-1 text-xs font-semibold text-purple-700 rounded mr-1">
+									Group
+								</div>
+								<ToolbarGroup>
+									<RenameGroupButton
+										group={singleSelectedItem.content}
+										onEdit={() => {
+											// Trigger editing on the group overlay
+											// We'll need to communicate this to the overlay via a state mechanism
+											const event = new CustomEvent("editGroup", {
+												detail: { groupId: singleSelectedItem.id },
+											});
+											window.dispatchEvent(event);
+										}}
+									/>
+									<ToggleGridLayoutButton group={singleSelectedItem.content} />
 								</ToolbarGroup>
 							</div>
 						)}

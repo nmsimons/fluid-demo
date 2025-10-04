@@ -3,8 +3,6 @@ import { Tree } from "@fluidframework/tree";
 import { Item, Group } from "../../schema/appSchema.js";
 import { PresenceContext } from "../contexts/PresenceContext.js";
 import { usePresenceManager } from "../hooks/usePresenceManger.js";
-import { EditRegular, GridRegular } from "@fluentui/react-icons";
-import { isGroupGridEnabled } from "../layout/groupGrid.js";
 import { getGroupChildOffset } from "../utils/presenceGeometry.js";
 import { useTree } from "../hooks/useTree.js";
 
@@ -47,6 +45,21 @@ export function GroupOverlay(props: {
 			editInputRef.current.select();
 		}
 	}, [editingGroupId]);
+
+	// Listen for edit group events from the toolbar
+	useEffect(() => {
+		const handleEditGroup = (event: Event) => {
+			const customEvent = event as CustomEvent<{ groupId: string }>;
+			const { groupId } = customEvent.detail;
+			const groupItem = items.find((item) => item.id === groupId);
+			if (groupItem && Tree.is(groupItem.content, Group)) {
+				setEditingGroupId(groupId);
+				setEditingValue((groupItem.content as Group).name || "Group");
+			}
+		};
+		window.addEventListener("editGroup", handleEditGroup);
+		return () => window.removeEventListener("editGroup", handleEditGroup);
+	}, [items]);
 
 	// Track all group drag states (local + remote) for smooth overlay updates
 	const [allDragStates, setAllDragStates] = useState<Map<string, { x: number; y: number }>>(
@@ -248,7 +261,6 @@ function GroupOverlayItem(props: GroupOverlayItemProps): JSX.Element | null {
 	useTree(groupItem.content);
 
 	const group = groupItem.content as Group;
-	const gridEnabled = isGroupGridEnabled(group);
 
 	if (showOnlyWhenChildSelected) {
 		const hasSelectedChild = group.items.some((childItem) => selectedIds.has(childItem.id));
@@ -279,10 +291,14 @@ function GroupOverlayItem(props: GroupOverlayItemProps): JSX.Element | null {
 	};
 
 	if (group.items.length === 0) {
-		const padding = 10 / zoom;
-		const minSize = 100 / zoom;
-		const titleBarHeight = 28 / zoom;
-		const titleBarY = groupY - padding - titleBarHeight - 4 / zoom;
+		const padding = 12;
+		const minSize = 100;
+		const titleBarHeight = 32;
+		const borderStrokeWidth = isGroupSelected ? 6 : 5;
+		const titleBarGap = borderStrokeWidth * 0.75;
+		const titleBarWidth = minSize + borderStrokeWidth;
+		const titleBarX = groupX - padding - borderStrokeWidth / 2;
+		const titleBarY = groupY - padding - titleBarHeight - titleBarGap;
 
 		return (
 			<g>
@@ -293,49 +309,106 @@ function GroupOverlayItem(props: GroupOverlayItemProps): JSX.Element | null {
 					height={minSize}
 					fill="none"
 					stroke={isGroupSelected ? "#3b82f6" : "#94a3b8"}
-					strokeWidth={isGroupSelected ? 3 / zoom : 2 / zoom}
-					strokeDasharray={`${8 / zoom} ${4 / zoom}`}
-					rx={8 / zoom}
+					strokeWidth={isGroupSelected ? 6 : 5}
+					strokeDasharray="24 12"
+					rx={8}
 					opacity={isGroupSelected ? 0.8 : 0.5}
 					style={{ cursor: "pointer" }}
 					onClick={handleGroupClick}
+					onPointerDown={(e) => handleGroupDragStart(e, groupItem)}
 				/>
 
-				<g
-					className="group-title-bar"
-					style={{ cursor: "move" }}
-					onPointerDown={(e) => handleGroupDragStart(e, groupItem)}
-					onClick={handleGroupClick}
-				>
+				<g className="group-title-bar">
 					<rect
-						x={groupX - padding}
+						x={titleBarX}
 						y={titleBarY}
-						width={minSize}
+						width={titleBarWidth}
 						height={titleBarHeight}
 						fill={isGroupSelected ? "#3b82f6" : "#94a3b8"}
 						opacity={0.9}
-						rx={6 / zoom}
-						style={{ pointerEvents: "all" }}
+						rx={6}
+						style={{ cursor: "pointer", pointerEvents: "all" }}
+						onClick={handleGroupClick}
+						onPointerDown={(e) => handleGroupDragStart(e, groupItem)}
 					/>
-					<text
-						x={groupX - padding + 8 / zoom}
-						y={titleBarY + titleBarHeight / 2}
-						fontSize={12 / zoom}
-						fill="#ffffff"
-						dominantBaseline="middle"
-						style={{
-							pointerEvents: "none",
-							userSelect: "none",
-							fontWeight: 500,
-						}}
-					>
-						Empty Group
-					</text>
+
+					{editingGroupId === groupItem.id ? (
+						<foreignObject
+							x={titleBarX}
+							y={titleBarY}
+							width={titleBarWidth}
+							height={titleBarHeight}
+							style={{ overflow: "visible", pointerEvents: "none" }}
+						>
+							<div
+								style={{
+									display: "flex",
+									alignItems: "center",
+									height: "100%",
+									padding: "0 8px",
+									pointerEvents: "none",
+								}}
+							>
+								<input
+									ref={editInputRef}
+									type="text"
+									value={editingValue}
+									onChange={(e) => setEditingValue(e.target.value)}
+									onBlur={() => {
+										if (editingValue.trim()) {
+											group.name = editingValue;
+										}
+										setEditingGroupId(null);
+									}}
+									onKeyDown={(e) => {
+										if (e.key === "Enter") {
+											if (editingValue.trim()) {
+												group.name = editingValue;
+											}
+											setEditingGroupId(null);
+										} else if (e.key === "Escape") {
+											setEditingGroupId(null);
+										}
+									}}
+									onClick={(e) => e.stopPropagation()}
+									onPointerDown={(e) => e.stopPropagation()}
+									style={{
+										width: "100%",
+										background: "rgba(255, 255, 255, 0.9)",
+										border: "none",
+										padding: "4px 6px",
+										fontSize: `${12 / zoom}px`,
+										color: "#1e293b",
+										outline: "none",
+										borderRadius: "4px",
+										fontWeight: 500,
+										pointerEvents: "all",
+									}}
+									autoFocus
+								/>
+							</div>
+						</foreignObject>
+					) : (
+						<text
+							x={titleBarX + titleBarWidth / 2}
+							y={titleBarY + titleBarHeight / 2}
+							fontSize={14}
+							fontWeight={600}
+							fill="#ffffff"
+							textAnchor="middle"
+							dominantBaseline="middle"
+							style={{
+								pointerEvents: "none",
+								userSelect: "none",
+							}}
+						>
+							{group.name || "Empty Group"}
+						</text>
+					)}
 				</g>
 			</g>
 		);
 	}
-
 	let minX = Infinity;
 	let minY = Infinity;
 	let maxX = -Infinity;
@@ -383,14 +456,18 @@ function GroupOverlayItem(props: GroupOverlayItemProps): JSX.Element | null {
 		return null;
 	}
 
-	const padding = 32 / zoom;
+	const padding = 32;
 	const x = minX - padding;
 	const y = minY - padding;
 	const width = maxX - minX + padding * 2;
 	const height = maxY - minY + padding * 2;
 
-	const titleBarHeight = 28 / zoom;
-	const titleBarY = y - titleBarHeight - 4 / zoom;
+	const borderStrokeWidth = isGroupSelected ? 6 : 5;
+	const titleBarHeight = 34;
+	const titleBarGap = borderStrokeWidth * 0.85;
+	const titleBarWidth = width + borderStrokeWidth;
+	const titleBarX = x - borderStrokeWidth / 2;
+	const titleBarY = y - titleBarHeight - titleBarGap;
 
 	return (
 		<g>
@@ -401,216 +478,102 @@ function GroupOverlayItem(props: GroupOverlayItemProps): JSX.Element | null {
 				height={height}
 				fill="none"
 				stroke={isGroupSelected ? "#3b82f6" : "#64748b"}
-				strokeWidth={isGroupSelected ? 3 / zoom : 2 / zoom}
-				strokeDasharray={`${8 / zoom} ${4 / zoom}`}
-				rx={12 / zoom}
+				strokeWidth={isGroupSelected ? 6 : 5}
+				strokeDasharray="24 12"
+				rx={12}
 				opacity={isGroupSelected ? 0.8 : 0.6}
 				style={{ cursor: "pointer" }}
 				onClick={handleGroupClick}
+				onPointerDown={(e) => handleGroupDragStart(e, groupItem)}
 			/>
 
 			<g className="group-title-bar">
 				<rect
-					x={x}
+					x={titleBarX}
 					y={titleBarY}
-					width={width}
+					width={titleBarWidth}
 					height={titleBarHeight}
 					fill={isGroupSelected ? "#3b82f6" : "#64748b"}
 					opacity={0.9}
-					rx={6 / zoom}
-					style={{ pointerEvents: "all", cursor: "move" }}
-					onPointerDown={(e) => handleGroupDragStart(e, groupItem)}
+					rx={6}
+					style={{ cursor: "pointer", pointerEvents: "all" }}
 					onClick={handleGroupClick}
+					onPointerDown={(e) => handleGroupDragStart(e, groupItem)}
 				/>
 
-				<g transform={`scale(${1 / zoom})`}>
+				{editingGroupId === groupItem.id ? (
 					<foreignObject
-						x={x * zoom}
-						y={titleBarY * zoom}
-						width={width * zoom}
-						height={titleBarHeight * zoom}
-						style={{ pointerEvents: "none" }}
+						x={titleBarX}
+						y={titleBarY}
+						width={titleBarWidth}
+						height={titleBarHeight}
+						style={{ overflow: "visible", pointerEvents: "none" }}
 					>
 						<div
 							style={{
-								position: "relative",
-								width: "100%",
-								height: "100%",
 								display: "flex",
 								alignItems: "center",
-								fontSize: "12px",
-								color: "#ffffff",
-								fontWeight: 500,
+								height: "100%",
+								padding: "0 8px",
+								pointerEvents: "none",
 							}}
 						>
-							{width * zoom > 80 && (
-								<div
-									style={{
-										userSelect: "none",
-										paddingLeft: "8px",
-										paddingRight: "12px",
-										whiteSpace: "nowrap",
-										overflow: "hidden",
-										textOverflow: "ellipsis",
-										maxWidth:
-											width * zoom > 200
-												? `${(width * zoom) / 2 - 80}px`
-												: `${width * zoom - 40}px`,
-										minWidth: "30px",
-										pointerEvents: "auto",
-									}}
-								>
-									{editingGroupId === groupItem.id ? (
-										<input
-											ref={editInputRef}
-											type="text"
-											value={editingValue}
-											onChange={(e) => setEditingValue(e.target.value)}
-											onKeyDown={(e) => {
-												if (e.key === "Enter") {
-													e.preventDefault();
-													const trimmedValue = editingValue.trim();
-													if (trimmedValue) {
-														group.name = trimmedValue;
-													}
-													setEditingGroupId(null);
-												} else if (e.key === "Escape") {
-													e.preventDefault();
-													setEditingGroupId(null);
-												}
-											}}
-											onBlur={() => {
-												const trimmedValue = editingValue.trim();
-												if (trimmedValue) {
-													group.name = trimmedValue;
-												}
-												setEditingGroupId(null);
-											}}
-											onClick={(e) => e.stopPropagation()}
-											onPointerDown={(e) => e.stopPropagation()}
-											style={{
-												background: "rgba(255, 255, 255, 0.9)",
-												color: "#000000",
-												border: "1px solid rgba(255, 255, 255, 0.3)",
-												borderRadius: "2px",
-												padding: "2px 4px",
-												fontSize: "12px",
-												fontWeight: 500,
-												width: "100%",
-												outline: "none",
-											}}
-											autoFocus
-										/>
-									) : (
-										group.name
-									)}
-								</div>
-							)}
-
-							{width * zoom > 200 && (
-								<div
-									style={{
-										position: "absolute",
-										left: "50%",
-										top: "50%",
-										transform: "translate(-50%, -50%)",
-										display: "flex",
-										gap: "4px",
-										pointerEvents: "auto",
-										alignItems: "center",
-									}}
-								>
-									<button
-										onClick={(e) => {
-											e.stopPropagation();
-											setEditingGroupId(groupItem.id);
-											setEditingValue(group.name);
-										}}
-										style={{
-											background: "rgba(255, 255, 255, 0.2)",
-											border: "none",
-											borderRadius: "4px",
-											padding: "4px 8px",
-											cursor: "pointer",
-											display: "flex",
-											alignItems: "center",
-											color: "#ffffff",
-											fontSize: "14px",
-										}}
-										title="Edit group name"
-									>
-										<EditRegular />
-									</button>
-									<button
-										onClick={(e) => {
-											e.stopPropagation();
-											if (group.viewAsGrid === true) {
-												group.viewAsGrid = undefined;
-											} else {
-												group.viewAsGrid = true;
-											}
-										}}
-										style={{
-											background: gridEnabled
-												? "rgba(255, 255, 255, 0.4)"
-												: "rgba(255, 255, 255, 0.2)",
-											border: "none",
-											borderRadius: "4px",
-											padding: "4px 8px",
-											cursor: "pointer",
-											display: "flex",
-											alignItems: "center",
-											color: "#ffffff",
-											fontSize: "14px",
-										}}
-										title={gridEnabled ? "Free Layout" : "Grid View"}
-									>
-										<GridRegular />
-									</button>
-								</div>
-							)}
-
-							<div
-								style={{
-									position: "absolute",
-									right: "8px",
-									top: "50%",
-									transform: "translateY(-50%)",
-									display: "flex",
-									flexDirection: "column",
-									gap: "2px",
-									opacity: 0.6,
-									pointerEvents: "none",
+							<input
+								ref={editInputRef}
+								type="text"
+								value={editingValue}
+								onChange={(e) => setEditingValue(e.target.value)}
+								onBlur={() => {
+									if (editingValue.trim()) {
+										group.name = editingValue;
+									}
+									setEditingGroupId(null);
 								}}
-							>
-								<div
-									style={{
-										width: "12px",
-										height: "2px",
-										background: "#ffffff",
-										borderRadius: "1px",
-									}}
-								/>
-								<div
-									style={{
-										width: "12px",
-										height: "2px",
-										background: "#ffffff",
-										borderRadius: "1px",
-									}}
-								/>
-								<div
-									style={{
-										width: "12px",
-										height: "2px",
-										background: "#ffffff",
-										borderRadius: "1px",
-									}}
-								/>
-							</div>
+								onKeyDown={(e) => {
+									if (e.key === "Enter") {
+										if (editingValue.trim()) {
+											group.name = editingValue;
+										}
+										setEditingGroupId(null);
+									} else if (e.key === "Escape") {
+										setEditingGroupId(null);
+									}
+								}}
+								onClick={(e) => e.stopPropagation()}
+								onPointerDown={(e) => e.stopPropagation()}
+								style={{
+									width: "100%",
+									background: "rgba(255, 255, 255, 0.9)",
+									border: "none",
+									padding: "4px 6px",
+									fontSize: `${12 / zoom}px`,
+									color: "#1e293b",
+									outline: "none",
+									borderRadius: "4px",
+									fontWeight: 500,
+									pointerEvents: "all",
+								}}
+								autoFocus
+							/>
 						</div>
 					</foreignObject>
-				</g>
+				) : (
+					<text
+						x={titleBarX + titleBarWidth / 2}
+						y={titleBarY + titleBarHeight / 2}
+						fontSize={14}
+						fontWeight={600}
+						fill="#ffffff"
+						textAnchor="middle"
+						dominantBaseline="middle"
+						style={{
+							pointerEvents: "none",
+							userSelect: "none",
+						}}
+					>
+						{group.name || "Group"}
+					</text>
+				)}
 			</g>
 		</g>
 	);

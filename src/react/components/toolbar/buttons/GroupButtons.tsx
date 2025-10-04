@@ -1,6 +1,12 @@
 import React, { JSX, useContext } from "react";
 import { Tree } from "fluid-framework";
-import { GroupRegular, GroupReturnRegular } from "@fluentui/react-icons";
+import {
+	GroupRegular,
+	GroupReturnRegular,
+	EditRegular,
+	GridRegular,
+	GridFilled,
+} from "@fluentui/react-icons";
 import { TooltipButton } from "../../forms/Button.js";
 import { PresenceContext } from "../../../contexts/PresenceContext.js";
 import { Group, Item } from "../../../../schema/appSchema.js";
@@ -12,6 +18,8 @@ import {
 	groupItems,
 	ungroupItems,
 } from "../../../../utils/itemsHelpers.js";
+import { isGroupGridEnabled } from "../../../layout/groupGrid.js";
+import { useTree } from "../../../hooks/useTree.js";
 
 export function GroupButton(props: { selectedItems: Item[] }): JSX.Element {
 	const { selectedItems } = props;
@@ -101,6 +109,35 @@ export function UngroupButton(props: { selectedItems: Item[] }): JSX.Element {
 			icon={<GroupReturnRegular />}
 			disabled={disabled}
 			tooltip={tooltip}
+		/>
+	);
+}
+
+export function RenameGroupButton(props: { group: Group; onEdit: () => void }): JSX.Element {
+	const { group, onEdit } = props;
+	useTree(group);
+	return (
+		<TooltipButton
+			onClick={onEdit}
+			icon={<EditRegular />}
+			tooltip="Rename group"
+			keyboardShortcut="F2"
+		/>
+	);
+}
+
+export function ToggleGridLayoutButton(props: { group: Group }): JSX.Element {
+	const { group } = props;
+	useTree(group);
+	const gridEnabled = isGroupGridEnabled(group);
+	return (
+		<TooltipButton
+			onClick={() => {
+				group.viewAsGrid = !group.viewAsGrid;
+			}}
+			icon={gridEnabled ? <GridFilled /> : <GridRegular />}
+			tooltip={gridEnabled ? "Disable grid layout" : "Enable grid layout"}
+			active={gridEnabled}
 		/>
 	);
 }
