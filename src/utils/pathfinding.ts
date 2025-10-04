@@ -89,7 +89,8 @@ export function generateWaypoints(
 	endSide?: ConnectionSide
 ): Point[] {
 	// Calculate perpendicular exit/entry points if sides are specified
-	const minPerpendicularDistance = Math.max(padding * 2, 20);
+	// Use same distance for both start and end for symmetry
+	const minPerpendicularDistance = Math.max(padding * 3, 40);
 
 	let actualStart = start;
 	let actualEnd = end;
