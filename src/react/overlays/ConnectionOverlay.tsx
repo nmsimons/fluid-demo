@@ -8,7 +8,7 @@ import {
 	type Point,
 	type Rect,
 } from "../../utils/connections.js";
-import { generateOrthogonalWaypoints } from "../../utils/pathfinding.js";
+import { generateWaypoints } from "../../utils/pathfinding.js";
 
 interface LayoutBounds {
 	left: number;
@@ -647,8 +647,7 @@ interface ConnectionLineProps {
 }
 
 function ConnectionLine(props: ConnectionLineProps): JSX.Element | null {
-	const { fromItem, toItem, getRect, getObstacles, allPaths, connectionKey, onSidesCalculated } =
-		props;
+	const { fromItem, toItem, getRect, getObstacles, onSidesCalculated } = props;
 	useTree(fromItem);
 	useTree(toItem);
 
@@ -678,7 +677,7 @@ function ConnectionLine(props: ConnectionLineProps): JSX.Element | null {
 			const end = getConnectionPoint(toRect, toSide);
 
 			// Try to generate path for this combination
-			const waypoints = generateOrthogonalWaypoints(
+			const waypoints = generateWaypoints(
 				start,
 				end,
 				obstaclesExpanded,
@@ -723,16 +722,14 @@ function ConnectionLine(props: ConnectionLineProps): JSX.Element | null {
 	onSidesCalculated(fromItem.id, bestFromSide, toItem.id, bestToSide);
 
 	// Use the best path found
-	let waypoints = bestPath || [];
+	const waypoints = bestPath || [];
 
 	if (waypoints.length === 0) return null;
 
-	// Store this path for overlap detection
-	allPaths.set(connectionKey, waypoints);
-
-	// Calculate offset for each segment based on which connections share that segment
-	const lineSpacing = 18; // Space between parallel lines
-	waypoints = offsetPathBySegment(waypoints, connectionKey, allPaths, lineSpacing);
+	// No offset - overlapping is allowed
+	// allPaths.set(connectionKey, waypoints);
+	// const lineSpacing = 18;
+	// waypoints = offsetPathBySegment(waypoints, connectionKey, allPaths, lineSpacing);
 
 	// Create SVG path - arrow connects to line, with gap from connection point
 	const arrowSize = 12; // Smaller chevron size

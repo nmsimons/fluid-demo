@@ -78,24 +78,76 @@ function lineIntersectsLine(p1: Point, p2: Point, p3: Point, p4: Point): boolean
 
 /**
  * Generate waypoints around obstacles for smooth routing
+ * Supports optional perpendicular exit/entry based on connection sides
  */
 export function generateWaypoints(
 	start: Point,
 	end: Point,
 	obstacles: Rect[],
-	padding: number = 20
+	padding: number = 20,
+	startSide?: ConnectionSide,
+	endSide?: ConnectionSide
 ): Point[] {
+	// Calculate perpendicular exit/entry points if sides are specified
+	const minPerpendicularDistance = Math.max(padding * 2, 20);
+
+	let actualStart = start;
+	let actualEnd = end;
+
+	if (startSide) {
+		switch (startSide) {
+			case "top":
+				actualStart = { x: start.x, y: start.y - minPerpendicularDistance };
+				break;
+			case "bottom":
+				actualStart = { x: start.x, y: start.y + minPerpendicularDistance };
+				break;
+			case "left":
+				actualStart = { x: start.x - minPerpendicularDistance, y: start.y };
+				break;
+			case "right":
+				actualStart = { x: start.x + minPerpendicularDistance, y: start.y };
+				break;
+		}
+	}
+
+	if (endSide) {
+		switch (endSide) {
+			case "top":
+				actualEnd = { x: end.x, y: end.y - minPerpendicularDistance };
+				break;
+			case "bottom":
+				actualEnd = { x: end.x, y: end.y + minPerpendicularDistance };
+				break;
+			case "left":
+				actualEnd = { x: end.x - minPerpendicularDistance, y: end.y };
+				break;
+			case "right":
+				actualEnd = { x: end.x + minPerpendicularDistance, y: end.y };
+				break;
+		}
+	}
+
 	// If direct path is clear, return it
 	const directPathClear = obstacles.every(
-		(obstacle) => !lineIntersectsRect(start, end, obstacle)
+		(obstacle) => !lineIntersectsRect(actualStart, actualEnd, obstacle)
 	);
 
 	if (directPathClear) {
-		return [start, end];
+		const path = [actualStart, actualEnd];
+		// Add back original start/end if we modified them
+		if (startSide && endSide) {
+			return [start, actualStart, actualEnd, end];
+		} else if (startSide) {
+			return [start, actualStart, actualEnd];
+		} else if (endSide) {
+			return [actualStart, actualEnd, end];
+		}
+		return path;
 	}
 
 	// Generate potential waypoints around each obstacle
-	const waypoints: Point[] = [start];
+	const waypoints: Point[] = [actualStart];
 
 	for (const obstacle of obstacles) {
 		// Add corner points with padding
@@ -108,10 +160,20 @@ export function generateWaypoints(
 		waypoints.push(...corners);
 	}
 
-	waypoints.push(end);
+	waypoints.push(actualEnd);
 
 	// Use A* to find shortest path through waypoints
-	return findPath(start, end, waypoints, obstacles);
+	const path = findPath(actualStart, actualEnd, waypoints, obstacles);
+
+	// Add back original start/end if we modified them
+	if (startSide && endSide) {
+		return [start, ...path, end];
+	} else if (startSide) {
+		return [start, ...path.slice(0, -1), end];
+	} else if (endSide) {
+		return [...path.slice(0, -1), end];
+	}
+	return path;
 }
 
 /**
@@ -218,6 +280,43 @@ function simplifyPath(path: Point[]): Point[] {
 
 	simplified.push(path[path.length - 1]);
 	return simplified;
+}
+
+/**
+ * Generate simple direct waypoints that avoid obstacles
+ * Allows any angle - not constrained to orthogonal routing
+ */
+export function generateDirectWaypoints(
+	start: Point,
+	end: Point,
+	obstacles: Rect[],
+	padding: number = 20
+): Point[] {
+	// Check if direct path is clear
+	const directClear = obstacles.every((obstacle) => !lineIntersectsRect(start, end, obstacle));
+
+	if (directClear) {
+		return [start, end];
+	}
+
+	// Build waypoints from obstacle corners
+	const waypoints: Point[] = [start];
+
+	for (const obstacle of obstacles) {
+		// Add corner points with padding
+		const corners = [
+			{ x: obstacle.x - padding, y: obstacle.y - padding }, // Top-left
+			{ x: obstacle.x + obstacle.width + padding, y: obstacle.y - padding }, // Top-right
+			{ x: obstacle.x + obstacle.width + padding, y: obstacle.y + obstacle.height + padding }, // Bottom-right
+			{ x: obstacle.x - padding, y: obstacle.y + obstacle.height + padding }, // Bottom-left
+		];
+		waypoints.push(...corners);
+	}
+
+	waypoints.push(end);
+
+	// Use A* to find shortest path through waypoints
+	return findPath(start, end, waypoints, obstacles);
 }
 
 /**
