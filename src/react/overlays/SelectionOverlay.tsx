@@ -321,13 +321,15 @@ export function SelectionOverlay(props: {
 			)}
 			{isText && !parentGroupGridEnabled && (
 				<g>
-					{(["left", "right"] as const).map((side) => {
+					{(() => {
+						const side = "right";
 						const handleSize = 8 / zoom;
 						const half = handleSize / 2;
 						const touchSize = isIOS ? Math.max(36 / zoom, handleSize) : handleSize;
 						const touchHalf = touchSize / 2;
-						const x = side === "left" ? -outwardLocal : w + outwardLocal;
-						const y = h / 2;
+						// Position at top-right corner
+						const x = w + outwardLocal;
+						const y = -outwardLocal;
 						const dispatchToHandle = (nativeEvent: PointerEvent) => {
 							const container = document.querySelector(
 								`[data-item-id='${item.id}']`
@@ -359,7 +361,7 @@ export function SelectionOverlay(props: {
 									height={handleSize}
 									fill="#3b82f6"
 									stroke="none"
-									cursor="ew-resize"
+									cursor="nesw-resize"
 									onClick={(e) => e.stopPropagation()}
 									onPointerDown={(e) => {
 										e.stopPropagation();
@@ -374,7 +376,7 @@ export function SelectionOverlay(props: {
 										height={touchSize}
 										fill="transparent"
 										stroke="none"
-										cursor="ew-resize"
+										cursor="nesw-resize"
 										onClick={(e) => e.stopPropagation()}
 										onPointerDown={(e) => {
 											e.stopPropagation();
@@ -384,7 +386,7 @@ export function SelectionOverlay(props: {
 								)}
 							</g>
 						);
-					})}
+					})()}
 				</g>
 			)}
 		</g>

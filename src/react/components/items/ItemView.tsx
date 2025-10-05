@@ -231,10 +231,10 @@ export function TextResizeHandles({
 		absY: item.y + groupOffsetY,
 	});
 
-	const beginResize = (side: "left" | "right", e: React.PointerEvent<HTMLDivElement>) => {
+	const beginResize = (e: React.PointerEvent<HTMLDivElement>) => {
 		e.stopPropagation();
 		e.preventDefault();
-		setActiveHandle(side);
+		setActiveHandle("right");
 		try {
 			(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
 		} catch {
@@ -253,17 +253,10 @@ export function TextResizeHandles({
 		const move = (ev: PointerEvent) => {
 			const deltaPx = ev.clientX - startRef.current.pointerX;
 			const delta = deltaPx / scale;
-			let width = startRef.current.width;
-			let left = startRef.current.absX;
-			if (side === "right") {
-				width = clampTextWidth(startRef.current.width + delta);
-			} else {
-				width = clampTextWidth(startRef.current.width - delta);
-				left = startRef.current.absX + (startRef.current.width - width);
-			}
+			const width = clampTextWidth(startRef.current.width + delta);
 			presence.resize.setResizing({
 				id: item.id,
-				x: left,
+				x: startRef.current.absX,
 				y: startRef.current.absY,
 				size: width,
 			});
@@ -296,66 +289,47 @@ export function TextResizeHandles({
 		document.addEventListener("pointerup", up, { once: true });
 	};
 
-	const handleBase = (side: "left" | "right") => {
-		const offset = (activeHandle === side ? 10 : 8) * scale;
-		const wrapperSize = 120 * scale;
-		const handleSize = (activeHandle === side ? 30 : 26) * scale;
-		const position: React.CSSProperties = {
-			position: "absolute",
-			top: "50%",
-			transform: "translateY(-50%)",
-			width: wrapperSize,
-			height: wrapperSize,
-			pointerEvents: "auto",
-			touchAction: "none",
-			cursor: "ew-resize",
-			zIndex: 1000,
-		};
-		if (side === "left") {
-			position.left = -padding - offset;
-			position.marginLeft = -wrapperSize / 2;
-		} else {
-			position.right = -padding - offset;
-			position.marginRight = -wrapperSize / 2;
-		}
-		return {
-			wrapper: position,
-			handle: {
-				position: "absolute" as const,
-				width: handleSize,
-				height: handleSize,
-				borderRadius: 9999,
-				background: "#0f172a",
-				top: "50%",
-				left: "50%",
-				transform: "translate(-50%, -50%)",
-				boxShadow: "0 4px 12px rgba(15, 23, 42, 0.35)",
-				border: "2px solid #f8fafc",
-				pointerEvents: "none" as const,
-			},
-		};
-	};
-
-	const Handle = ({ side }: { side: "left" | "right" }) => {
-		const styles = handleBase(side);
-		return (
-			<div
-				style={styles.wrapper}
-				onPointerDown={(e) => beginResize(side, e)}
-				data-resize-handle
-				data-text-resize-handle={side}
-				className={`text-resize-handle text-resize-handle-${side}`}
-			>
-				<div style={styles.handle} />
-			</div>
-		);
-	};
+	// Top-right corner resize handle
+	const offset = (activeHandle === "right" ? 10 : 8) * scale;
+	const wrapperSize = 120 * scale;
+	const handleSize = (activeHandle === "right" ? 30 : 26) * scale;
 
 	return (
-		<>
-			<Handle side="left" />
-			<Handle side="right" />
-		</>
+		<div
+			style={{
+				position: "absolute",
+				top: -padding - offset,
+				marginTop: -wrapperSize / 2,
+				right: -padding - offset,
+				marginRight: -wrapperSize / 2,
+				width: wrapperSize,
+				height: wrapperSize,
+				pointerEvents: "auto",
+				touchAction: "none",
+				cursor: "nesw-resize",
+				zIndex: 1000,
+			}}
+			onPointerDown={beginResize}
+			data-resize-handle
+			data-text-resize-handle="right"
+			className="text-resize-handle text-resize-handle-right"
+		>
+			<div
+				style={{
+					position: "absolute",
+					width: handleSize,
+					height: handleSize,
+					borderRadius: 9999,
+					background: "#0f172a",
+					top: "50%",
+					left: "50%",
+					transform: "translate(-50%, -50%)",
+					boxShadow: "0 4px 12px rgba(15, 23, 42, 0.35)",
+					border: "2px solid #f8fafc",
+					pointerEvents: "none",
+				}}
+			/>
+		</div>
 	);
 }
 
