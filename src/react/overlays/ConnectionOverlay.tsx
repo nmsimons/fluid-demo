@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Tree } from "@fluidframework/tree";
-import { Item, Group, Note, TextBlock } from "../../schema/appSchema.js";
+import { Item, Group, Note, TextBlock, FluidTable } from "../../schema/appSchema.js";
 import { useTree } from "../hooks/useTree.js";
 import {
 	getConnectionPoint,
@@ -189,7 +189,8 @@ export function ConnectionOverlay(props: ConnectionOverlayProps): JSX.Element {
 		return (
 			Tree.is(item.content, Group) ||
 			Tree.is(item.content, Note) ||
-			Tree.is(item.content, TextBlock)
+			Tree.is(item.content, TextBlock) ||
+			Tree.is(item.content, FluidTable)
 		);
 	};
 
@@ -206,7 +207,7 @@ export function ConnectionOverlay(props: ConnectionOverlayProps): JSX.Element {
 			return calculateGroupVisualBounds(item, layout);
 		}
 
-		// Notes and TextBlocks use layout bounds
+		// Notes, TextBlocks, and FluidTables use layout bounds
 		const bounds = layout.get(itemId);
 		if (!bounds) return null;
 		return {
