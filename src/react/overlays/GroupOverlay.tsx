@@ -18,6 +18,12 @@ type LayoutMap = Map<string, LayoutBounds>;
 
 type PresenceContextType = React.ContextType<typeof PresenceContext>;
 
+// Group overlay opacity constants - adjust these to change transparency globally
+const GROUP_BORDER_OPACITY_SELECTED = 0.5;
+const GROUP_BORDER_OPACITY_UNSELECTED = 0.3;
+const GROUP_BORDER_OPACITY_UNSELECTED_WITH_ITEMS = 0.4;
+const GROUP_TITLE_BAR_OPACITY = 0.7;
+
 /**
  * GroupOverlay - Renders visual bounds for group containers on the SVG overlay layer
  *
@@ -317,7 +323,11 @@ function GroupOverlayItem(props: GroupOverlayItemProps): JSX.Element | null {
 					strokeWidth={isGroupSelected ? 6 : 5}
 					strokeDasharray="24 12"
 					rx={8}
-					opacity={isGroupSelected ? 0.8 : 0.5}
+					opacity={
+						isGroupSelected
+							? GROUP_BORDER_OPACITY_SELECTED
+							: GROUP_BORDER_OPACITY_UNSELECTED
+					}
 					style={{ cursor: "pointer" }}
 					onClick={handleGroupClick}
 					onPointerDown={(e) => handleGroupDragStart(e, groupItem)}
@@ -330,7 +340,7 @@ function GroupOverlayItem(props: GroupOverlayItemProps): JSX.Element | null {
 						width={titleBarWidth}
 						height={titleBarHeight}
 						fill={isGroupSelected ? "#3b82f6" : "#94a3b8"}
-						opacity={0.9}
+						opacity={GROUP_TITLE_BAR_OPACITY}
 						rx={6}
 						style={{ cursor: "pointer", pointerEvents: "all" }}
 						onClick={handleGroupClick}
@@ -506,7 +516,11 @@ function GroupOverlayItem(props: GroupOverlayItemProps): JSX.Element | null {
 				strokeWidth={isGroupSelected ? 6 : 5}
 				strokeDasharray="24 12"
 				rx={12}
-				opacity={isGroupSelected ? 0.8 : 0.6}
+				opacity={
+					isGroupSelected
+						? GROUP_BORDER_OPACITY_SELECTED
+						: GROUP_BORDER_OPACITY_UNSELECTED_WITH_ITEMS
+				}
 				style={{ cursor: "pointer" }}
 				onClick={handleGroupClick}
 				onPointerDown={(e) => handleGroupDragStart(e, groupItem)}
@@ -519,7 +533,7 @@ function GroupOverlayItem(props: GroupOverlayItemProps): JSX.Element | null {
 					width={titleBarWidth}
 					height={titleBarHeight}
 					fill={isGroupSelected ? "#3b82f6" : "#64748b"}
-					opacity={0.9}
+					opacity={GROUP_TITLE_BAR_OPACITY}
 					rx={6}
 					style={{ cursor: "pointer", pointerEvents: "all" }}
 					onClick={handleGroupClick}
