@@ -58,6 +58,7 @@ import { GroupOverlay } from "../../overlays/GroupOverlay.js";
 import { ConnectionOverlay } from "../../overlays/ConnectionOverlay.js";
 import { useCanvasNavigation } from "../../hooks/useCanvasNavigation.js";
 import { useOverlayRerenders } from "../../hooks/useOverlayRerenders.js";
+import { updateCursorFromEvent } from "../../../utils/cursorUtils.js";
 import { ItemsHtmlLayer } from "./ItemsHtmlLayer.js";
 import { PaneContext } from "../../contexts/PaneContext.js";
 import { flattenItems } from "../../../utils/flattenItems.js";
@@ -166,17 +167,8 @@ export function Canvas(props: {
 		if (!svgElement) return;
 
 		const handleMouseMove = (event: MouseEvent) => {
-			// Convert screen coordinates to canvas coordinates
-			const rect = svgElement.getBoundingClientRect();
-			const canvasX = event.clientX - rect.left;
-			const canvasY = event.clientY - rect.top;
-
-			// Convert to logical coordinates (accounting for pan and zoom)
-			const logicalX = (canvasX - pan.x) / zoom;
-			const logicalY = (canvasY - pan.y) / zoom;
-
-			// Update collaborative cursor position
-			presence.cursor?.setCursorPosition(logicalX, logicalY);
+			// Update collaborative cursor position using DRY utility
+			updateCursorFromEvent(event, presence.cursor, pan, zoom);
 		};
 
 		const handleMouseEnter = () => {
@@ -433,10 +425,8 @@ export function Canvas(props: {
 		if (!rect) return;
 		setCursor({ x: e.clientX - rect.left, y: e.clientY - rect.top, visible: true });
 
-		// Update collaborative cursor position
-		const logicalX = (e.clientX - rect.left - pan.x) / zoom;
-		const logicalY = (e.clientY - rect.top - pan.y) / zoom;
-		presence.cursor?.setCursorPosition(logicalX, logicalY);
+		// Update collaborative cursor position using DRY utility
+		updateCursorFromEvent(e, presence.cursor, pan, zoom);
 
 		// If erasing, update hover or scrub
 		if (eraserActive && root?.inks) {
@@ -507,8 +497,7 @@ export function Canvas(props: {
 			if (pointerIdRef.current !== null && ev.pointerId !== pointerIdRef.current) return;
 
 			// Update cursor position for collaborative cursors
-			const logicalPos = toLogical(ev.clientX, ev.clientY);
-			presence.cursor?.setCursorPosition(logicalPos.x, logicalPos.y);
+			updateCursorFromEvent(ev, presence.cursor, pan, zoom);
 
 			// Use coalesced events for smoother touch / pen input when available
 			const hasCoalesced = (
@@ -945,7 +934,7 @@ export function Canvas(props: {
 					style={{ pointerEvents: "none" }}
 					data-layer="group-overlays"
 				>
-					<GroupOverlay items={Array.from(items)} layout={layout} zoom={zoom} />
+					<GroupOverlay items={Array.from(items)} layout={layout} zoom={zoom} pan={pan} />
 				</g>
 				{/* Per-item SVG wrappers (overlay), built from measured layout */}
 				<g

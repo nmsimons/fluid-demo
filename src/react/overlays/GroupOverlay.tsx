@@ -5,6 +5,7 @@ import { PresenceContext } from "../contexts/PresenceContext.js";
 import { usePresenceManager } from "../hooks/usePresenceManger.js";
 import { getGroupChildOffset } from "../utils/presenceGeometry.js";
 import { useTree } from "../hooks/useTree.js";
+import { updateCursorFromEvent } from "../../utils/cursorUtils.js";
 
 interface LayoutBounds {
 	left: number;
@@ -27,9 +28,10 @@ export function GroupOverlay(props: {
 	items: Item[];
 	layout: LayoutMap;
 	zoom: number;
+	pan: { x: number; y: number };
 	showOnlyWhenChildSelected?: boolean;
 }): JSX.Element {
-	const { items, layout, zoom, showOnlyWhenChildSelected = false } = props;
+	const { items, layout, zoom, pan, showOnlyWhenChildSelected = false } = props;
 	const presence = useContext(PresenceContext);
 
 	// Track which groups have just been dragged to prevent click-on-release
@@ -141,6 +143,9 @@ export function GroupOverlay(props: {
 				hasMoved = true;
 				ev.preventDefault();
 			}
+
+			// Update collaborative cursor position using DRY utility
+			updateCursorFromEvent(ev, presence.cursor, pan, zoom);
 
 			// Use presence API for smooth ephemeral updates during drag
 			presence.drag.setDragging({
@@ -415,6 +420,9 @@ function GroupOverlayItem(props: GroupOverlayItemProps): JSX.Element | null {
 	let maxY = -Infinity;
 
 	for (const childItem of group.items) {
+		// Check if this child item is being dragged individually
+		const childDragState = allDragStates.get(childItem.id);
+
 		if (isGroupBeingDragged) {
 			const offset = getGroupChildOffset(group, childItem);
 			const childAbsX = groupX + offset.x;
@@ -432,6 +440,23 @@ function GroupOverlayItem(props: GroupOverlayItemProps): JSX.Element | null {
 				minY = Math.min(minY, childAbsY);
 				maxX = Math.max(maxX, childAbsX + 100);
 				maxY = Math.max(maxY, childAbsY + 100);
+			}
+		} else if (childDragState) {
+			// Child item is being dragged - use drag position instead of layout
+			const childBounds = layout.get(childItem.id);
+			if (childBounds) {
+				const width = childBounds.right - childBounds.left;
+				const height = childBounds.bottom - childBounds.top;
+				minX = Math.min(minX, childDragState.x);
+				minY = Math.min(minY, childDragState.y);
+				maxX = Math.max(maxX, childDragState.x + width);
+				maxY = Math.max(maxY, childDragState.y + height);
+			} else {
+				// No layout bounds, use default size
+				minX = Math.min(minX, childDragState.x);
+				minY = Math.min(minY, childDragState.y);
+				maxX = Math.max(maxX, childDragState.x + 100);
+				maxY = Math.max(maxY, childDragState.y + 100);
 			}
 		} else {
 			const childBounds = layout.get(childItem.id);
