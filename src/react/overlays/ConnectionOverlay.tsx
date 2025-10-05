@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Tree } from "@fluidframework/tree";
-import { Item, Group } from "../../schema/appSchema.js";
+import { Item, Group, Note, TextBlock } from "../../schema/appSchema.js";
 import { useTree } from "../hooks/useTree.js";
 import {
 	getConnectionPoint,
@@ -181,18 +181,32 @@ export function ConnectionOverlay(props: ConnectionOverlayProps): JSX.Element {
 		}
 	}, [zoom, pan]);
 
-	// Filter to only group items
-	const groupItems = items.filter((item) => Tree.is(item.content, Group));
+	/**
+	 * Helper to check if an item should have connection points
+	 * Connection points are shown on: Groups, Notes, and TextBlocks
+	 */
+	const hasConnectionPoints = (item: Item): boolean => {
+		return (
+			Tree.is(item.content, Group) ||
+			Tree.is(item.content, Note) ||
+			Tree.is(item.content, TextBlock)
+		);
+	};
+
+	// Filter to items that should have connection points
+	const itemsWithConnections = items.filter(hasConnectionPoints);
 
 	// Helper to get VISUAL rect for connection points (zoom-dependent)
 	const getVisualRect = (itemId: string): Rect | null => {
-		// Check if this is a group
 		const item = items.find((i) => i.id === itemId);
-		if (item && Tree.is(item.content, Group)) {
+		if (!item) return null;
+
+		// Groups have special visual bounds calculation
+		if (Tree.is(item.content, Group)) {
 			return calculateGroupVisualBounds(item, layout);
 		}
 
-		// Regular item - get from layout
+		// Notes and TextBlocks use layout bounds
 		const bounds = layout.get(itemId);
 		if (!bounds) return null;
 		return {
@@ -305,7 +319,7 @@ export function ConnectionOverlay(props: ConnectionOverlayProps): JSX.Element {
 				const activeSides = new Map<string, Set<ConnectionSide>>();
 				const allPaths = new Map<string, Point[]>(); // Track all connection paths
 
-				const connectionElements = groupItems.map((toItem) => {
+				const connectionElements = itemsWithConnections.map((toItem) => {
 					return toItem.getConnections().map((fromItemId) => {
 						const fromItem = items.find((item) => item.id === fromItemId);
 						if (!fromItem) return null;
@@ -347,8 +361,8 @@ export function ConnectionOverlay(props: ConnectionOverlayProps): JSX.Element {
 							/>
 						)}
 
-						{/* Render connection points on groups */}
-						{groupItems.map((item) => (
+						{/* Render connection points on groups, notes, and text */}
+						{itemsWithConnections.map((item) => (
 							<ConnectionPoints
 								key={item.id}
 								item={item}
