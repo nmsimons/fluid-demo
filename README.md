@@ -1,6 +1,6 @@
 # Collaborative Canvas and Table Demo
 
-This application demonstrates the power of the Fluid Framework by building a comprehensive collaborative canvas and data table application. Users can work together in real-time to create, edit, and interact with shapes, sticky notes, tables, ink drawings, and comments. The app showcases both persistent data synchronization (SharedTree) and ephemeral real-time collaboration (Presence API) working together to create a rich collaborative experience.
+This application demonstrates the power of the Fluid Framework by building a comprehensive collaborative canvas and data table application. Users can work together in real-time to create, edit, and interact with shapes, sticky notes, tables, ink drawings, visual connections, and comments. The app showcases both persistent data synchronization (SharedTree) and ephemeral real-time collaboration (Presence API) working together to create a rich collaborative experience.
 
 ## Features
 
@@ -10,6 +10,7 @@ This application demonstrates the power of the Fluid Framework by building a com
 - **Sticky Notes**: Add collaborative text notes that can be edited by multiple users
 - **Tables**: Create data tables with different column types (string, number, boolean, date, vote)
 - **Ink Drawing**: Draw freehand ink strokes with pen, mouse, or touch input
+- **Visual Connections**: Draw directional connections between items (groups, notes, text blocks, and tables) with intelligent pathfinding that routes around obstacles
 - **Real-time Collaboration**: See other users' selections, edits, and presence indicators in real-time
 - **Drag & Drop**: Move items around the canvas with live position updates
 - **Rotation & Resize**: Transform shapes with real-time preview for other users
@@ -30,6 +31,16 @@ This application demonstrates the power of the Fluid Framework by building a com
 - **Cell-level Collaboration**: Multiple users can edit different cells simultaneously
 - **Table Selection**: Select and manipulate rows, columns, or individual cells
 - **Sorting & Filtering**: Interactive table operations with real-time sync
+
+### Visual Connections & Pathfinding
+
+- **Directional Connections**: Create visual connections between canvas items by dragging from connection points
+- **Supported Items**: Groups, sticky notes, text blocks, and tables all support connection points
+- **Smart Pathfinding**: Connections use A* pathfinding algorithm to intelligently route around obstacles
+- **Proximity-Based UI**: Connection points appear when cursor is near an item, with smooth opacity transitions
+- **Dynamic Routing**: Connection lines automatically recalculate when items move or resize
+- **Visual Feedback**: Active connection points highlight during drag operations for clear interaction
+- **Persistent State**: All connections are stored in SharedTree and synchronized across users
 
 ### Comments & Voting
 
@@ -68,7 +79,7 @@ The application uses a comprehensive SharedTree schema defined in the `src/schem
     - `Shape`: Geometric shapes (circle, square, triangle, star) with size, color, and type
     - `Note`: Text-based sticky notes with authorship
     - `FluidTable`: Collaborative tables with multiple column types
-    - `Item`: Canvas items that can contain shapes, notes, or tables
+    - `Item`: Canvas items that can contain shapes, notes, or tables with directional connections between items
     - `Items`: Simple array containing Item objects for canvas elements
     - `Vote`: Voting system for comments and items
     - `Comment`: Threaded comments with user attribution
@@ -76,7 +87,13 @@ The application uses a comprehensive SharedTree schema defined in the `src/schem
     - `DateTime`: Date/time values for timestamps
 - **`containerSchema.ts`**: Fluid container configuration
 
-The schema supports rich data types including strings, numbers, booleans, dates, ink strokes, and custom voting objects. All schema changes are automatically synchronized across all connected clients.
+The schema supports rich data types including strings, numbers, booleans, dates, ink strokes, directional connections, and custom voting objects. All schema changes are automatically synchronized across all connected clients.
+
+**Connection System:**
+- Each `Item` maintains an array of connection IDs representing items that connect TO it
+- Methods include: `addConnection()`, `removeConnection()`, `hasConnection()`, `getConnections()`
+- Connections are directional (from source item to target item)
+- Stored persistently in SharedTree and synchronized across all users
 
 ### Undo/Redo System
 
@@ -215,7 +232,12 @@ The canvas uses a hybrid SVG + HTML strategy to balance fidelity, performance, a
 
 ### Layering
 
-- **SVG Root (`Canvas.tsx`)**: Owns the unified coordinate system (pan + zoom transform) and renders: - Persistent ink polylines (vector, efficient at scale) - Ephemeral ink (local + remote) with reduced opacity - Selection, presence, and comment overlays positioned in logical space - Custom cursor / eraser feedback (screen-space overlay)
+- **SVG Root (`Canvas.tsx`)**: Owns the unified coordinate system (pan + zoom transform) and renders:
+  - Persistent ink polylines (vector, efficient at scale)
+  - Ephemeral ink (local + remote) with reduced opacity
+  - Selection, presence, and comment overlays positioned in logical space
+  - Connection overlays with interactive connection points and pathfinding
+  - Custom cursor / eraser feedback (screen-space overlay)
 - **HTML Layer (foreignObject)**: Hosts complex React components (tables, notes, shapes) so they can leverage normal DOM/CSS layout & accessibility while still moving/zooming with the SVG transform.
 
 ### Coordinate Spaces
@@ -272,6 +294,41 @@ Design rationale:
 - One active stroke per attendee simplifies rendering (direct mapping to a polyline).
 - Cumulative point updates allow late joiners to render the full in-progress stroke instantly.
 
+## Visual Connections System
+
+The application features a sophisticated visual connections system that allows users to create directional relationships between canvas items.
+
+### Supported Items
+
+Connection points are available on:
+- **Groups**: Container items that organize other canvas elements
+- **Sticky Notes**: Text-based note items
+- **Text Blocks**: Formatted text blocks
+- **Tables**: Collaborative data tables
+
+### Interaction Model
+
+1. **Connection Point Discovery**: Connection points appear on item edges when cursor is nearby (proximity-based with smooth opacity transitions)
+2. **Creating Connections**: Drag from a connection point on one item to a connection point on another item
+3. **Directional Flow**: Connections are directional (from source → to target)
+4. **Visual Feedback**: Active connection points highlight during drag operations
+
+### Smart Pathfinding
+
+- **A* Algorithm**: Uses A* pathfinding to calculate optimal routes between connected items
+- **Obstacle Avoidance**: Connection lines intelligently route around other canvas items
+- **Dynamic Updates**: Paths automatically recalculate when items move or resize
+- **Waypoint Generation**: Creates smooth paths with perpendicular exits/entries when possible
+- **Side Selection**: Automatically chooses optimal connection sides based on item positions
+
+### Technical Implementation
+
+- **Connection Data**: Stored persistently in SharedTree as arrays of connection IDs on each `Item`
+- **Visual Rendering**: `ConnectionOverlay.tsx` handles all connection visualization
+- **Geometry Utilities**: `connections.ts` provides point calculations and side detection
+- **Pathfinding Engine**: `pathfinding.ts` implements A* algorithm with obstacle detection
+- **Zoom Independence**: Connection logic works in logical coordinates for consistent behavior at all zoom levels
+
 ## Future Enhancements (Roadmap)
 
 These items are candidates for iterative improvement:
@@ -285,13 +342,16 @@ These items are candidates for iterative improvement:
 
 ## Quick Reference: Key Files
 
-| File                                     | Purpose                                                                |
-| ---------------------------------------- | ---------------------------------------------------------------------- |
-| `src/react/components/canvas/Canvas.tsx` | Main collaborative canvas (SVG + HTML layering, ink + overlays)        |
-| `src/react/hooks/useCanvasNavigation.ts` | Pan/zoom logic with discrete zoom steps & cursor anchoring             |
-| `src/presence/Interfaces/InkManager.ts`  | Ephemeral ink presence contract                                        |
-| `src/presence/ink.ts`                    | Implementation utilities for broadcasting ink (if present)             |
-| `src/schema/app_schema.ts`               | Persistent ink schema (`InkStroke`, `InkPoint`, `InkStyle`, `InkBBox`) |
+| File                                        | Purpose                                                                |
+| ------------------------------------------- | ---------------------------------------------------------------------- |
+| `src/react/components/canvas/Canvas.tsx`    | Main collaborative canvas (SVG + HTML layering, ink + overlays)        |
+| `src/react/overlays/ConnectionOverlay.tsx`  | Visual connections with pathfinding and proximity-based UI             |
+| `src/utils/connections.ts`                  | Connection point calculations and side detection utilities             |
+| `src/utils/pathfinding.ts`                  | A* pathfinding algorithm for routing connections around obstacles      |
+| `src/react/hooks/useCanvasNavigation.ts`    | Pan/zoom logic with discrete zoom steps & cursor anchoring             |
+| `src/presence/Interfaces/InkManager.ts`     | Ephemeral ink presence contract                                        |
+| `src/presence/ink.ts`                       | Implementation utilities for broadcasting ink (if present)             |
+| `src/schema/app_schema.ts`                  | Persistent ink schema (`InkStroke`, `InkPoint`, `InkStyle`, `InkBBox`) |
 
 ## User Interface
 
@@ -433,7 +493,9 @@ src/
 │   │   └── panels/     # Side panels and overlays
 │   ├── contexts/       # React contexts for data management
 │   ├── hooks/          # Custom React hooks
-│   └── overlays/       # Presence and selection overlays
+│   └── overlays/       # Presence, selection, and connection overlays
+│       ├── ConnectionOverlay.tsx  # Visual connections with pathfinding
+│       └── ...         # Other overlays
 ├── schema/             # SharedTree schema definitions
 ├── start/              # Application initialization
 ├── presence/           # Presence API implementations (signal-based)
@@ -445,6 +507,9 @@ src/
 │   └── Interfaces/     # TypeScript interfaces for presence and signals
 ├── undo/               # Undo/redo system
 ├── utils/              # Utility functions and managers
+│   ├── connections.ts  # Connection point calculations and geometry
+│   ├── pathfinding.ts  # A* pathfinding for connection routing
+│   └── ...             # Other utilities
 ├── styles/             # CSS files including Tailwind and iOS fixes
 └── constants/          # Application constants and configuration
 ```
@@ -455,6 +520,7 @@ src/
 - **`AppLoad.tsx`**: Application loader and initialization
 - **`App.tsx`**: Main UI component and application shell
 - **`Canvas.tsx`**: Canvas component with SVG rendering and item interactions
+- **`ConnectionOverlay.tsx`**: Visual connections system with pathfinding and proximity-based UI
 - **`ItemView.tsx`**: Canvas item rendering and interactions (includes presence indicators)
 - **`TableView.tsx`**: Table component with virtual scrolling and presence
 - **`contexts/PresenceContext.tsx`**: React context for presence data with signal management
