@@ -221,6 +221,27 @@ export function ConnectionOverlay(props: ConnectionOverlayProps): JSX.Element {
 		};
 	};
 
+	// Helper to get LOGICAL rect for routing (zoom-independent)
+	const getConnectionRect = (itemId: string): Rect | null => {
+		const item = items.find((i) => i.id === itemId);
+		if (!item) return null;
+
+		if (Tree.is(item.content, Group)) {
+			return calculateGroupBounds(item, layout);
+		}
+
+		const bounds = layout.get(itemId);
+		if (!bounds) return null;
+
+		const fixedPadding = 10;
+		return {
+			x: bounds.left - fixedPadding,
+			y: bounds.top - fixedPadding,
+			width: bounds.right - bounds.left + fixedPadding * 2,
+			height: bounds.bottom - bounds.top + fixedPadding * 2,
+		};
+	};
+
 	// Helper to get LOGICAL rect for obstacles (zoom-independent)
 	const getObstacleRect = (itemId: string): Rect | null => {
 		// Check if this is a group
@@ -335,7 +356,7 @@ export function ConnectionOverlay(props: ConnectionOverlayProps): JSX.Element {
 								key={connectionKey}
 								fromItem={fromItem}
 								toItem={toItem}
-								getRect={getVisualRect}
+								getRect={getConnectionRect}
 								getObstacles={getObstacles}
 								zoom={zoom}
 								allPaths={allPaths}
@@ -360,7 +381,7 @@ export function ConnectionOverlay(props: ConnectionOverlayProps): JSX.Element {
 						{dragState && (
 							<TempConnectionLine
 								dragState={dragState}
-								getRect={getVisualRect}
+								getRect={getConnectionRect}
 								zoom={zoom}
 							/>
 						)}
