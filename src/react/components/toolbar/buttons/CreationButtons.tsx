@@ -226,7 +226,7 @@ export function ShapeMenu(props: {
 	const currentShapeInfo = SHAPE_TYPES.find((s) => s.type === currentShape) ?? SHAPE_TYPES[0];
 
 	return (
-		<Menu positioning="below-end">
+		<Menu positioning="below-start">
 			<MenuTrigger disableButtonEnhancement>
 				{(triggerProps) => (
 					<Tooltip
