@@ -396,7 +396,7 @@ interface ConnectionPointsProps {
 }
 
 function ConnectionPoints(props: ConnectionPointsProps): JSX.Element | null {
-	const { item, getRect, onDragStart, cursorPos, isDragging, activeSides } = props;
+	const { item, getRect, onDragStart, zoom, cursorPos, isDragging, activeSides } = props;
 	useTree(item);
 
 	const rect = getRect(item.id);
@@ -406,6 +406,14 @@ function ConnectionPoints(props: ConnectionPointsProps): JSX.Element | null {
 
 	// Proximity threshold in logical units
 	const proximityThreshold = 100;
+
+	// Connection point visual size (constant regardless of zoom)
+	const visualRadius = 6;
+	const visualStrokeWidth = 2.5;
+
+	// Scale inversely with zoom to maintain constant visual size
+	const radius = visualRadius / zoom;
+	const strokeWidth = visualStrokeWidth / zoom;
 
 	return (
 		<g className="connection-points" style={{ pointerEvents: "all" }}>
@@ -441,10 +449,10 @@ function ConnectionPoints(props: ConnectionPointsProps): JSX.Element | null {
 						key={side}
 						cx={point.x}
 						cy={point.y}
-						r={12}
+						r={radius}
 						fill="#ffffff"
 						stroke="#3b82f6"
-						strokeWidth={5}
+						strokeWidth={strokeWidth}
 						opacity={opacity}
 						style={{
 							cursor: "crosshair",
