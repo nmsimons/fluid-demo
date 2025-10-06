@@ -9,8 +9,7 @@ import {
 	InkingToolRegular,
 	EraserToolFilled,
 	EraserToolRegular,
-	Circle24Filled,
-	ChevronDownRegular,
+	ColorLine20Filled,
 } from "@fluentui/react-icons";
 import { TooltipButton } from "../../forms/Button.js";
 import {
@@ -19,10 +18,11 @@ import {
 	MenuPopover,
 	MenuList,
 	MenuDivider,
-	ToolbarButton,
 	Label,
 	SwatchPicker,
 	renderSwatchPickerGrid,
+	MenuButton,
+	Tooltip,
 } from "@fluentui/react-components";
 
 export const SHAPE_COLORS = [
@@ -100,10 +100,11 @@ export function InkColorPicker(props: {
 	return (
 		<Menu>
 			<MenuTrigger>
-				<ToolbarButton style={{ minWidth: 0 }}>
-					<Circle24Filled color={selected ?? "linear-gradient(45deg,#888,#444)"} />
-					<ChevronDownRegular />
-				</ToolbarButton>
+				<Tooltip content="Ink Color" relationship="label">
+					<MenuButton appearance="subtle" style={{ minWidth: 0 }}>
+						<ColorLine20Filled color={selected ?? "linear-gradient(45deg,#888,#444)"} />
+					</MenuButton>
+				</Tooltip>
 			</MenuTrigger>
 			<MenuPopover>
 				<MenuList>

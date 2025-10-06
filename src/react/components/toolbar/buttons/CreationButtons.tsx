@@ -12,6 +12,14 @@ import {
 	NoteRegular,
 	TableRegular,
 } from "@fluentui/react-icons";
+import {
+	Menu,
+	MenuTrigger,
+	MenuPopover,
+	SplitButton,
+	Toolbar,
+	Tooltip,
+} from "@fluentui/react-components";
 import { TooltipButton } from "../../forms/Button.js";
 import { useTree } from "../../../hooks/useTree.js";
 import { PresenceContext } from "../../../contexts/PresenceContext.js";
@@ -178,5 +186,81 @@ export function NewTableButton(props: {
 			tooltip="Add a data table"
 			keyboardShortcut="B"
 		/>
+	);
+}
+
+type ShapeType = "circle" | "square" | "triangle" | "star";
+
+const SHAPE_TYPES: Array<{
+	type: ShapeType;
+	icon: JSX.Element;
+	label: string;
+	shortcut: string;
+}> = [
+	{ type: "circle", icon: <CircleRegular />, label: "Circle", shortcut: "C" },
+	{ type: "square", icon: <SquareRegular />, label: "Square", shortcut: "S" },
+	{ type: "triangle", icon: <TriangleRegular />, label: "Triangle", shortcut: "T" },
+	{ type: "star", icon: <StarRegular />, label: "Star", shortcut: "R" },
+];
+
+export function ShapeMenu(props: {
+	items: Items;
+	canvasSize: { width: number; height: number };
+	pan?: { x: number; y: number };
+	zoom?: number;
+	shapeColor?: string;
+	shapeFilled?: boolean;
+	currentShape: ShapeType;
+	onShapeChange: (shape: ShapeType) => void;
+}): JSX.Element {
+	const { items, canvasSize, pan, zoom, shapeColor, shapeFilled, currentShape, onShapeChange } =
+		props;
+	useTree(items);
+
+	const createShape = (shapeType: ShapeType) => {
+		const colors = shapeColor ? [shapeColor] : SHAPE_COLORS;
+		items.createShapeItem(shapeType, canvasSize, colors, shapeFilled ?? true);
+		centerLastItem(items, pan, zoom, canvasSize);
+	};
+
+	const currentShapeInfo = SHAPE_TYPES.find((s) => s.type === currentShape) ?? SHAPE_TYPES[0];
+
+	return (
+		<Menu positioning="below-end">
+			<MenuTrigger disableButtonEnhancement>
+				{(triggerProps) => (
+					<Tooltip
+						content={`Add Shape (currently ${currentShapeInfo.label})`}
+						relationship="label"
+					>
+						<SplitButton
+							appearance="subtle"
+							menuButton={triggerProps}
+							primaryActionButton={{
+								onClick: () => createShape(currentShape),
+								"aria-label": `Add ${currentShapeInfo.label} (${currentShapeInfo.shortcut})`,
+							}}
+							icon={currentShapeInfo.icon}
+						/>
+					</Tooltip>
+				)}
+			</MenuTrigger>
+			<MenuPopover>
+				<Toolbar>
+					{SHAPE_TYPES.map((shape) => (
+						<TooltipButton
+							key={shape.type}
+							icon={shape.icon}
+							onClick={() => {
+								onShapeChange(shape.type);
+								createShape(shape.type);
+							}}
+							aria-label={`Add ${shape.label} (${shape.shortcut})`}
+							tooltip={`Add ${shape.label} (${shape.shortcut})`}
+						/>
+					))}
+				</Toolbar>
+			</MenuPopover>
+		</Menu>
 	);
 }

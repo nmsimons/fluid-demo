@@ -4,17 +4,18 @@
  */
 
 import React, { JSX, ComponentProps } from "react";
-import { Circle24Filled, ChevronDownRegular } from "@fluentui/react-icons";
+import { Color20Filled } from "@fluentui/react-icons";
 import {
 	Menu,
 	MenuTrigger,
 	MenuPopover,
 	MenuList,
-	ToolbarButton,
 	Label,
 	SwatchPicker,
 	renderSwatchPickerGrid,
 	MenuDivider,
+	MenuButton,
+	Tooltip,
 } from "@fluentui/react-components";
 import { Shape } from "../../../../schema/appSchema.js";
 import { Tree } from "@fluidframework/tree";
@@ -70,10 +71,11 @@ export function ShapeColorPicker(props: {
 	return (
 		<Menu>
 			<MenuTrigger>
-				<ToolbarButton style={{ minWidth: 0 }}>
-					<Circle24Filled color={color} />
-					<ChevronDownRegular />
-				</ToolbarButton>
+				<Tooltip content={"Shape Color"} relationship={"label"}>
+					<MenuButton appearance="subtle" style={{ minWidth: 0 }}>
+						<Color20Filled color={color} />
+					</MenuButton>
+				</Tooltip>
 			</MenuTrigger>
 			<MenuPopover>
 				<MenuList>

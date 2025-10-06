@@ -92,6 +92,9 @@ export function ReactApp(props: {
 	const [inkWidth, setInkWidth] = useState<number>(4);
 	const [shapeColor, setShapeColor] = useState<string>("#FF0000"); // Default to red
 	const [shapeFilled, setShapeFilled] = useState<boolean>(true);
+	const [currentShapeType, setCurrentShapeType] = useState<
+		"circle" | "square" | "triangle" | "star"
+	>("circle");
 	const [textColor, setTextColor] = useState<string>(TEXT_DEFAULT_COLOR);
 	const [textFontSize, setTextFontSize] = useState<number>(TEXT_DEFAULT_FONT_SIZE);
 	const [textBold, setTextBold] = useState<boolean>(false);
@@ -425,6 +428,8 @@ export function ReactApp(props: {
 						onShapeColorChange={setShapeColor}
 						shapeFilled={shapeFilled}
 						onShapeFilledChange={setShapeFilled}
+						currentShapeType={currentShapeType}
+						onShapeTypeChange={setCurrentShapeType}
 						textColor={textColor}
 						onTextColorChange={setTextColor}
 						textFontSize={textFontSize}

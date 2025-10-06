@@ -1,6 +1,5 @@
 import React from "react";
 import {
-	ChevronDownRegular,
 	TextBoldRegular,
 	TextItalicRegular,
 	TextUnderlineRegular,
@@ -13,12 +12,13 @@ import {
 	MenuPopover,
 	MenuList,
 	MenuDivider,
-	ToolbarButton,
 	ToggleButton,
 	SpinButton,
 	Label,
 	Toolbar,
 	ToolbarGroup,
+	MenuButton,
+	Tooltip,
 } from "@fluentui/react-components";
 import { TooltipButton } from "../../forms/Button.js";
 import { Items, TextBlock } from "../../../../schema/appSchema.js";
@@ -192,15 +192,15 @@ export function TextFormattingMenu(props: {
 	return (
 		<Menu>
 			<MenuTrigger disableButtonEnhancement>
-				<ToolbarButton
-					appearance="subtle"
-					style={{ minWidth: 0, paddingInline: 6, gap: 4 }}
-					title={triggerLabel}
-					aria-label={triggerLabel}
-					icon={previewIcon}
-				>
-					<ChevronDownRegular />
-				</ToolbarButton>
+				<Tooltip content="Text Appearance" relationship="label">
+					<MenuButton
+						appearance="subtle"
+						style={{ minWidth: 0, paddingInline: 6, gap: 4 }}
+						aria-label={triggerLabel}
+					>
+						{previewIcon}
+					</MenuButton>
+				</Tooltip>
 			</MenuTrigger>
 			<MenuPopover>
 				<MenuList>

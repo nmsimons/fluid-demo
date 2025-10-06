@@ -10,14 +10,7 @@ import { undoRedo } from "../../../undo/undo.js";
 import { isShape, isTable, isText, isGroup } from "../../../utils/contentHandlers.js";
 import { findItemsByIds } from "../../../utils/itemsHelpers.js";
 import { TypedSelection } from "../../../presence/selection.js";
-import {
-	NewCircleButton,
-	NewSquareButton,
-	NewTriangleButton,
-	NewStarButton,
-	NewNoteButton,
-	NewTableButton,
-} from "./buttons/CreationButtons.js";
+import { ShapeMenu, NewNoteButton, NewTableButton } from "./buttons/CreationButtons.js";
 import { NewTextButton, TextFormattingMenu } from "./buttons/TextButtons.js";
 import { VoteButton, DeleteButton, DuplicateButton, CommentButton } from "./buttons/EditButtons.js";
 import { ShapeColorPicker } from "./buttons/ShapeButtons.js";
@@ -80,6 +73,8 @@ export interface AppToolbarProps {
 	onShapeColorChange: (c: string) => void;
 	shapeFilled: boolean;
 	onShapeFilledChange: (filled: boolean) => void;
+	currentShapeType: "circle" | "square" | "triangle" | "star";
+	onShapeTypeChange: (type: "circle" | "square" | "triangle" | "star") => void;
 	textColor: string;
 	onTextColorChange: (color: string) => void;
 	textFontSize: number;
@@ -124,6 +119,8 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 		onShapeColorChange,
 		shapeFilled,
 		onShapeFilledChange,
+		currentShapeType,
+		onShapeTypeChange,
 		textColor,
 		onTextColorChange,
 		textFontSize,
@@ -177,37 +174,15 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 			<ToolbarDivider />
 			{/* Shape creation buttons */}
 			<ToolbarGroup>
-				<NewCircleButton
+				<ShapeMenu
 					items={view.root.items}
 					canvasSize={canvasSize}
 					pan={pan}
 					zoom={zoom}
 					shapeColor={shapeColor}
 					shapeFilled={shapeFilled}
-				/>
-				<NewSquareButton
-					items={view.root.items}
-					canvasSize={canvasSize}
-					pan={pan}
-					zoom={zoom}
-					shapeColor={shapeColor}
-					shapeFilled={shapeFilled}
-				/>
-				<NewTriangleButton
-					items={view.root.items}
-					canvasSize={canvasSize}
-					pan={pan}
-					zoom={zoom}
-					shapeColor={shapeColor}
-					shapeFilled={shapeFilled}
-				/>
-				<NewStarButton
-					items={view.root.items}
-					canvasSize={canvasSize}
-					pan={pan}
-					zoom={zoom}
-					shapeColor={shapeColor}
-					shapeFilled={shapeFilled}
+					currentShape={currentShapeType}
+					onShapeChange={onShapeTypeChange}
 				/>
 				<ShapeColorPicker
 					color={shapeColor}
