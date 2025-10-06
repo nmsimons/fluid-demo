@@ -36,7 +36,7 @@ This application demonstrates the power of the Fluid Framework by building a com
 
 - **Directional Connections**: Create visual connections between canvas items by dragging from connection points
 - **Supported Items**: Groups, sticky notes, text blocks, and tables all support connection points
-- **Smart Pathfinding**: Connections use A* pathfinding algorithm to intelligently route around obstacles
+- **Smart Pathfinding**: Connections use A\* pathfinding algorithm to intelligently route around obstacles
 - **Proximity-Based UI**: Connection points appear when cursor is near an item, with smooth opacity transitions
 - **Dynamic Routing**: Connection lines automatically recalculate when items move or resize
 - **Visual Feedback**: Active connection points highlight during drag operations for clear interaction
@@ -90,6 +90,7 @@ The application uses a comprehensive SharedTree schema defined in the `src/schem
 The schema supports rich data types including strings, numbers, booleans, dates, ink strokes, directional connections, and custom voting objects. All schema changes are automatically synchronized across all connected clients.
 
 **Connection System:**
+
 - Each `Item` maintains an array of connection IDs representing items that connect TO it
 - Methods include: `addConnection()`, `removeConnection()`, `hasConnection()`, `getConnections()`
 - Connections are directional (from source item to target item)
@@ -233,11 +234,11 @@ The canvas uses a hybrid SVG + HTML strategy to balance fidelity, performance, a
 ### Layering
 
 - **SVG Root (`Canvas.tsx`)**: Owns the unified coordinate system (pan + zoom transform) and renders:
-  - Persistent ink polylines (vector, efficient at scale)
-  - Ephemeral ink (local + remote) with reduced opacity
-  - Selection, presence, and comment overlays positioned in logical space
-  - Connection overlays with interactive connection points and pathfinding
-  - Custom cursor / eraser feedback (screen-space overlay)
+    - Persistent ink polylines (vector, efficient at scale)
+    - Ephemeral ink (local + remote) with reduced opacity
+    - Selection, presence, and comment overlays positioned in logical space
+    - Connection overlays with interactive connection points and pathfinding
+    - Custom cursor / eraser feedback (screen-space overlay)
 - **HTML Layer (foreignObject)**: Hosts complex React components (tables, notes, shapes) so they can leverage normal DOM/CSS layout & accessibility while still moving/zooming with the SVG transform.
 
 ### Coordinate Spaces
@@ -301,6 +302,7 @@ The application features a sophisticated visual connections system that allows u
 ### Supported Items
 
 Connection points are available on:
+
 - **Groups**: Container items that organize other canvas elements
 - **Sticky Notes**: Text-based note items
 - **Text Blocks**: Formatted text blocks
@@ -315,7 +317,7 @@ Connection points are available on:
 
 ### Smart Pathfinding
 
-- **A* Algorithm**: Uses A* pathfinding to calculate optimal routes between connected items
+- **A\* Algorithm**: Uses A\* pathfinding to calculate optimal routes between connected items
 - **Obstacle Avoidance**: Connection lines intelligently route around other canvas items
 - **Dynamic Updates**: Paths automatically recalculate when items move or resize
 - **Waypoint Generation**: Creates smooth paths with perpendicular exits/entries when possible
@@ -326,7 +328,7 @@ Connection points are available on:
 - **Connection Data**: Stored persistently in SharedTree as arrays of connection IDs on each `Item`
 - **Visual Rendering**: `ConnectionOverlay.tsx` handles all connection visualization
 - **Geometry Utilities**: `connections.ts` provides point calculations and side detection
-- **Pathfinding Engine**: `pathfinding.ts` implements A* algorithm with obstacle detection
+- **Pathfinding Engine**: `pathfinding.ts` implements A\* algorithm with obstacle detection
 - **Zoom Independence**: Connection logic works in logical coordinates for consistent behavior at all zoom levels
 
 ## Future Enhancements (Roadmap)
@@ -342,16 +344,16 @@ These items are candidates for iterative improvement:
 
 ## Quick Reference: Key Files
 
-| File                                        | Purpose                                                                |
-| ------------------------------------------- | ---------------------------------------------------------------------- |
-| `src/react/components/canvas/Canvas.tsx`    | Main collaborative canvas (SVG + HTML layering, ink + overlays)        |
-| `src/react/overlays/ConnectionOverlay.tsx`  | Visual connections with pathfinding and proximity-based UI             |
-| `src/utils/connections.ts`                  | Connection point calculations and side detection utilities             |
-| `src/utils/pathfinding.ts`                  | A* pathfinding algorithm for routing connections around obstacles      |
-| `src/react/hooks/useCanvasNavigation.ts`    | Pan/zoom logic with discrete zoom steps & cursor anchoring             |
-| `src/presence/Interfaces/InkManager.ts`     | Ephemeral ink presence contract                                        |
-| `src/presence/ink.ts`                       | Implementation utilities for broadcasting ink (if present)             |
-| `src/schema/app_schema.ts`                  | Persistent ink schema (`InkStroke`, `InkPoint`, `InkStyle`, `InkBBox`) |
+| File                                       | Purpose                                                                |
+| ------------------------------------------ | ---------------------------------------------------------------------- |
+| `src/react/components/canvas/Canvas.tsx`   | Main collaborative canvas (SVG + HTML layering, ink + overlays)        |
+| `src/react/overlays/ConnectionOverlay.tsx` | Visual connections with pathfinding and proximity-based UI             |
+| `src/utils/connections.ts`                 | Connection point calculations and side detection utilities             |
+| `src/utils/pathfinding.ts`                 | A\* pathfinding algorithm for routing connections around obstacles     |
+| `src/react/hooks/useCanvasNavigation.ts`   | Pan/zoom logic with discrete zoom steps & cursor anchoring             |
+| `src/presence/Interfaces/InkManager.ts`    | Ephemeral ink presence contract                                        |
+| `src/presence/ink.ts`                      | Implementation utilities for broadcasting ink (if present)             |
+| `src/schema/app_schema.ts`                 | Persistent ink schema (`InkStroke`, `InkPoint`, `InkStyle`, `InkBBox`) |
 
 ## User Interface
 
