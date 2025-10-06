@@ -207,14 +207,17 @@ export function ConnectionOverlay(props: ConnectionOverlayProps): JSX.Element {
 			return calculateGroupVisualBounds(item, layout);
 		}
 
-		// Notes, TextBlocks, and FluidTables use layout bounds
+		// Notes, TextBlocks, and FluidTables use layout bounds extended by selection padding
+		// This aligns connection points with the selection overlay border
 		const bounds = layout.get(itemId);
 		if (!bounds) return null;
+
+		const selectionPadding = 10 / zoom; // Matches SelectionOverlay padding
 		return {
-			x: bounds.left,
-			y: bounds.top,
-			width: bounds.right - bounds.left,
-			height: bounds.bottom - bounds.top,
+			x: bounds.left - selectionPadding,
+			y: bounds.top - selectionPadding,
+			width: bounds.right - bounds.left + selectionPadding * 2,
+			height: bounds.bottom - bounds.top + selectionPadding * 2,
 		};
 	};
 
