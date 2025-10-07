@@ -30,6 +30,7 @@ export function TextView(props: { text: TextBlock; widthOverride?: number }): JS
 		text.underline,
 		text.strikethrough,
 		text.cardStyle,
+		text.textAlign,
 	]);
 
 	useEffect(() => {
@@ -85,6 +86,8 @@ export function TextView(props: { text: TextBlock; widthOverride?: number }): JS
 					fontWeight: text.bold ? 700 : 400,
 					fontStyle: text.italic ? "italic" : "normal",
 					textDecoration: textDecoration || "none",
+					textAlign:
+						(text.textAlign as "left" | "center" | "right" | undefined) ?? "left",
 					lineHeight: 1.4,
 					resize: "none",
 					overflow: "hidden",

@@ -5,7 +5,9 @@ import {
 	TextUnderlineRegular,
 	TextStrikethroughRegular,
 	TextTRegular,
-	RectangleLandscapeRegular,
+	TextAlignLeftRegular,
+	TextAlignCenterRegular,
+	TextAlignRightRegular,
 } from "@fluentui/react-icons";
 import {
 	Menu,
@@ -52,6 +54,7 @@ export function NewTextButton(props: {
 	underline: boolean;
 	strikethrough: boolean;
 	cardStyle: boolean;
+	textAlign: string;
 }): JSX.Element {
 	const {
 		items,
@@ -65,6 +68,7 @@ export function NewTextButton(props: {
 		underline,
 		strikethrough,
 		cardStyle,
+		textAlign,
 	} = props;
 
 	useTree(items);
@@ -81,6 +85,7 @@ export function NewTextButton(props: {
 					underline,
 					strikethrough,
 					cardStyle,
+					textAlign,
 					width: TEXT_DEFAULT_WIDTH,
 				});
 				const estimatedHeight = fontSize * 2.8 + 32;
@@ -108,6 +113,8 @@ export function TextFormattingMenu(props: {
 	onStrikethroughChange: (value: boolean) => void;
 	cardStyle: boolean;
 	onCardStyleChange: (value: boolean) => void;
+	textAlign: string;
+	onTextAlignChange: (value: string) => void;
 	selectedTexts?: TextBlock[];
 }): JSX.Element {
 	const {
@@ -125,6 +132,8 @@ export function TextFormattingMenu(props: {
 		onStrikethroughChange,
 		cardStyle,
 		onCardStyleChange,
+		textAlign,
+		onTextAlignChange,
 		selectedTexts = [],
 	} = props;
 
@@ -297,6 +306,50 @@ export function TextFormattingMenu(props: {
 											text.strikethrough = value;
 										}
 									);
+								}}
+							/>
+						</ToolbarGroup>
+					</Toolbar>
+					<MenuDivider />
+					<Toolbar aria-label="Text alignment">
+						<ToolbarGroup>
+							<ToggleButton
+								appearance="subtle"
+								aria-label="Align left"
+								icon={<TextAlignLeftRegular />}
+								checked={textAlign === "left"}
+								onClick={() => {
+									const newAlign = "left";
+									onTextAlignChange(newAlign);
+									applyToSelection((text) => {
+										text.textAlign = newAlign;
+									});
+								}}
+							/>
+							<ToggleButton
+								appearance="subtle"
+								aria-label="Align center"
+								icon={<TextAlignCenterRegular />}
+								checked={textAlign === "center"}
+								onClick={() => {
+									const newAlign = "center";
+									onTextAlignChange(newAlign);
+									applyToSelection((text) => {
+										text.textAlign = newAlign;
+									});
+								}}
+							/>
+							<ToggleButton
+								appearance="subtle"
+								aria-label="Align right"
+								icon={<TextAlignRightRegular />}
+								checked={textAlign === "right"}
+								onClick={() => {
+									const newAlign = "right";
+									onTextAlignChange(newAlign);
+									applyToSelection((text) => {
+										text.textAlign = newAlign;
+									});
 								}}
 							/>
 						</ToolbarGroup>

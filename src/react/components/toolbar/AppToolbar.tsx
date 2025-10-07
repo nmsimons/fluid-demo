@@ -89,6 +89,8 @@ export interface AppToolbarProps {
 	onTextStrikethroughChange: (value: boolean) => void;
 	textCardStyle: boolean;
 	onTextCardStyleChange: (value: boolean) => void;
+	textAlign: string;
+	onTextAlignChange: (value: string) => void;
 }
 
 export function AppToolbar(props: AppToolbarProps): JSX.Element {
@@ -137,6 +139,8 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 		onTextStrikethroughChange,
 		textCardStyle,
 		onTextCardStyleChange,
+		textAlign,
+		onTextAlignChange,
 	} = props;
 
 	const selectedItems = findItemsByIds(view.root.items, selectedItemIds);
@@ -210,6 +214,7 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 					underline={textUnderline}
 					strikethrough={textStrikethrough}
 					cardStyle={textCardStyle}
+					textAlign={textAlign}
 				/>
 				<TextFormattingMenu
 					color={textColor}
@@ -226,6 +231,8 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 					onStrikethroughChange={onTextStrikethroughChange}
 					cardStyle={textCardStyle}
 					onCardStyleChange={onTextCardStyleChange}
+					textAlign={textAlign}
+					onTextAlignChange={onTextAlignChange}
 					selectedTexts={selectedTexts}
 				/>
 			</ToolbarGroup>

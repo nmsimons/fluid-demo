@@ -102,6 +102,7 @@ export function ReactApp(props: {
 	const [textUnderline, setTextUnderline] = useState<boolean>(false);
 	const [textStrikethrough, setTextStrikethrough] = useState<boolean>(false);
 	const [textCardStyle, setTextCardStyle] = useState<boolean>(false);
+	const [textAlign, setTextAlign] = useState<string>("left");
 
 	// Keep linter satisfied until pan is surfaced elsewhere
 	useEffect(() => {
@@ -158,6 +159,7 @@ export function ReactApp(props: {
 		let firstUnderline: boolean | null = null;
 		let firstStrikethrough: boolean | null = null;
 		let firstCardStyle: boolean | null = null;
+		let firstTextAlign: string | null = null;
 		const signatureParts: string[] = [];
 
 		for (const id of selectedItemIds) {
@@ -175,8 +177,9 @@ export function ReactApp(props: {
 				const underline = text.underline === true;
 				const strikethrough = text.strikethrough === true;
 				const cardStyle = text.cardStyle === true;
+				const textAlignVal = text.textAlign ?? "left";
 				signatureParts.push(
-					`${id}:${color}:${fontSize}:${bold ? 1 : 0}:${italic ? 1 : 0}:${underline ? 1 : 0}:${strikethrough ? 1 : 0}:${cardStyle ? 1 : 0}`
+					`${id}:${color}:${fontSize}:${bold ? 1 : 0}:${italic ? 1 : 0}:${underline ? 1 : 0}:${strikethrough ? 1 : 0}:${cardStyle ? 1 : 0}:${textAlignVal}`
 				);
 				if (firstColor === null) {
 					firstColor = color;
@@ -186,6 +189,7 @@ export function ReactApp(props: {
 					firstUnderline = underline;
 					firstStrikethrough = strikethrough;
 					firstCardStyle = cardStyle;
+					firstTextAlign = textAlignVal;
 				}
 			} else {
 				signatureParts.push(id);
@@ -200,6 +204,7 @@ export function ReactApp(props: {
 			underline: firstUnderline,
 			strikethrough: firstStrikethrough,
 			cardStyle: firstCardStyle,
+			textAlign: firstTextAlign,
 			signature: signatureParts.join("|") || "",
 		};
 	})();
@@ -211,6 +216,7 @@ export function ReactApp(props: {
 		underline: firstSelectedTextUnderline,
 		strikethrough: firstSelectedTextStrikethrough,
 		cardStyle: firstSelectedTextCardStyle,
+		textAlign: firstSelectedTextAlign,
 		signature: selectedTextsSignature,
 	} = textSelectionAnalysis;
 
@@ -254,6 +260,9 @@ export function ReactApp(props: {
 		if (firstSelectedTextCardStyle !== null && firstSelectedTextCardStyle !== textCardStyle) {
 			setTextCardStyle(firstSelectedTextCardStyle);
 		}
+		if (firstSelectedTextAlign !== null && firstSelectedTextAlign !== textAlign) {
+			setTextAlign(firstSelectedTextAlign);
+		}
 	}, [
 		selectedTextsSignature,
 		firstSelectedTextColor,
@@ -263,6 +272,7 @@ export function ReactApp(props: {
 		firstSelectedTextUnderline,
 		firstSelectedTextStrikethrough,
 		firstSelectedTextCardStyle,
+		firstSelectedTextAlign,
 		textColor,
 		textFontSize,
 		textBold,
@@ -270,6 +280,7 @@ export function ReactApp(props: {
 		textUnderline,
 		textStrikethrough,
 		textCardStyle,
+		textAlign,
 	]);
 
 	// Function to open comment pane and focus input
@@ -455,6 +466,8 @@ export function ReactApp(props: {
 						onTextStrikethroughChange={setTextStrikethrough}
 						textCardStyle={textCardStyle}
 						onTextCardStyleChange={setTextCardStyle}
+						textAlign={textAlign}
+						onTextAlignChange={setTextAlign}
 					/>
 					{/* </div> */}
 					<div className="canvas-container flex h-[calc(100vh-96px)] w-full flex-row ">

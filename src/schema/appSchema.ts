@@ -232,6 +232,12 @@ export class TextBlock extends sf.object("TextBlock", {
 				"Whether the text is displayed on a white card with rounded corners and drop shadow",
 		},
 	}),
+	textAlign: sf.optional(sf.string, {
+		metadata: {
+			description:
+				"The horizontal alignment of the text within the container: 'left', 'center', or 'right'",
+		},
+	}),
 }) {}
 
 export type typeDefinition = TreeNodeFromImplicitAllowedTypes<typeof schemaTypes>;
@@ -744,6 +750,7 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 			underline?: boolean;
 			strikethrough?: boolean;
 			cardStyle?: boolean;
+			textAlign?: string;
 		}
 	): Item {
 		const width = clampTextWidth(props?.width ?? TEXT_DEFAULT_WIDTH);
@@ -757,6 +764,7 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 			underline: props?.underline ?? false,
 			strikethrough: props?.strikethrough ?? false,
 			cardStyle: props?.cardStyle ?? false,
+			textAlign: props?.textAlign ?? "left",
 		});
 
 		const item = new Item({
