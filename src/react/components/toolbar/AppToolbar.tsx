@@ -10,6 +10,7 @@ import { undoRedo } from "../../../undo/undo.js";
 import { isShape, isTable, isText, isGroup } from "../../../utils/contentHandlers.js";
 import { findItemsByIds } from "../../../utils/itemsHelpers.js";
 import { TypedSelection } from "../../../presence/selection.js";
+import { getParentGroupInfo } from "../../utils/presenceGeometry.js";
 import { ShapeMenu, NewNoteButton, NewTableButton } from "./buttons/CreationButtons.js";
 import { NewTextButton, TextFormattingMenu } from "./buttons/TextButtons.js";
 import { VoteButton, DeleteButton, DuplicateButton, CommentButton } from "./buttons/EditButtons.js";
@@ -146,6 +147,23 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 	const selectedItems = findItemsByIds(view.root.items, selectedItemIds);
 	const selectedShapes = selectedItems.filter(isShape).map((item) => item.content as Shape);
 	const selectedTexts = selectedItems.filter(isText).map((item) => item.content as TextBlock);
+
+	// Determine if all selected items belong to a single group
+	const commonParentGroup = (() => {
+		if (selectedItems.length === 0) return null;
+
+		// Get parent group info for all selected items
+		const parentGroups = selectedItems.map((item) => getParentGroupInfo(item));
+
+		// If any item is not in a group, no common parent
+		if (parentGroups.some((pg) => pg === null)) return null;
+
+		// Check if all items have the same parent group (compare group IDs)
+		const firstGroupId = parentGroups[0]?.groupItem.id;
+		const allSameGroup = parentGroups.every((pg) => pg?.groupItem.id === firstGroupId);
+
+		return allSameGroup ? parentGroups[0] : null;
+	})();
 
 	// Zoom slider logic moved into ZoomMenu component.
 
@@ -361,7 +379,8 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 								</ToolbarGroup>
 							</div>
 						)}
-						{singleSelectedItem && isGroup(singleSelectedItem) && (
+						{((singleSelectedItem && isGroup(singleSelectedItem)) ||
+							commonParentGroup) && (
 							<div className="flex items-center h-full toolbar-slide-in-delayed bg-purple-100 border-l-2 border-purple-500 pl-4 pr-4 ml-4">
 								{/* Group-specific controls with distinct visual styling */}
 								<div className="px-1 py-1 text-xs font-semibold text-purple-700 rounded mr-1">
@@ -369,17 +388,31 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 								</div>
 								<ToolbarGroup>
 									<RenameGroupButton
-										group={singleSelectedItem.content}
+										group={
+											singleSelectedItem && isGroup(singleSelectedItem)
+												? singleSelectedItem.content
+												: commonParentGroup!.group
+										}
 										onEdit={() => {
 											// Trigger editing on the group overlay
 											// We'll need to communicate this to the overlay via a state mechanism
+											const groupId =
+												singleSelectedItem && isGroup(singleSelectedItem)
+													? singleSelectedItem.id
+													: commonParentGroup!.groupItem.id;
 											const event = new CustomEvent("editGroup", {
-												detail: { groupId: singleSelectedItem.id },
+												detail: { groupId },
 											});
 											window.dispatchEvent(event);
 										}}
 									/>
-									<ToggleGridLayoutButton group={singleSelectedItem.content} />
+									<ToggleGridLayoutButton
+										group={
+											singleSelectedItem && isGroup(singleSelectedItem)
+												? singleSelectedItem.content
+												: commonParentGroup!.group
+										}
+									/>
 								</ToolbarGroup>
 							</div>
 						)}
