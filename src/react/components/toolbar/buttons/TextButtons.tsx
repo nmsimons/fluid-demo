@@ -5,6 +5,7 @@ import {
 	TextUnderlineRegular,
 	TextStrikethroughRegular,
 	TextTRegular,
+	RectangleLandscapeRegular,
 } from "@fluentui/react-icons";
 import {
 	Menu,
@@ -19,6 +20,7 @@ import {
 	ToolbarGroup,
 	MenuButton,
 	Tooltip,
+	Checkbox,
 } from "@fluentui/react-components";
 import { TooltipButton } from "../../forms/Button.js";
 import { Items, TextBlock } from "../../../../schema/appSchema.js";
@@ -49,6 +51,7 @@ export function NewTextButton(props: {
 	italic: boolean;
 	underline: boolean;
 	strikethrough: boolean;
+	cardStyle: boolean;
 }): JSX.Element {
 	const {
 		items,
@@ -61,6 +64,7 @@ export function NewTextButton(props: {
 		italic,
 		underline,
 		strikethrough,
+		cardStyle,
 	} = props;
 
 	useTree(items);
@@ -76,6 +80,7 @@ export function NewTextButton(props: {
 					italic,
 					underline,
 					strikethrough,
+					cardStyle,
 					width: TEXT_DEFAULT_WIDTH,
 				});
 				const estimatedHeight = fontSize * 2.8 + 32;
@@ -101,6 +106,8 @@ export function TextFormattingMenu(props: {
 	onUnderlineChange: (value: boolean) => void;
 	strikethrough: boolean;
 	onStrikethroughChange: (value: boolean) => void;
+	cardStyle: boolean;
+	onCardStyleChange: (value: boolean) => void;
 	selectedTexts?: TextBlock[];
 }): JSX.Element {
 	const {
@@ -116,6 +123,8 @@ export function TextFormattingMenu(props: {
 		onUnderlineChange,
 		strikethrough,
 		onStrikethroughChange,
+		cardStyle,
+		onCardStyleChange,
 		selectedTexts = [],
 	} = props;
 
@@ -292,6 +301,17 @@ export function TextFormattingMenu(props: {
 							/>
 						</ToolbarGroup>
 					</Toolbar>
+					<MenuDivider />
+					<Checkbox
+						aria-label="Toggle card style"
+						checked={cardStyle}
+						onClick={() => {
+							handleBooleanChange(!cardStyle, onCardStyleChange, (text, value) => {
+								text.cardStyle = value;
+							});
+						}}
+						label={"Show as card"}
+					/>
 				</MenuList>
 			</MenuPopover>
 		</Menu>

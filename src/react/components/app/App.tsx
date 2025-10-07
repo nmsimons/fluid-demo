@@ -101,6 +101,7 @@ export function ReactApp(props: {
 	const [textItalic, setTextItalic] = useState<boolean>(false);
 	const [textUnderline, setTextUnderline] = useState<boolean>(false);
 	const [textStrikethrough, setTextStrikethrough] = useState<boolean>(false);
+	const [textCardStyle, setTextCardStyle] = useState<boolean>(false);
 
 	// Keep linter satisfied until pan is surfaced elsewhere
 	useEffect(() => {
@@ -156,6 +157,7 @@ export function ReactApp(props: {
 		let firstItalic: boolean | null = null;
 		let firstUnderline: boolean | null = null;
 		let firstStrikethrough: boolean | null = null;
+		let firstCardStyle: boolean | null = null;
 		const signatureParts: string[] = [];
 
 		for (const id of selectedItemIds) {
@@ -172,8 +174,9 @@ export function ReactApp(props: {
 				const italic = text.italic === true;
 				const underline = text.underline === true;
 				const strikethrough = text.strikethrough === true;
+				const cardStyle = text.cardStyle === true;
 				signatureParts.push(
-					`${id}:${color}:${fontSize}:${bold ? 1 : 0}:${italic ? 1 : 0}:${underline ? 1 : 0}:${strikethrough ? 1 : 0}`
+					`${id}:${color}:${fontSize}:${bold ? 1 : 0}:${italic ? 1 : 0}:${underline ? 1 : 0}:${strikethrough ? 1 : 0}:${cardStyle ? 1 : 0}`
 				);
 				if (firstColor === null) {
 					firstColor = color;
@@ -182,6 +185,7 @@ export function ReactApp(props: {
 					firstItalic = italic;
 					firstUnderline = underline;
 					firstStrikethrough = strikethrough;
+					firstCardStyle = cardStyle;
 				}
 			} else {
 				signatureParts.push(id);
@@ -195,6 +199,7 @@ export function ReactApp(props: {
 			italic: firstItalic,
 			underline: firstUnderline,
 			strikethrough: firstStrikethrough,
+			cardStyle: firstCardStyle,
 			signature: signatureParts.join("|") || "",
 		};
 	})();
@@ -205,6 +210,7 @@ export function ReactApp(props: {
 		italic: firstSelectedTextItalic,
 		underline: firstSelectedTextUnderline,
 		strikethrough: firstSelectedTextStrikethrough,
+		cardStyle: firstSelectedTextCardStyle,
 		signature: selectedTextsSignature,
 	} = textSelectionAnalysis;
 
@@ -245,6 +251,9 @@ export function ReactApp(props: {
 		) {
 			setTextStrikethrough(firstSelectedTextStrikethrough);
 		}
+		if (firstSelectedTextCardStyle !== null && firstSelectedTextCardStyle !== textCardStyle) {
+			setTextCardStyle(firstSelectedTextCardStyle);
+		}
 	}, [
 		selectedTextsSignature,
 		firstSelectedTextColor,
@@ -253,12 +262,14 @@ export function ReactApp(props: {
 		firstSelectedTextItalic,
 		firstSelectedTextUnderline,
 		firstSelectedTextStrikethrough,
+		firstSelectedTextCardStyle,
 		textColor,
 		textFontSize,
 		textBold,
 		textItalic,
 		textUnderline,
 		textStrikethrough,
+		textCardStyle,
 	]);
 
 	// Function to open comment pane and focus input
@@ -442,6 +453,8 @@ export function ReactApp(props: {
 						onTextUnderlineChange={setTextUnderline}
 						textStrikethrough={textStrikethrough}
 						onTextStrikethroughChange={setTextStrikethrough}
+						textCardStyle={textCardStyle}
+						onTextCardStyleChange={setTextCardStyle}
 					/>
 					{/* </div> */}
 					<div className="canvas-container flex h-[calc(100vh-96px)] w-full flex-row ">

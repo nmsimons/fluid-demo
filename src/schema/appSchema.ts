@@ -226,6 +226,12 @@ export class TextBlock extends sf.object("TextBlock", {
 	strikethrough: sf.optional(sf.boolean, {
 		metadata: { description: "Whether the text is rendered with a strikethrough" },
 	}),
+	cardStyle: sf.optional(sf.boolean, {
+		metadata: {
+			description:
+				"Whether the text is displayed on a white card with rounded corners and drop shadow",
+		},
+	}),
 }) {}
 
 export type typeDefinition = TreeNodeFromImplicitAllowedTypes<typeof schemaTypes>;
@@ -737,6 +743,7 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 			italic?: boolean;
 			underline?: boolean;
 			strikethrough?: boolean;
+			cardStyle?: boolean;
 		}
 	): Item {
 		const width = clampTextWidth(props?.width ?? TEXT_DEFAULT_WIDTH);
@@ -749,6 +756,7 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 			italic: props?.italic ?? false,
 			underline: props?.underline ?? false,
 			strikethrough: props?.strikethrough ?? false,
+			cardStyle: props?.cardStyle ?? false,
 		});
 
 		const item = new Item({
