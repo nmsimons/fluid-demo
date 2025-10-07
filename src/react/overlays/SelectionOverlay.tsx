@@ -35,6 +35,7 @@ import { Tree } from "fluid-framework";
 import { isGroupGridEnabled } from "../layout/groupGrid.js";
 import { resolveItemTransform } from "../utils/presenceGeometry.js";
 import { useOptionalTree, useTree } from "../hooks/useTree.js";
+import { getContentHandler } from "../../utils/contentHandlers.js";
 
 export function SelectionOverlay(props: {
 	item: Item;
@@ -103,6 +104,11 @@ export function SelectionOverlay(props: {
 	const isTable = Tree.is(item.content, FluidTable);
 	const isShape = Tree.is(item.content, Shape);
 	const isText = Tree.is(item.content, TextBlock);
+
+	// Check if item can be rotated
+	const handler = getContentHandler(item);
+	const canRotate = handler.canRotate();
+
 	// Tables and items in grid view groups should have no rotation
 	if (isTable || parentGroupGridEnabled) angle = 0;
 
@@ -131,7 +137,7 @@ export function SelectionOverlay(props: {
 					opacity={0.9}
 				/>
 			</g>
-			{!isTable && !parentGroupGridEnabled && (
+			{canRotate && !parentGroupGridEnabled && (
 				<g transform={`translate(${w / 2}, ${-rotationOffsetLocal})`}>
 					{/* Visible rotation handle */}
 					<circle

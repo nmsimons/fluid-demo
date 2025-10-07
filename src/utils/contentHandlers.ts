@@ -94,7 +94,7 @@ class NoteHandler implements ContentHandler {
 	}
 
 	canRotate(): boolean {
-		return true;
+		return false; // Notes cannot be rotated via UI
 	}
 
 	getRotationTransform(rotation: number): string {
@@ -123,7 +123,7 @@ class TextHandler implements ContentHandler {
 	}
 
 	canRotate(): boolean {
-		return true;
+		return false; // Text items cannot be rotated via UI
 	}
 
 	getRotationTransform(rotation: number): string {
