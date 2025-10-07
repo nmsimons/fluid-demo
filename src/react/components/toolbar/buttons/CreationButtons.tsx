@@ -235,10 +235,10 @@ export function ShapeMenu(props: {
 					>
 						<SplitButton
 							appearance="subtle"
-							menuButton={triggerProps}
+							menuButton={{ ...triggerProps, "data-testid": "shape-menu-button" }}
 							primaryActionButton={{
 								onClick: () => createShape(currentShape),
-								"aria-label": `Add ${currentShapeInfo.label} (${currentShapeInfo.shortcut})`,
+								"aria-label": `Add ${currentShapeInfo.label} (${currentShapeInfo.shortcut})`, "data-testid": "shape-primary-button",
 							}}
 							icon={currentShapeInfo.icon}
 						/>
@@ -256,7 +256,7 @@ export function ShapeMenu(props: {
 								createShape(shape.type);
 							}}
 							aria-label={`Add ${shape.label} (${shape.shortcut})`}
-							tooltip={`Add ${shape.label} (${shape.shortcut})`}
+							tooltip={`Add ${shape.label} (${shape.shortcut})`} data-testid={`shape-option-${shape.type}`}
 						/>
 					))}
 				</Toolbar>

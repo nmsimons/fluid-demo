@@ -3,7 +3,13 @@
  * Licensed under the MIT License.
  */
 
-import { test, expect } from "@playwright/test";
+import { test, expect, Page } from "@playwright/test";
+
+async function createShape(page: Page, shape: "circle" | "square" | "triangle" | "star") {
+await page.getByTestId("shape-menu-button").click({ force: true });
+await page.waitForTimeout(200); // Wait for menu to open
+await page.getByTestId(`shape-option-${shape}`).click();
+}
 
 test.describe("Item Interactions", () => {
 	test.beforeEach(async ({ page }) => {
@@ -13,7 +19,7 @@ test.describe("Item Interactions", () => {
 		await expect(page.locator("#canvas")).toBeVisible({ timeout: 10000 });
 
 		// Wait for the Fluid container to be ready
-		await expect(page.getByRole("button", { name: /Add a circle shape/i })).toBeEnabled({
+		await expect(page.getByTestId("shape-primary-button")).toBeEnabled({
 			timeout: 15000,
 		});
 	});
@@ -21,7 +27,7 @@ test.describe("Item Interactions", () => {
 	test.describe("Drag Operations", () => {
 		test("should drag a shape to a new position", async ({ page }) => {
 			// Create a circle
-			await page.getByRole("button", { name: /Add a circle shape/i }).click();
+			await createShape(page, "circle");
 			await page.waitForTimeout(300);
 
 			const shape = page.locator("[data-item-id]").first();
@@ -79,7 +85,7 @@ test.describe("Item Interactions", () => {
 		});
 		test("should not drag when clicking without moving mouse", async ({ page }) => {
 			// Create a circle
-			await page.getByRole("button", { name: /Add a circle shape/i }).click();
+			await createShape(page, "circle");
 			await page.waitForTimeout(300);
 			const shape = page.locator("[data-item-id]").first();
 			await expect(shape).toBeVisible();
@@ -101,9 +107,9 @@ test.describe("Item Interactions", () => {
 
 		test("should only drag one item at a time (no ghost drag)", async ({ page }) => {
 			// Create two circles with spacing
-			await page.getByRole("button", { name: /Add a circle shape/i }).click();
+			await createShape(page, "circle");
 			await page.waitForTimeout(400);
-			await page.getByRole("button", { name: /Add a circle shape/i }).click();
+			await createShape(page, "circle");
 			await page.waitForTimeout(400);
 
 			const shapes = page.locator("[data-item-id]");
@@ -151,7 +157,7 @@ test.describe("Item Interactions", () => {
 
 		test("should require minimum movement threshold before starting drag", async ({ page }) => {
 			// Create a circle
-			await page.getByRole("button", { name: /Add a circle shape/i }).click();
+			await createShape(page, "circle");
 			await page.waitForTimeout(300);
 			const shape = page.locator("[data-item-id]").first();
 			await expect(shape).toBeVisible();
@@ -178,7 +184,7 @@ test.describe("Item Interactions", () => {
 	test.describe("Rotation Operations", () => {
 		test("should rotate a shape using rotation handle", async ({ page }) => {
 			// Create a square (easier to see rotation than a circle)
-			await page.getByRole("button", { name: /Add a square shape/i }).click();
+			await createShape(page, "square");
 			await page.waitForTimeout(300);
 			const shape = page.locator("[data-item-id]").first();
 			await expect(shape).toBeVisible();
@@ -225,7 +231,7 @@ test.describe("Item Interactions", () => {
 
 		test("should not start drag when using rotation handle", async ({ page }) => {
 			// Create a square
-			await page.getByRole("button", { name: /Add a square shape/i }).click();
+			await createShape(page, "square");
 			await page.waitForTimeout(300);
 			const shape = page.locator("[data-item-id]").first();
 			await expect(shape).toBeVisible();
@@ -274,7 +280,7 @@ test.describe("Item Interactions", () => {
 	test.describe("Resize Operations", () => {
 		test("should resize a shape using resize handle", async ({ page }) => {
 			// Create a circle
-			await page.getByRole("button", { name: /Add a circle shape/i }).click();
+			await createShape(page, "circle");
 			await page.waitForTimeout(300);
 			const shape = page.locator("[data-item-id]").first();
 			await expect(shape).toBeVisible();
@@ -315,7 +321,7 @@ test.describe("Item Interactions", () => {
 
 		test("should not start drag when using resize handle", async ({ page }) => {
 			// Create a circle
-			await page.getByRole("button", { name: /Add a circle shape/i }).click();
+			await createShape(page, "circle");
 			await page.waitForTimeout(300);
 			const shape = page.locator("[data-item-id]").first();
 			await expect(shape).toBeVisible();
@@ -509,9 +515,9 @@ test.describe("Item Interactions", () => {
 	test.describe("Multi-selection", () => {
 		test("should toggle selection with Ctrl+click", async ({ page }) => {
 			// Create two shapes
-			await page.getByRole("button", { name: /Add a circle shape/i }).click();
+			await createShape(page, "circle");
 			await page.waitForTimeout(400);
-			await page.getByRole("button", { name: /Add a square shape/i }).click();
+			await createShape(page, "square");
 			await page.waitForTimeout(400);
 
 			const shapes = page.locator("[data-item-id]");
@@ -546,7 +552,7 @@ test.describe("Item Interactions", () => {
 	test.describe("Edge Cases and Error Handling", () => {
 		test("should handle rapid click and drag without errors", async ({ page }) => {
 			// Create a shape
-			await page.getByRole("button", { name: /Add a circle shape/i }).click();
+			await createShape(page, "circle");
 			await page.waitForTimeout(300);
 			const shape = page.locator("[data-item-id]").first();
 			await expect(shape).toBeVisible();
@@ -572,7 +578,7 @@ test.describe("Item Interactions", () => {
 
 		test("should handle mouse up outside of canvas", async ({ page }) => {
 			// Create a shape
-			await page.getByRole("button", { name: /Add a circle shape/i }).click();
+			await createShape(page, "circle");
 			await page.waitForTimeout(300);
 			const shape = page.locator("[data-item-id]").first();
 			await expect(shape).toBeVisible();
@@ -599,7 +605,7 @@ test.describe("Item Interactions", () => {
 
 		test("should handle switching between different interaction modes", async ({ page }) => {
 			// Create a square
-			await page.getByRole("button", { name: /Add a square shape/i }).click();
+			await createShape(page, "square");
 			await page.waitForTimeout(300);
 			const shape = page.locator("[data-item-id]").first();
 			await expect(shape).toBeVisible();
@@ -648,7 +654,7 @@ test.describe("Item Interactions", () => {
 		test("should handle multiple simultaneous items without lag", async ({ page }) => {
 			// Create multiple items
 			for (let i = 0; i < 5; i++) {
-				await page.getByRole("button", { name: /Add a circle shape/i }).click();
+				await createShape(page, "circle");
 				await page.waitForTimeout(200);
 			}
 
