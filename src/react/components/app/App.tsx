@@ -101,8 +101,8 @@ export function ReactApp(props: {
 	const [textItalic, setTextItalic] = useState<boolean>(false);
 	const [textUnderline, setTextUnderline] = useState<boolean>(false);
 	const [textStrikethrough, setTextStrikethrough] = useState<boolean>(false);
-	const [textCardStyle, setTextCardStyle] = useState<boolean>(false);
-	const [textAlign, setTextAlign] = useState<string>("left");
+	const [textCardStyle, setTextCardStyle] = useState<boolean>(true);
+	const [textAlign, setTextAlign] = useState<string>("center");
 
 	// Keep linter satisfied until pan is surfaced elsewhere
 	useEffect(() => {
