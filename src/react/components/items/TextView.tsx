@@ -57,6 +57,7 @@ export function TextView(props: { text: TextBlock; widthOverride?: number }): JS
 							borderRadius: "8px",
 							boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
 							padding: "12px",
+							border: "3px solid #4b5563",
 						}
 					: {}),
 			}}
