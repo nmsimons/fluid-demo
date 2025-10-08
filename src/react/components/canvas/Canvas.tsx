@@ -12,8 +12,14 @@ import React, { JSX, useContext, useRef, useState, useEffect } from "react";
  * 1. Coordinate system management (pan + zoom) via useCanvasNavigation hook.
  * 2. Two-layer rendering strategy:
  *    - SVG layer: scalable content (ink + selection + presence overlays).
- *    - HTML foreignObject layer: React DOM for complex items (tables, notes, shapes).
- * 3. Ephemeral inking (local + remote) using the Presence API (no persistence until stroke commit).
+ *    - HTML foreignObject layer: React DOM for complex items (tables, notes, shapes).				if (!inkActive) return; // only when ink tool active
+				if (e.button !== 0) return; // left only
+
+				// Clear selection when starting to ink (same as mouse click behavior)
+				presence.itemSelection?.clearSelection();
+
+				// Start inking
+				const p = toLogical(e.clientX, e.clientY);meral inking (local + remote) using the Presence API (no persistence until stroke commit).
  * 4. Persistent ink commit into SharedTree schema (`App.inks`).
  * 5. Eraser hit-testing using a zoom-aware circular cursor.
  * 6. Selection / presence overlays (only re-rendering when underlying presence keys change).
@@ -348,12 +354,8 @@ export function Canvas(props: {
 			if (eraserHoverId) setEraserHoverId(null);
 			return;
 		}
-		const targetEl = e.target as Element | null;
-		if (targetEl?.closest("[data-item-id], [data-svg-item-id]")) {
-			if (cursor.visible) setCursor((c) => ({ ...c, visible: false }));
-			if (eraserHoverId) setEraserHoverId(null);
-			return;
-		}
+		
+		// Update cursor position when in ink or eraser mode
 		const rect = svgRef.current?.getBoundingClientRect();
 		if (!rect) return;
 		setCursor({ x: e.clientX - rect.left, y: e.clientY - rect.top, visible: true });
@@ -639,18 +641,13 @@ export function Canvas(props: {
 
 					// Manage three mutually exclusive interactions: inking, erasing, panning(right mouse handled upstream).
 					if (inkActive || eraserActive) {
-						if (target?.closest("[data-item-id], [data-svg-item-id]")) {
-							// Suppress cursor over items
-							setCursor((c) => ({ ...c, visible: false }));
-						} else {
-							const rect = svgRef.current?.getBoundingClientRect();
-							if (rect)
-								setCursor({
-									x: e.clientX - rect.left,
-									y: e.clientY - rect.top,
-									visible: true,
-								});
-						}
+						const rect = svgRef.current?.getBoundingClientRect();
+						if (rect)
+							setCursor({
+								x: e.clientX - rect.left,
+								y: e.clientY - rect.top,
+								visible: true,
+							});
 					}
 					pointerTypeRef.current = e.pointerType;
 
@@ -740,7 +737,26 @@ export function Canvas(props: {
 							canvasPosition={canvasPosition}
 							pan={pan}
 							zoom={zoom}
+							inkActive={inkActive}
+							eraserActive={eraserActive}
 						/>
+						{/* Overlay to block item interactions when in ink/eraser mode */}
+						{(inkActive || eraserActive) && (
+							<div
+								style={{
+									position: "absolute",
+									top: 0,
+									left: 0,
+									width: "100%",
+									height: "100%",
+									pointerEvents: "auto",
+									cursor: "none", // Hide default cursor, we show custom cursor in SVG
+									zIndex: 9999,
+								}}
+								// Don't add any event handlers - just block items below from receiving events
+								// Events will fall through to the SVG layer for inking/erasing
+							/>
+						)}
 					</div>
 				</foreignObject>
 				{/* Ink rendering layer - positioned after items for consistent layering */}
