@@ -737,8 +737,6 @@ export function Canvas(props: {
 							canvasPosition={canvasPosition}
 							pan={pan}
 							zoom={zoom}
-							inkActive={inkActive}
-							eraserActive={eraserActive}
 						/>
 						{/* Overlay to block item interactions when in ink/eraser mode */}
 						{(inkActive || eraserActive) && (
