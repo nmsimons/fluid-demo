@@ -812,6 +812,13 @@ export function Canvas(props: {
 					e.preventDefault();
 				}}
 			>
+				{/* SVG filter definitions */}
+				<defs>
+					<filter id="inkShadow" x="-40%" y="-40%" width="180%" height="180%">
+						<feDropShadow dx="3" dy="3" stdDeviation="10" floodOpacity="0.25" />
+					</filter>
+				</defs>
+
 				{/* Full-size HTML layer hosting existing item views */}
 				<foreignObject x={0} y={0} width="100%" height="100%">
 					{/* Full-size wrapper to capture background drags anywhere inside the foreignObject */}
@@ -842,6 +849,7 @@ export function Canvas(props: {
 				<g
 					transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}
 					pointerEvents="none"
+					filter="url(#inkShadow)"
 					data-layer="ink"
 				>
 					{Array.from(inksIterable).map((s: InkStroke) => {
