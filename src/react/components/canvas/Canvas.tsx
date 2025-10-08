@@ -520,7 +520,7 @@ export function Canvas(props: {
 				className="canvas-svg absolute inset-0 h-full w-full bg-transparent"
 				style={{
 					touchAction: "none",
-					cursor: isPanning ? "grabbing" : undefined,
+					cursor: isPanning ? "grabbing" : inkActive || eraserActive ? "none" : undefined,
 					pointerEvents: "auto",
 				}}
 				onClick={(e) => handleBackgroundClick(e)}
@@ -598,14 +598,13 @@ export function Canvas(props: {
 					// For touch events, check if we're touching an item first
 					if (e.pointerType === "touch") {
 						// Only allow panning if not on an item and not in ink/eraser mode
-						if (!isOnItem && !isInteractive && !(inkActive || eraserActive)) {
+						if (!isOnItem && !isInteractive) {
 							beginPanIfBackground(e);
 						}
 					} else {
 						// For non-touch (mouse), use original logic
-						if (!isInteractive && !(inkActive || eraserActive)) beginPanIfBackground(e);
+						if (!isInteractive) beginPanIfBackground(e);
 					}
-
 					if (
 						!inkActive &&
 						!eraserActive &&
@@ -757,19 +756,6 @@ export function Canvas(props: {
 						)}
 					</div>
 				</foreignObject>
-				{/* Ink rendering layer - positioned after items for consistent layering */}
-				<InkLayer
-					strokes={inksIterable}
-					zoom={zoom}
-					pan={pan}
-					eraserActive={eraserActive}
-					eraserHoverId={eraserHoverId}
-					isDrawing={inking}
-					localPoints={tempPointsRef.current}
-					inkColor={inkColor}
-					inkWidth={inkWidth}
-					remoteStrokes={presence.ink?.getRemoteStrokes() ?? []}
-				/>
 				{/* Group overlays - render group visual bounds */}
 				<g
 					transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}
@@ -903,6 +889,20 @@ export function Canvas(props: {
 							);
 						})}
 				</g>
+				{/* Ink rendering layer - positioned last to be on top and capture events first */}
+				<InkLayer
+					strokes={inksIterable}
+					zoom={zoom}
+					pan={pan}
+					eraserActive={eraserActive}
+					eraserHoverId={eraserHoverId}
+					isDrawing={inking}
+					localPoints={tempPointsRef.current}
+					inkColor={inkColor}
+					inkWidth={inkWidth}
+					remoteStrokes={presence.ink?.getRemoteStrokes() ?? []}
+					inkActive={inkActive}
+				/>
 				{/* Screen-space cursor overlay */}
 				{cursor.visible && (inkActive || eraserActive) && (
 					<g pointerEvents="none">

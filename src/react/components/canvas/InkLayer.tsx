@@ -43,6 +43,8 @@ export function InkLayer(props: {
 			width: number;
 		};
 	}>;
+	/** Whether ink mode is active */
+	inkActive?: boolean;
 }): JSX.Element {
 	const {
 		strokes,
@@ -55,15 +57,28 @@ export function InkLayer(props: {
 		inkColor = "#2563eb",
 		inkWidth = 4,
 		remoteStrokes = [],
+		inkActive,
 	} = props;
 
 	return (
 		<g
 			transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}
-			pointerEvents="none"
+			pointerEvents={inkActive || eraserActive ? "auto" : "none"}
 			filter="url(#inkShadow)"
 			data-layer="ink"
 		>
+			{/* Invisible blocking rectangle to capture all pointer events when ink/eraser is active */}
+			{(inkActive || eraserActive) && (
+				<rect
+					x={-pan.x / zoom}
+					y={-pan.y / zoom}
+					width={10000 / zoom}
+					height={10000 / zoom}
+					fill="transparent"
+					pointerEvents="auto"
+					style={{ cursor: "none" }}
+				/>
+			)}
 			{/* Permanent strokes */}
 			{Array.from(strokes).map((s: InkStroke) => {
 				const pts = Array.from(s.simplified ?? s.points) as InkPoint[];
