@@ -149,6 +149,8 @@ export function Canvas(props: {
 		setSize,
 		externalZoom,
 		onZoomChange,
+		disableTouchPan: inkActive || eraserActive,
+		disablePinchZoom: inkActive || eraserActive,
 	});
 	const { selKey, motionKey } = useOverlayRerenders(presence);
 	// Track expanded state for presence indicators per item
@@ -653,6 +655,7 @@ export function Canvas(props: {
 					// Eraser mode: on pointer down start erase interaction instead of drawing
 					if (eraserActive) {
 						if (e.button !== 0) return;
+
 						// Clear selection when starting to erase (same as mouse click behavior)
 						presence.itemSelection?.clearSelection();
 						pointerIdRef.current = e.pointerId; // track drag for scrubbing

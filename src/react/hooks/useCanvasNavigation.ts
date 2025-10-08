@@ -26,8 +26,18 @@ export function useCanvasNavigation(params: {
 	setSize: (w: number, h: number) => void;
 	externalZoom?: number;
 	onZoomChange?: (z: number) => void;
+	disableTouchPan?: boolean;
+	disablePinchZoom?: boolean;
 }) {
-	const { svgRef, presence, setSize, externalZoom, onZoomChange } = params;
+	const {
+		svgRef,
+		presence,
+		setSize,
+		externalZoom,
+		onZoomChange,
+		disableTouchPan,
+		disablePinchZoom,
+	} = params;
 	const [canvasPosition, setCanvasPosition] = useState({ left: 0, top: 0 });
 	const [pan, setPan] = useState({ x: 0, y: 0 });
 	const [internalZoom, setInternalZoom] = useState(externalZoom ?? 1);
@@ -183,7 +193,9 @@ export function useCanvasNavigation(params: {
 			isPointer(e) &&
 			e.pointerType === "touch" &&
 			(e as unknown as { isPrimary?: boolean }).isPrimary !== false;
-		if (("button" in e && e.button === 2) || touchPrimary) {
+
+		// Allow right-click pan, or touch pan (if not disabled)
+		if (("button" in e && e.button === 2) || (touchPrimary && !disableTouchPan)) {
 			if (document.documentElement.dataset.manipulating) return;
 			const tgt = e.target as Element | null;
 			// Don't start panning if interacting with explicit handles
@@ -210,7 +222,9 @@ export function useCanvasNavigation(params: {
 			isPointer(e) &&
 			e.pointerType === "touch" &&
 			(e as unknown as { isPrimary?: boolean }).isPrimary !== false;
-		if (("button" in e && e.button === 2) || touchPrimary) {
+
+		// Allow right-click pan, or touch pan (if not disabled)
+		if (("button" in e && e.button === 2) || (touchPrimary && !disableTouchPan)) {
 			if (document.documentElement.dataset.manipulating) return;
 			const tgt = e.target as HTMLElement | null;
 			// Skip when touching explicit manipulation handles
@@ -273,6 +287,10 @@ export function useCanvasNavigation(params: {
 	useEffect(() => {
 		const svg = svgRef.current;
 		if (!svg) return;
+
+		// Skip pinch zoom if disabled
+		if (disablePinchZoom) return;
+
 		const handlePointerDown = (e: PointerEvent) => {
 			if (e.pointerType !== "touch") return;
 
@@ -363,7 +381,7 @@ export function useCanvasNavigation(params: {
 			svg.removeEventListener("pointercancel", endPointer);
 			svg.removeEventListener("pointerleave", endPointer);
 		};
-	}, [svgRef.current, zoom, pan, onZoomChange]);
+	}, [svgRef.current, zoom, pan, onZoomChange, disablePinchZoom]);
 
 	return {
 		canvasPosition,
