@@ -47,6 +47,9 @@ import { Items, InkStroke, InkPoint, InkStyle, InkBBox, App } from "../../../sch
 import { Tree } from "fluid-framework";
 import { IFluidContainer } from "fluid-framework";
 import { PresenceContext } from "../../contexts/PresenceContext.js";
+import { findInkStrokeHit } from "../../../utils/inkHitTest.js";
+import { getInitials, getUserColor } from "../../../utils/userUtils.js";
+import { clientToLogical } from "../../../utils/coordinates.js";
 // ItemView moved into ItemsHtmlLayer
 import { useTree } from "../../hooks/useTree.js";
 import { LayoutContext } from "../../hooks/useLayoutManger.js";
@@ -60,6 +63,7 @@ import { useCanvasNavigation } from "../../hooks/useCanvasNavigation.js";
 import { useOverlayRerenders } from "../../hooks/useOverlayRerenders.js";
 import { updateCursorFromEvent } from "../../../utils/cursorUtils.js";
 import { ItemsHtmlLayer } from "./ItemsHtmlLayer.js";
+import { InkLayer } from "./InkLayer.js";
 import { PaneContext } from "../../contexts/PaneContext.js";
 import { flattenItems } from "../../../utils/flattenItems.js";
 import { smoothAndSimplifyInkPoints } from "../../utils/inkSmoothing.js";
@@ -196,38 +200,6 @@ export function Canvas(props: {
 
 	// Hovered stroke (eraser preview)
 
-	// Helpers for presence indicator visuals
-	const getInitials = (name: string): string => {
-		if (!name) return "?";
-		const words = name.trim().split(/\s+/);
-		return words.length === 1
-			? words[0].charAt(0).toUpperCase()
-			: (words[0].charAt(0) + words[words.length - 1].charAt(0)).toUpperCase();
-	};
-
-	const getUserColor = (userId: string): string => {
-		const colors = [
-			"#3b82f6",
-			"#ef4444",
-			"#10b981",
-			"#f59e0b",
-			"#8b5cf6",
-			"#06b6d4",
-			"#f97316",
-			"#84cc16",
-			"#ec4899",
-			"#6366f1",
-			"#f43f5e",
-			"#06b6d4",
-			"#14b8a6",
-			"#a855f7",
-			"#0ea5e9",
-		];
-		let hash = 0;
-		for (let i = 0; i < userId.length; i++) hash = userId.charCodeAt(i) + ((hash << 5) - hash);
-		return colors[Math.abs(hash) % colors.length];
-	};
-
 	const paneContext = useContext(PaneContext);
 
 	const isCanvasInteractiveTarget = (element: Element | null): boolean => {
@@ -275,14 +247,8 @@ export function Canvas(props: {
 	}, [pan, onPanChange]);
 
 	// Convert screen coords (client) into logical content coordinates.
-	// logical = (screenWithinSvg - pan) / zoom; used for storing ink points invariant to zoom level.
-	const toLogical = (clientX: number, clientY: number): { x: number; y: number } => {
-		const rect = svgRef.current?.getBoundingClientRect();
-		if (!rect) return { x: 0, y: 0 };
-		const sx = clientX - rect.left;
-		const sy = clientY - rect.top;
-		return { x: (sx - pan.x) / zoom, y: (sy - pan.y) / zoom };
-	};
+	const toLogical = (clientX: number, clientY: number): { x: number; y: number } =>
+		clientToLogical(clientX, clientY, svgRef.current, pan, zoom);
 
 	// Erase helper (simple deletion): removes the first stroke whose polyline (inflated by stroke width)
 	// intersects the eraser logical circle. This is O(N * M) where N=strokes, M=points per stroke; fast enough
@@ -291,42 +257,9 @@ export function Canvas(props: {
 		if (!root?.inks) return;
 		const eraserScreenRadius = 12; // cursor visual radius
 		const eraserLogicalRadius = eraserScreenRadius / zoom;
-		let target: InkStroke | undefined;
-		outer: for (const s of root.inks) {
-			const bb = s.bbox;
-			if (!bb) continue;
-			if (
-				p.x < bb.x - eraserLogicalRadius ||
-				p.x > bb.x + bb.w + eraserLogicalRadius ||
-				p.y < bb.y - eraserLogicalRadius ||
-				p.y > bb.y + bb.h + eraserLogicalRadius
-			)
-				continue;
-			const pts = Array.from(s.simplified ?? s.points) as InkPoint[];
-			const strokeHalf = (s.style?.strokeWidth ?? 4) / 2;
-			const maxDist = strokeHalf + eraserLogicalRadius;
-			const maxDist2 = maxDist * maxDist;
-			for (let i = 0; i < pts.length - 1; i++) {
-				const a = pts[i];
-				const b = pts[i + 1];
-				const dx = b.x - a.x;
-				const dy = b.y - a.y;
-				const len2 = dx * dx + dy * dy;
-				let t = 0;
-				if (len2 > 0) {
-					const proj = (p.x - a.x) * dx + (p.y - a.y) * dy;
-					t = Math.max(0, Math.min(1, proj / len2));
-				}
-				const cx = a.x + dx * t;
-				const cy = a.y + dy * t;
-				const ddx = p.x - cx;
-				const ddy = p.y - cy;
-				if (ddx * ddx + ddy * ddy <= maxDist2) {
-					target = s;
-					break outer;
-				}
-			}
-		}
+
+		const target = findInkStrokeHit(root.inks, p, eraserLogicalRadius);
+
 		if (target) {
 			Tree.runTransaction(root.inks, () => {
 				const idx = root.inks.indexOf(target!);
@@ -437,44 +370,9 @@ export function Canvas(props: {
 				setEraserHoverId(null);
 			} else {
 				// Hover preview using circle radius
-				let target: InkStroke | undefined;
 				const eraserScreenRadius = 12;
 				const eraserLogicalRadius = eraserScreenRadius / zoom;
-				outer: for (const s of root.inks) {
-					const bb = s.bbox;
-					if (!bb) continue;
-					if (
-						pLogical.x < bb.x - eraserLogicalRadius ||
-						pLogical.x > bb.x + bb.w + eraserLogicalRadius ||
-						pLogical.y < bb.y - eraserLogicalRadius ||
-						pLogical.y > bb.y + bb.h + eraserLogicalRadius
-					)
-						continue;
-					const pts = Array.from(s.simplified ?? s.points) as InkPoint[];
-					const strokeHalf = (s.style?.strokeWidth ?? 4) / 2;
-					const maxDist = strokeHalf + eraserLogicalRadius;
-					const maxDist2 = maxDist * maxDist;
-					for (let i = 0; i < pts.length - 1; i++) {
-						const a = pts[i];
-						const b = pts[i + 1];
-						const dx = b.x - a.x;
-						const dy = b.y - a.y;
-						const len2 = dx * dx + dy * dy;
-						let t = 0;
-						if (len2 > 0) {
-							const proj = (pLogical.x - a.x) * dx + (pLogical.y - a.y) * dy;
-							t = Math.max(0, Math.min(1, proj / len2));
-						}
-						const cx = a.x + dx * t;
-						const cy = a.y + dy * t;
-						const ddx = pLogical.x - cx;
-						const ddy = pLogical.y - cy;
-						if (ddx * ddx + ddy * ddy <= maxDist2) {
-							target = s;
-							break outer;
-						}
-					}
-				}
+				const target = findInkStrokeHit(root.inks, pLogical, eraserLogicalRadius);
 				setEraserHoverId(target ? target.id : null);
 			}
 		}
@@ -846,96 +744,18 @@ export function Canvas(props: {
 					</div>
 				</foreignObject>
 				{/* Ink rendering layer - positioned after items for consistent layering */}
-				<g
-					transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}
-					pointerEvents="none"
-					filter="url(#inkShadow)"
-					data-layer="ink"
-				>
-					{Array.from(inksIterable).map((s: InkStroke) => {
-						const pts = Array.from(s.simplified ?? s.points) as InkPoint[];
-						if (!pts.length) return null;
-						const base = s.style?.strokeWidth ?? 4;
-						const w = Math.max(0.5, base * zoom);
-						return (
-							<g key={s.id}>
-								<polyline
-									fill="none"
-									stroke={s.style?.strokeColor ?? "#000"}
-									strokeWidth={w}
-									strokeOpacity={s.style?.opacity ?? 1}
-									strokeLinecap={"round"}
-									strokeLinejoin={"round"}
-									vectorEffect="non-scaling-stroke"
-									points={pts.map((p: InkPoint) => `${p.x},${p.y}`).join(" ")}
-								/>
-							</g>
-						);
-					})}
-					{/* Eraser hover highlight (draw after base strokes) */}
-					{eraserActive &&
-						eraserHoverId &&
-						(() => {
-							const stroke = Array.from(inksIterable).find(
-								(s: InkStroke) => s.id === eraserHoverId
-							);
-							if (!stroke) return null;
-							const pts = Array.from(
-								stroke.simplified ?? stroke.points
-							) as InkPoint[];
-							if (!pts.length) return null;
-							return (
-								<polyline
-									key={`hover-${stroke.id}`}
-									fill="none"
-									stroke="#dc2626"
-									strokeWidth={Math.max(
-										0.5,
-										(stroke.style?.strokeWidth ?? 4) * zoom + 2
-									)}
-									strokeOpacity={0.9}
-									strokeLinecap="round"
-									strokeLinejoin="round"
-									vectorEffect="non-scaling-stroke"
-									strokeDasharray="4 3"
-									points={pts.map((p: InkPoint) => `${p.x},${p.y}`).join(" ")}
-								/>
-							);
-						})()}
-					{/* Remote ephemeral strokes */}
-					{presence.ink?.getRemoteStrokes().map((r) => {
-						const pts = r.stroke.points;
-						if (!pts.length) return null;
-						const w = Math.max(0.5, r.stroke.width * zoom);
-						return (
-							<polyline
-								key={`ephemeral-${r.attendeeId}`}
-								fill="none"
-								stroke={r.stroke.color}
-								strokeWidth={w}
-								strokeOpacity={0.4}
-								strokeLinecap="round"
-								strokeLinejoin="round"
-								vectorEffect="non-scaling-stroke"
-								points={pts.map((p) => `${p.x},${p.y}`).join(" ")}
-							/>
-						);
-					})}
-					{/* Local ephemeral (if drawing) */}
-					{inking && tempPointsRef.current.length > 0 && (
-						<polyline
-							key="local-ephemeral"
-							fill="none"
-							stroke={inkColor}
-							strokeWidth={Math.max(0.5, inkWidth * zoom)}
-							strokeOpacity={0.7}
-							strokeLinecap="round"
-							strokeLinejoin="round"
-							vectorEffect="non-scaling-stroke"
-							points={tempPointsRef.current.map((p) => `${p.x},${p.y}`).join(" ")}
-						/>
-					)}
-				</g>
+				<InkLayer
+					strokes={inksIterable}
+					zoom={zoom}
+					pan={pan}
+					eraserActive={eraserActive}
+					eraserHoverId={eraserHoverId}
+					isDrawing={inking}
+					localPoints={tempPointsRef.current}
+					inkColor={inkColor}
+					inkWidth={inkWidth}
+					remoteStrokes={presence.ink?.getRemoteStrokes() ?? []}
+				/>
 				{/* Group overlays - render group visual bounds */}
 				<g
 					transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}
