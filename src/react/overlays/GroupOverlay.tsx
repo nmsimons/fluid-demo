@@ -69,47 +69,18 @@ export function GroupOverlay(props: {
 		return () => window.removeEventListener("editGroup", handleEditGroup);
 	}, [items]);
 
-	// Track all group drag states (local + remote) for smooth overlay updates
-	const [allDragStates, setAllDragStates] = useState<Map<string, { x: number; y: number }>>(
-		new Map()
-	);
-
 	// Track child item drags/resizes to update group bounds dynamically
 	const [childUpdateTrigger, setChildUpdateTrigger] = useState(0);
 
-	// Subscribe to group drag updates from all users
+	// Subscribe to drag presence updates to trigger group bound recalculation
 	usePresenceManager(
 		presence.drag,
-		(dragState) => {
-			// Remote drag update
-			if (dragState) {
-				setAllDragStates((prev) => {
-					const next = new Map(prev);
-					next.set(dragState.id, { x: dragState.x, y: dragState.y });
-					return next;
-				});
-			}
-			// Also trigger re-render for child item drags
+		() => {
+			// Remote drag update - trigger re-render
 			setChildUpdateTrigger((n) => n + 1);
 		},
-		(dragState) => {
-			// Local drag update
-			if (dragState) {
-				setAllDragStates((prev) => {
-					const next = new Map(prev);
-					next.set(dragState.id, { x: dragState.x, y: dragState.y });
-					return next;
-				});
-			} else {
-				// Local drag cleared
-				setAllDragStates((prev) => {
-					const next = new Map(prev);
-					// Clear all drag states when local drag ends
-					next.clear();
-					return next;
-				});
-			}
-			// Also trigger re-render for child item drags
+		() => {
+			// Local drag update - trigger re-render
 			setChildUpdateTrigger((n) => n + 1);
 		}
 	);
@@ -221,7 +192,6 @@ export function GroupOverlay(props: {
 					selectedIds={selectedIds}
 					draggedGroupsRef={draggedGroupsRef}
 					handleGroupDragStart={handleGroupDragStart}
-					allDragStates={allDragStates}
 					editingGroupId={editingGroupId}
 					setEditingGroupId={setEditingGroupId}
 					editingValue={editingValue}
@@ -242,7 +212,6 @@ interface GroupOverlayItemProps {
 	selectedIds: Set<string>;
 	draggedGroupsRef: React.MutableRefObject<Set<string>>;
 	handleGroupDragStart: (e: React.PointerEvent<Element>, groupItem: Item) => void;
-	allDragStates: Map<string, { x: number; y: number }>;
 	editingGroupId: string | null;
 	setEditingGroupId: React.Dispatch<React.SetStateAction<string | null>>;
 	editingValue: string;
@@ -260,7 +229,6 @@ function GroupOverlayItem(props: GroupOverlayItemProps): JSX.Element | null {
 		selectedIds,
 		draggedGroupsRef,
 		handleGroupDragStart,
-		allDragStates,
 		editingGroupId,
 		setEditingGroupId,
 		editingValue,
@@ -282,7 +250,9 @@ function GroupOverlayItem(props: GroupOverlayItemProps): JSX.Element | null {
 
 	const isGroupSelected = selectedIds.has(groupItem.id);
 
-	const dragState = allDragStates.get(groupItem.id);
+	// Check if this group is being dragged via presence
+	const localDrag = presence.drag.state.local;
+	const dragState = localDrag && localDrag.id === groupItem.id ? localDrag : null;
 	const groupX = dragState ? dragState.x : groupItem.x;
 	const groupY = dragState ? dragState.y : groupItem.y;
 	const isGroupBeingDragged = !!dragState;
@@ -430,8 +400,8 @@ function GroupOverlayItem(props: GroupOverlayItemProps): JSX.Element | null {
 	let maxY = -Infinity;
 
 	for (const childItem of group.items) {
-		// Check if this child item is being dragged individually
-		const childDragState = allDragStates.get(childItem.id);
+		// Check if this child item is being dragged individually via presence
+		const childDragState = localDrag && localDrag.id === childItem.id ? localDrag : null;
 
 		if (isGroupBeingDragged) {
 			const offset = getGroupChildOffset(group, childItem);
