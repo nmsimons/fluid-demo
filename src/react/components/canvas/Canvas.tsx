@@ -354,7 +354,7 @@ export function Canvas(props: {
 			if (eraserHoverId) setEraserHoverId(null);
 			return;
 		}
-		
+
 		// Update cursor position when in ink or eraser mode
 		const rect = svgRef.current?.getBoundingClientRect();
 		if (!rect) return;
