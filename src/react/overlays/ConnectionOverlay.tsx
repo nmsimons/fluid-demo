@@ -661,9 +661,9 @@ function ConnectionLine(props: ConnectionLineProps): JSX.Element | null {
 	// waypoints = offsetPathBySegment(waypoints, connectionKey, allPaths, lineSpacing);
 
 	// Create SVG path - arrow connects to line, with gap from connection point
-	const arrowSize = 12; // Smaller chevron size
-	const arrowGap = 12; // Gap between arrow tip and connection point
-	const startGap = 8; // Gap between line start and group border
+	const arrowSize = 18; // Larger arrow head
+	const arrowGap = 16; // Gap between arrow tip and connection point
+	const startGap = 12; // Gap between line start and group border
 
 	// Calculate arrow head at the end pointing toward the target
 	const lastSegment = waypoints[waypoints.length - 1];
@@ -716,17 +716,21 @@ function ConnectionLine(props: ConnectionLineProps): JSX.Element | null {
 				stroke={isHovered ? "#2563eb" : "#3b82f6"}
 				strokeWidth={isHovered ? 6 : 5}
 				fill="none"
+				strokeLinecap="round"
+				strokeLinejoin="round"
 				opacity={isHovered ? 0.8 : 0.6}
 				style={{ pointerEvents: "none" }}
 			/>
-			{/* Arrow head - solid triangle */}
+			{/* Arrow head - outlined chevron */}
 			<path
-				d={`M ${arrowTip.x - arrowSize * Math.cos(angle - Math.PI / 4)} ${arrowTip.y - arrowSize * Math.sin(angle - Math.PI / 4)}
+				d={`M ${arrowTip.x - arrowSize * Math.cos(angle - Math.PI / 6)} ${arrowTip.y - arrowSize * Math.sin(angle - Math.PI / 6)}
 					L ${arrowTip.x} ${arrowTip.y}
-					L ${arrowTip.x - arrowSize * Math.cos(angle + Math.PI / 4)} ${arrowTip.y - arrowSize * Math.sin(angle + Math.PI / 4)}
-					Z`}
-				fill={isHovered ? "#2563eb" : "#3b82f6"}
-				stroke="none"
+					L ${arrowTip.x - arrowSize * Math.cos(angle + Math.PI / 6)} ${arrowTip.y - arrowSize * Math.sin(angle + Math.PI / 6)}`}
+				fill="none"
+				stroke={isHovered ? "#2563eb" : "#3b82f6"}
+				strokeWidth={isHovered ? 6 : 5}
+				strokeLinecap="round"
+				strokeLinejoin="round"
 				opacity={isHovered ? 0.8 : 0.6}
 				style={{ pointerEvents: "none" }}
 			/>
