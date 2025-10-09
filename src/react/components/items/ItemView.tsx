@@ -67,7 +67,7 @@ import React, { useContext, useEffect, useRef, useState } from "react";
 import { clampShapeSize } from "../../../constants/shape.js";
 import { clampTextWidth } from "../../../utils/text.js";
 import { Tree } from "fluid-framework";
-import { FluidTable, Group, Item, Note, TextBlock } from "../../../schema/appSchema.js";
+import { App, FluidTable, Group, Item, Items, Note, TextBlock } from "../../../schema/appSchema.js";
 import { PresenceContext } from "../../contexts/PresenceContext.js";
 import { useTree, objectIdNumber } from "../../hooks/useTree.js";
 import { ShapeView } from "./ShapeView.js";
@@ -76,12 +76,11 @@ import { TableView } from "./TableView.js";
 import { TextView } from "./TextView.js";
 import { usePresenceManager } from "../../hooks/usePresenceManger.js";
 import { PresenceManager } from "../../../presence/Interfaces/PresenceManager.js";
-import { DragAndRotatePackage } from "../../../presence/drag.js";
+import { DragAndRotatePackage, DragSelectionEntry } from "../../../presence/drag.js";
 import { ResizePackage } from "../../../presence/Interfaces/ResizeManager.js";
 import { LayoutContext } from "../../hooks/useLayoutManger.js";
 import { ChevronLeft16Filled } from "@fluentui/react-icons";
 import { isGroupGridEnabled } from "../../layout/groupGrid.js";
-import { getGroupChildOffset } from "../../utils/presenceGeometry.js";
 import {
 	getContentHandler,
 	getContentType,
@@ -89,6 +88,13 @@ import {
 	isShape,
 } from "../../../utils/contentHandlers.js";
 import { scheduleLayoutInvalidation } from "../../utils/layoutInvalidation.js";
+import { findItemsByIds } from "../../../utils/itemsHelpers.js";
+import {
+	getGroupChildOffset,
+	getParentGroupInfo,
+	GroupHierarchyInfo,
+	getGroupActivePosition,
+} from "../../utils/presenceGeometry.js";
 
 // ============================================================================
 // Helpers
@@ -154,13 +160,6 @@ export const calculateOffsetFromCanvasOrigin = (
 	const c = calculateCanvasMouseCoordinates(e, pan, zoom, canvasElement);
 	return { x: c.x - item.x, y: c.y - item.y };
 };
-export {
-	calculateCanvasMouseCoordinates as canvasCoords,
-	calculateOffsetFromCanvasOrigin as dragOffset,
-};
-
-// ============================================================================
-// Content dispatcher
 // ============================================================================
 export function ContentElement({
 	item,
@@ -487,22 +486,29 @@ export function ItemView(props: {
 				};
 			};
 
+			const selectionEntry = d.selection?.find((entry) => entry.id === currentItemId);
+
 			// Check if this item itself is being dragged
-			if (d.id === currentItemId) {
+			if (d.id === currentItemId || selectionEntry) {
+				const nextX = selectionEntry ? selectionEntry.x : d.x;
+				const nextY = selectionEntry ? selectionEntry.y : d.y;
+				const rotation = selectionEntry
+					? (selectionEntry.rotation ?? currentItem.rotation)
+					: d.rotation;
 				setView((v) => ({
 					...v,
-					left: d.x,
-					top: d.y,
-					transform: handler.getRotationTransform(d.rotation),
+					left: nextX,
+					top: nextY,
+					transform: handler.getRotationTransform(rotation),
 				}));
 
 				const { width, height } = ensureDimensions();
 				if (width && height) {
 					layout.set(currentItemId, {
-						left: d.x,
-						top: d.y,
-						right: d.x + width,
-						bottom: d.y + height,
+						left: nextX,
+						top: nextY,
+						right: nextX + width,
+						bottom: nextY + height,
 					});
 					scheduleLayoutInvalidation();
 				}
@@ -615,6 +621,208 @@ export function ItemView(props: {
 	// Pointer lifecycle (delta-based to avoid foreignObject measurement jumps)
 	const coordsCanvas = (e: { clientX: number; clientY: number }) =>
 		calculateCanvasMouseCoordinates(e, props.pan, props.zoom, props.canvasElement ?? undefined);
+
+	interface SelectionSnapshot {
+		id: string;
+		item: Item;
+		startAbsoluteX: number;
+		startAbsoluteY: number;
+		startRelativeX: number;
+		startRelativeY: number;
+		parentGroupInfo: GroupHierarchyInfo | null;
+		parentGroupStartAbsoluteX: number | null;
+		parentGroupStartAbsoluteY: number | null;
+	}
+
+	const getRootItemsForItem = (start: Item): Items | null => {
+		let current: Item | Group | Items | App | null = start;
+		while (current) {
+			const parent = Tree.parent(current);
+			if (!parent) {
+				return null;
+			}
+			if (Tree.is(parent, Items)) {
+				const grand = Tree.parent(parent);
+				if (grand && Tree.is(grand, App)) {
+					return parent;
+				}
+			}
+			current = parent as Item | Group | Items | App | null;
+		}
+		return null;
+	};
+
+	const getAbsolutePositionForItem = (
+		target: Item,
+		presenceValue: React.ContextType<typeof PresenceContext>
+	): { x: number; y: number } => {
+		const parentInfo = getParentGroupInfo(target);
+		if (parentInfo) {
+			const { groupItem, group } = parentInfo;
+			const { x: groupX, y: groupY } = getGroupActivePosition(groupItem, presenceValue);
+			const offset = getGroupChildOffset(group, target);
+			return { x: groupX + offset.x, y: groupY + offset.y };
+		}
+		return { x: target.x, y: target.y };
+	};
+
+	const getParentGroupStartAbsolute = (
+		info: GroupHierarchyInfo | null,
+		presenceValue: React.ContextType<typeof PresenceContext>
+	): { x: number; y: number } | null => {
+		if (!info) {
+			return null;
+		}
+		const absolute = getAbsolutePositionForItem(info.groupItem, presenceValue);
+		return absolute;
+	};
+
+	const buildSelectionDragState = (
+		anchorItem: Item,
+		anchorDisplay: { x: number; y: number },
+		presenceValue: React.ContextType<typeof PresenceContext>
+	): {
+		snapshots: SelectionSnapshot[];
+		selectedIds: string[];
+		rootItems: Items | null;
+	} => {
+		const rootItems = getRootItemsForItem(anchorItem);
+		const selectionIds = presenceValue.itemSelection.getLocalSelection().map((sel) => sel.id);
+		if (!selectionIds.includes(anchorItem.id)) {
+			selectionIds.push(anchorItem.id);
+		}
+		const uniqueSelectedIds = Array.from(new Set(selectionIds));
+		let snapshots: SelectionSnapshot[] = [];
+		if (rootItems) {
+			const selectedItems = findItemsByIds(rootItems, uniqueSelectedIds);
+			const itemById = new Map(
+				selectedItems.map((selectedItem) => [selectedItem.id, selectedItem])
+			);
+			snapshots = uniqueSelectedIds
+				.map((id) => {
+					const targetItem = itemById.get(id);
+					if (!targetItem) return null;
+					const absolute = getAbsolutePositionForItem(targetItem, presenceValue);
+					const parentInfo = getParentGroupInfo(targetItem);
+					const parentAbsolute = getParentGroupStartAbsolute(parentInfo, presenceValue);
+					return {
+						id,
+						item: targetItem,
+						startAbsoluteX: absolute.x,
+						startAbsoluteY: absolute.y,
+						startRelativeX: targetItem.x,
+						startRelativeY: targetItem.y,
+						parentGroupInfo: parentInfo,
+						parentGroupStartAbsoluteX: parentAbsolute ? parentAbsolute.x : null,
+						parentGroupStartAbsoluteY: parentAbsolute ? parentAbsolute.y : null,
+					} satisfies SelectionSnapshot;
+				})
+				.filter((snap): snap is SelectionSnapshot => snap !== null);
+		}
+		if (snapshots.length === 0) {
+			const parentInfo = getParentGroupInfo(anchorItem);
+			const parentAbsolute = getParentGroupStartAbsolute(parentInfo, presenceValue);
+			snapshots = [
+				{
+					id: anchorItem.id,
+					item: anchorItem,
+					startAbsoluteX: anchorDisplay.x,
+					startAbsoluteY: anchorDisplay.y,
+					startRelativeX: anchorItem.x,
+					startRelativeY: anchorItem.y,
+					parentGroupInfo: parentInfo,
+					parentGroupStartAbsoluteX: parentAbsolute ? parentAbsolute.x : null,
+					parentGroupStartAbsoluteY: parentAbsolute ? parentAbsolute.y : null,
+				},
+			];
+			if (!uniqueSelectedIds.includes(anchorItem.id)) {
+				uniqueSelectedIds.push(anchorItem.id);
+			}
+		}
+		return { snapshots, selectedIds: uniqueSelectedIds, rootItems };
+	};
+
+	const buildSelectionPresencePayload = (
+		dragState: DragState,
+		primaryId: string,
+		nextX: number,
+		nextY: number,
+		dx: number,
+		dy: number
+	): DragSelectionEntry[] | undefined => {
+		if (!dragState.selectionSnapshots.length) {
+			return undefined;
+		}
+		const payload = dragState.selectionSnapshots.map((snap) => {
+			if (snap.id === primaryId) {
+				return {
+					id: snap.id,
+					x: nextX,
+					y: nextY,
+					rotation: snap.item.rotation,
+				};
+			}
+			return {
+				id: snap.id,
+				x: snap.startAbsoluteX + dx,
+				y: snap.startAbsoluteY + dy,
+				rotation: snap.item.rotation,
+			};
+		});
+		return payload.length > 1 ? payload : undefined;
+	};
+
+	const applySelectionCommit = (
+		dragState: DragState,
+		presenceValue: React.ContextType<typeof PresenceContext>,
+		deltaX: number,
+		deltaY: number,
+		anchorItem: Item
+	) => {
+		let snapshots = dragState.selectionSnapshots;
+		if (!snapshots.length) {
+			const fallback = buildSelectionDragState(
+				anchorItem,
+				{ x: dragState.startItemX, y: dragState.startItemY },
+				presenceValue
+			);
+			snapshots = fallback.snapshots;
+			dragState.rootItems = fallback.rootItems;
+		}
+		const rootItems = dragState.rootItems ?? getRootItemsForItem(anchorItem);
+		const performUpdates = () => {
+			for (const snap of snapshots) {
+				const newAbsoluteX = snap.startAbsoluteX + deltaX;
+				const newAbsoluteY = snap.startAbsoluteY + deltaY;
+				if (!snap.parentGroupInfo) {
+					snap.item.x = newAbsoluteX;
+					snap.item.y = newAbsoluteY;
+					continue;
+				}
+				const { groupItem } = snap.parentGroupInfo;
+				const groupSnapshot = snapshots.find((s) => s.id === groupItem.id);
+				const parentAbsolute =
+					snap.parentGroupStartAbsoluteX !== null
+						? {
+								x: snap.parentGroupStartAbsoluteX,
+								y: snap.parentGroupStartAbsoluteY ?? 0,
+							}
+						: getParentGroupStartAbsolute(snap.parentGroupInfo, presenceValue);
+				const baseGroupAbsX = parentAbsolute ? parentAbsolute.x : groupItem.x;
+				const baseGroupAbsY = parentAbsolute ? parentAbsolute.y : groupItem.y;
+				const groupNewAbsX = baseGroupAbsX + (groupSnapshot ? deltaX : 0);
+				const groupNewAbsY = baseGroupAbsY + (groupSnapshot ? deltaY : 0);
+				snap.item.x = newAbsoluteX - groupNewAbsX;
+				snap.item.y = newAbsoluteY - groupNewAbsY;
+			}
+		};
+		if (rootItems) {
+			Tree.runTransaction(rootItems, performUpdates);
+		} else {
+			performUpdates();
+		}
+	};
+
 	interface DragState {
 		pointerId: number;
 		started: boolean;
@@ -630,6 +838,9 @@ export function ItemView(props: {
 		initialTarget: HTMLElement | null;
 		focusTarget: HTMLTextAreaElement | null;
 		containerElement: HTMLElement;
+		selectedIds: string[];
+		selectionSnapshots: SelectionSnapshot[];
+		rootItems: Items | null;
 	}
 
 	const DRAG_THRESHOLD_PX = 6;
@@ -668,10 +879,12 @@ export function ItemView(props: {
 		// Set selection unless interacting with UI controls
 		const shouldSkipSelection = targetEl.closest("button, select, .dropdown, .menu");
 		if (!shouldSkipSelection) {
+			const localSelection = presence.itemSelection.getLocalSelection();
+			const isAlreadySelected = localSelection.some((sel) => sel.id === item.id);
 			// Respect Ctrl/Meta for multi-select
 			if (e.ctrlKey || e.metaKey) {
 				presence.itemSelection.toggleSelection({ id: item.id });
-			} else {
+			} else if (!isAlreadySelected) {
 				presence.itemSelection.setSelection({ id: item.id });
 			}
 		}
@@ -731,6 +944,12 @@ export function ItemView(props: {
 		}
 		const start = coordsCanvas(e);
 
+		const {
+			snapshots: selectionSnapshots,
+			selectedIds: uniqueSelectedIds,
+			rootItems,
+		} = buildSelectionDragState(item, { x: displayX, y: displayY }, presence);
+
 		// Store drag potential, but don't set up listeners yet
 		// Listeners will be added on first mousemove to avoid interfering with handles
 		dragRef.current = {
@@ -748,6 +967,9 @@ export function ItemView(props: {
 			initialTarget: textAreaTarget ?? null,
 			focusTarget: needsFocusAfterClick ? textAreaTarget : null,
 			containerElement: e.currentTarget as HTMLElement,
+			selectedIds: uniqueSelectedIds,
+			selectionSnapshots,
+			rootItems,
 		};
 
 		let listenersAdded = false;
@@ -789,12 +1011,21 @@ export function ItemView(props: {
 
 				// Simply update presence - applyDrag will handle the visual update
 				const currentItem = itemRef.current;
+				const selectionEntries = buildSelectionPresencePayload(
+					st,
+					currentItem.id,
+					nextX,
+					nextY,
+					dx,
+					dy
+				);
 				presence.drag.setDragging({
 					id: currentItem.id,
 					x: nextX,
 					y: nextY,
 					rotation: currentItem.rotation,
 					branch: presence.branch,
+					selection: selectionEntries,
 				});
 			}
 		};
@@ -828,14 +1059,9 @@ export function ItemView(props: {
 					return;
 				}
 
-				// Commit the final position to the tree
-				const finalX = st.latestItemX - groupOffsetX;
-				const finalY = st.latestItemY - groupOffsetY;
-				const transactionTarget = Tree.parent(currentItem) ?? currentItem;
-				Tree.runTransaction(transactionTarget, () => {
-					currentItem.x = finalX;
-					currentItem.y = finalY;
-				});
+				const deltaX = st.latestItemX - st.startItemX;
+				const deltaY = st.latestItemY - st.startItemY;
+				applySelectionCommit(st, presence, deltaX, deltaY, currentItem);
 
 				// Clear presence state
 				presence.drag.clearDragging();
@@ -917,6 +1143,11 @@ export function ItemView(props: {
 			e.preventDefault();
 		}
 		const start = coordsCanvas(touch);
+		const {
+			snapshots: selectionSnapshots,
+			selectedIds: uniqueSelectedIds,
+			rootItems,
+		} = buildSelectionDragState(item, { x: displayX, y: displayY }, presence);
 
 		// For drag, use absolute display coordinates
 		dragRef.current = {
@@ -934,6 +1165,9 @@ export function ItemView(props: {
 			initialTarget: textAreaTarget ?? null,
 			focusTarget: needsFocusAfterTap ? textAreaTarget : null,
 			containerElement: e.currentTarget as HTMLElement,
+			selectedIds: uniqueSelectedIds,
+			selectionSnapshots,
+			rootItems,
 		};
 
 		const docMove = (ev: TouchEvent) => {
@@ -973,12 +1207,21 @@ export function ItemView(props: {
 
 				// Simply update presence - applyDrag will handle the visual update
 				const currentItem = itemRef.current;
+				const selectionEntries = buildSelectionPresencePayload(
+					st,
+					currentItem.id,
+					nextX,
+					nextY,
+					dx,
+					dy
+				);
 				presence.drag.setDragging({
 					id: currentItem.id,
 					x: nextX,
 					y: nextY,
 					rotation: currentItem.rotation,
 					branch: presence.branch,
+					selection: selectionEntries,
 				});
 			}
 		};
@@ -998,14 +1241,9 @@ export function ItemView(props: {
 					return;
 				}
 
-				// Commit the final position to the tree
-				const finalX = st.latestItemX - groupOffsetX;
-				const finalY = st.latestItemY - groupOffsetY;
-				const transactionTarget = Tree.parent(currentItem) ?? currentItem;
-				Tree.runTransaction(transactionTarget, () => {
-					currentItem.x = finalX;
-					currentItem.y = finalY;
-				});
+				const deltaX = st.latestItemX - st.startItemX;
+				const deltaY = st.latestItemY - st.startItemY;
+				applySelectionCommit(st, presence, deltaX, deltaY, currentItem);
 
 				// Clear presence state
 				presence.drag.clearDragging();

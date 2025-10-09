@@ -27,6 +27,13 @@ import {
 import { Listenable } from "fluid-framework";
 import { DragManager, DragPackage } from "./Interfaces/DragManager.js";
 
+export interface DragSelectionEntry {
+	id: string;
+	x: number;
+	y: number;
+	rotation?: number;
+}
+
 /**
  * Creates a new DragManager instance with the given presence and workspace.
  * This factory function sets up the Fluid Framework state management and
@@ -112,4 +119,6 @@ export interface DragAndRotatePackage extends DragPackage {
 	rotation: number;
 	/** Whether this is a branch drag operation (for tree structures) */
 	branch: boolean;
+	/** Optional companion positions for other items being dragged as a group */
+	selection?: DragSelectionEntry[];
 }

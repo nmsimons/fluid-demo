@@ -13,8 +13,22 @@ export function getActiveDragForItem(
 		x: number;
 		y: number;
 		rotation: number;
+		selection?: Array<{ id: string; x: number; y: number; rotation?: number }>;
 	} | null;
-	if (local && local.id === itemId) return local;
+	if (local) {
+		if (local.id === itemId) {
+			return local;
+		}
+		const companion = local.selection?.find((entry) => entry.id === itemId);
+		if (companion) {
+			return {
+				id: companion.id,
+				x: companion.x,
+				y: companion.y,
+				rotation: companion.rotation ?? local.rotation,
+			};
+		}
+	}
 	const remotesIter = (
 		presence.drag?.state as unknown as { getRemotes?: () => unknown }
 	)?.getRemotes?.();
@@ -39,16 +53,31 @@ export function getActiveDragForItem(
 				connected = status === "Connected";
 			}
 			if (!connected) continue;
-			const val = isRecord(cv) ? (cv["value"] as unknown) : undefined;
-			if (isRecord(val) && typeof val["id"] === "string") {
-				const id = val["id"] as string;
-				if (id === itemId) {
-					const x = typeof val["x"] === "number" ? (val["x"] as number) : 0;
-					const y = typeof val["y"] === "number" ? (val["y"] as number) : 0;
-					const rotation =
-						typeof val["rotation"] === "number" ? (val["rotation"] as number) : 0;
-					return { id, x, y, rotation };
-				}
+			const val = isRecord(cv)
+				? (cv["value"] as Record<string, unknown> | undefined)
+				: undefined;
+			if (!val) continue;
+			const baseId = typeof val["id"] === "string" ? (val["id"] as string) : undefined;
+			const x = typeof val["x"] === "number" ? (val["x"] as number) : undefined;
+			const y = typeof val["y"] === "number" ? (val["y"] as number) : undefined;
+			const rotation = typeof val["rotation"] === "number" ? (val["rotation"] as number) : 0;
+			if (baseId === itemId && x !== undefined && y !== undefined) {
+				return { id: baseId, x, y, rotation };
+			}
+			const selection = Array.isArray(val["selection"])
+				? (val["selection"] as unknown[])
+				: [];
+			for (const entry of selection) {
+				if (!isRecord(entry)) continue;
+				const sid = typeof entry["id"] === "string" ? (entry["id"] as string) : undefined;
+				if (sid !== itemId) continue;
+				const sx = typeof entry["x"] === "number" ? (entry["x"] as number) : 0;
+				const sy = typeof entry["y"] === "number" ? (entry["y"] as number) : 0;
+				const srot =
+					typeof entry["rotation"] === "number"
+						? (entry["rotation"] as number)
+						: rotation;
+				return { id: sid, x: sx, y: sy, rotation: srot };
 			}
 		}
 	}
