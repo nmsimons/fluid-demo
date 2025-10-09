@@ -25,6 +25,12 @@ export function useOverlayRerenders(presence: React.ContextType<typeof PresenceC
 		const offDragRemote = presence.drag.events.on("remoteUpdated", () =>
 			setMotionKey((t) => (t + 1) % 1000)
 		);
+		const offConnectionLocal = presence.connectionDrag.events.on("localUpdated", () =>
+			setMotionKey((t) => (t + 1) % 1000)
+		);
+		const offConnectionRemote = presence.connectionDrag.events.on("remoteUpdated", () =>
+			setMotionKey((t) => (t + 1) % 1000)
+		);
 		const offResizeLocal = presence.resize.events.on("localUpdated", () =>
 			setMotionKey((t) => (t + 1) % 1000)
 		);
@@ -41,12 +47,14 @@ export function useOverlayRerenders(presence: React.ContextType<typeof PresenceC
 		return () => {
 			offDragLocal();
 			offDragRemote();
+			offConnectionLocal();
+			offConnectionRemote();
 			offResizeLocal();
 			offResizeRemote();
 			offInkLocal?.();
 			offInkRemote?.();
 		};
-	}, [presence.drag, presence.resize, presence.ink]);
+	}, [presence.drag, presence.connectionDrag, presence.resize, presence.ink]);
 
 	return { selKey, motionKey };
 }

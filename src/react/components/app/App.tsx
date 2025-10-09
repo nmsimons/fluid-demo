@@ -38,6 +38,10 @@ import { DragManager } from "../../../presence/Interfaces/DragManager.js";
 import { ResizeManager } from "../../../presence/Interfaces/ResizeManager.js";
 import { ResizePackage } from "../../../presence/Interfaces/ResizeManager.js";
 import { CursorManager } from "../../../presence/Interfaces/CursorManager.js";
+import {
+	ConnectionDragManager,
+	ConnectionDragState,
+} from "../../../presence/Interfaces/ConnectionDragManager.js";
 import { CommentPane, CommentPaneRef } from "../panels/CommentPane.js";
 import { useTree } from "../../hooks/useTree.js";
 import { useKeyboardShortcuts } from "../../hooks/useKeyboardShortcuts.js";
@@ -66,6 +70,7 @@ export function ReactApp(props: {
 	resize: ResizeManager<ResizePackage | null>;
 	cursor: CursorManager;
 	ink?: InkPresenceManager;
+	connectionDrag: ConnectionDragManager<ConnectionDragState | null>;
 }): JSX.Element {
 	const {
 		tree,
@@ -78,6 +83,7 @@ export function ReactApp(props: {
 		resize,
 		cursor,
 		ink,
+		connectionDrag,
 	} = props;
 	const [connectionState, setConnectionState] = useState("");
 	const [saved, setSaved] = useState(false);
@@ -412,6 +418,7 @@ export function ReactApp(props: {
 				cursor: cursor,
 				branch: view !== tree,
 				ink: ink,
+				connectionDrag,
 			}}
 		>
 			<CommentPaneContext.Provider value={{ openCommentPaneAndFocus }}>

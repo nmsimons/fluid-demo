@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useContext, useState } from "react";
 import { Tree } from "@fluidframework/tree";
 import { Item, Group, Note, TextBlock, FluidTable } from "../../schema/appSchema.js";
 import { useTree } from "../hooks/useTree.js";
@@ -9,6 +9,10 @@ import {
 	type Rect,
 } from "../../utils/connections.js";
 import { generateWaypoints } from "../../utils/pathfinding.js";
+import { PresenceContext } from "../contexts/PresenceContext.js";
+import { updateCursorFromEvent } from "../../utils/cursorUtils.js";
+import type { ConnectionDragState } from "../../presence/Interfaces/ConnectionDragManager.js";
+import { getUserColor } from "../../utils/userUtils.js";
 
 interface LayoutBounds {
 	left: number;
@@ -32,6 +36,10 @@ interface DragState {
 	fromSide: ConnectionSide;
 	cursorX: number;
 	cursorY: number;
+}
+
+interface RemoteDragState extends DragState {
+	clientId: string;
 }
 
 /**
@@ -149,6 +157,10 @@ export function ConnectionOverlay(props: ConnectionOverlayProps): JSX.Element {
 	const { items, layout, zoom, pan, svgRef } = props;
 	const [dragState, setDragState] = useState<DragState | null>(null);
 	const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
+	const presence = useContext(PresenceContext);
+	const connectionManager = presence.connectionDrag;
+	const cursorManager = presence.cursor;
+	const [remoteDrags, setRemoteDrags] = useState<RemoteDragState[]>([]);
 
 	// Convert screen coords to logical SVG coordinates
 	const toLogical = (clientX: number, clientY: number): { x: number; y: number } => {
@@ -180,6 +192,43 @@ export function ConnectionOverlay(props: ConnectionOverlayProps): JSX.Element {
 			};
 		}
 	}, [zoom, pan]);
+
+	React.useEffect(() => {
+		if (!connectionManager?.state?.getRemotes) {
+			setRemoteDrags([]);
+			return;
+		}
+
+		const updateRemotes = () => {
+			const remotes: RemoteDragState[] = [];
+			for (const remote of connectionManager.state.getRemotes() as Iterable<{
+				value: ConnectionDragState | null;
+				attendee: { attendeeId: string };
+			}>) {
+				if (!remote.value) continue;
+				remotes.push({ ...remote.value, clientId: remote.attendee.attendeeId });
+			}
+			setRemoteDrags(remotes);
+		};
+
+		updateRemotes();
+		const offRemote = connectionManager.events.on("remoteUpdated", updateRemotes);
+		const offDisconnect = connectionManager.attendees.events.on(
+			"attendeeDisconnected",
+			updateRemotes
+		);
+
+		return () => {
+			offRemote();
+			offDisconnect();
+		};
+	}, [connectionManager]);
+
+	React.useEffect(() => {
+		return () => {
+			connectionManager?.clearConnectionDrag();
+		};
+	}, [connectionManager]);
 
 	/**
 	 * Helper to check if an item should have connection points
@@ -291,29 +340,37 @@ export function ConnectionOverlay(props: ConnectionOverlayProps): JSX.Element {
 		e.preventDefault();
 
 		const startPos = toLogical(e.clientX, e.clientY);
-		setDragState({
+		const initialState: DragState = {
 			fromItemId: itemId,
 			fromSide: side,
 			cursorX: startPos.x,
 			cursorY: startPos.y,
-		});
+		};
+		setDragState(initialState);
+		connectionManager?.setConnectionDrag(initialState);
+		updateCursorFromEvent(e, cursorManager, pan, zoom);
 
 		const handleMove = (ev: PointerEvent) => {
 			const pos = toLogical(ev.clientX, ev.clientY);
-			setDragState((prev) =>
-				prev
-					? {
-							...prev,
-							cursorX: pos.x,
-							cursorY: pos.y,
-						}
-					: null
-			);
+			setDragState((prev) => {
+				if (!prev) return prev;
+				const nextState: DragState = {
+					...prev,
+					cursorX: pos.x,
+					cursorY: pos.y,
+				};
+				connectionManager?.setConnectionDrag(nextState);
+				return nextState;
+			});
+			updateCursorFromEvent(ev, cursorManager, pan, zoom);
 		};
 
 		const handleUp = (ev: PointerEvent) => {
 			document.removeEventListener("pointermove", handleMove);
 			document.removeEventListener("pointerup", handleUp);
+			document.removeEventListener("pointercancel", handleUp);
+			connectionManager?.clearConnectionDrag();
+			updateCursorFromEvent(ev, cursorManager, pan, zoom);
 
 			// Check if we released over another connection point
 			const target = document.elementFromPoint(ev.clientX, ev.clientY);
@@ -335,6 +392,7 @@ export function ConnectionOverlay(props: ConnectionOverlayProps): JSX.Element {
 
 		document.addEventListener("pointermove", handleMove);
 		document.addEventListener("pointerup", handleUp);
+		document.addEventListener("pointercancel", handleUp);
 	};
 
 	return (
@@ -385,6 +443,18 @@ export function ConnectionOverlay(props: ConnectionOverlayProps): JSX.Element {
 								zoom={zoom}
 							/>
 						)}
+
+						{/* Render remote drag lines for collaborators */}
+						{remoteDrags.map((remote) => (
+							<TempConnectionLine
+								key={`remote-${remote.clientId}-${remote.fromItemId}-${remote.fromSide}`}
+								dragState={remote}
+								getRect={getConnectionRect}
+								zoom={zoom}
+								strokeColor={getUserColor(remote.clientId)}
+								strokeOpacity={0.5}
+							/>
+						))}
 
 						{/* Render connection points on groups, notes, and text */}
 						{itemsWithConnections.map((item) => (
@@ -692,16 +762,24 @@ interface TempConnectionLineProps {
 	dragState: DragState;
 	getRect: (itemId: string) => Rect | null;
 	zoom: number;
+	strokeColor?: string;
+	strokeOpacity?: number;
+	strokeDasharray?: string;
+	strokeWidth?: number;
 }
 
 function TempConnectionLine(props: TempConnectionLineProps): JSX.Element | null {
-	const { dragState, getRect } = props;
+	const { dragState, getRect, strokeColor, strokeOpacity, strokeDasharray, strokeWidth } = props;
 
 	const fromRect = getRect(dragState.fromItemId);
 	if (!fromRect) return null;
 
 	const start = getConnectionPoint(fromRect, dragState.fromSide);
 	const end = { x: dragState.cursorX, y: dragState.cursorY };
+	const color = strokeColor ?? "#3b82f6";
+	const opacity = strokeOpacity ?? 0.6;
+	const dashPattern = strokeDasharray ?? "8 4";
+	const width = strokeWidth ?? 5;
 
 	return (
 		<line
@@ -709,10 +787,11 @@ function TempConnectionLine(props: TempConnectionLineProps): JSX.Element | null 
 			y1={start.y}
 			x2={end.x}
 			y2={end.y}
-			stroke="#3b82f6"
-			strokeWidth={5}
-			strokeDasharray="8 4"
-			opacity={0.6}
+			stroke={color}
+			strokeWidth={width}
+			strokeDasharray={dashPattern}
+			opacity={opacity}
+			pointerEvents="none"
 		/>
 	);
 }

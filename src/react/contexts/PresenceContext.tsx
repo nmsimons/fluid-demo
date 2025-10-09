@@ -28,6 +28,10 @@ import { CursorManager } from "../../presence/Interfaces/CursorManager.js";
 import { DragAndRotatePackage } from "../../presence/drag.js";
 import { TypedSelection } from "../../presence/selection.js";
 import { InkPresenceManager } from "../../presence/Interfaces/InkManager.js";
+import {
+	ConnectionDragManager,
+	ConnectionDragState,
+} from "../../presence/Interfaces/ConnectionDragManager.js";
 
 /**
  * Type definition for the Presence Context.
@@ -57,6 +61,9 @@ interface PresenceContextType {
 
 	/** Ephemeral ink presence (live in-progress stroke) */
 	ink?: InkPresenceManager;
+
+	/** Manager for connection drag previews */
+	connectionDrag: ConnectionDragManager<ConnectionDragState | null>;
 }
 
 /**
@@ -76,4 +83,5 @@ export const PresenceContext = createContext<PresenceContextType>({
 	cursor: {} as CursorManager,
 	branch: false,
 	ink: undefined,
+	connectionDrag: {} as ConnectionDragManager<ConnectionDragState | null>,
 });

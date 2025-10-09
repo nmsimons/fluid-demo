@@ -50,6 +50,7 @@ import { createDragManager } from "./presence/drag.js";
 import { createResizeManager } from "./presence/resize.js";
 import { createInkPresenceManager } from "./presence/ink.js";
 import { createCursorManager } from "./presence/cursor.js";
+import { createConnectionDragManager } from "./presence/connectionDrag.js";
 
 export async function loadApp(props: {
 	client: AzureClient;
@@ -122,6 +123,11 @@ export async function loadApp(props: {
 			workspace,
 		});
 
+		const connectionDrag = createConnectionDragManager({
+			name: "connection:drag",
+			workspace,
+		});
+
 		// create the root element for React
 		const app = document.createElement("div");
 		app.id = "app";
@@ -146,6 +152,7 @@ export async function loadApp(props: {
 							resize={resize}
 							ink={ink}
 							cursor={cursor}
+							connectionDrag={connectionDrag}
 							users={users}
 							container={container}
 							undoRedo={undoRedo}
