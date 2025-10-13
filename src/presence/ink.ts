@@ -49,7 +49,10 @@ export function createInkPresenceManager(props: {
 		constructor(name: string, workspace: StatesWorkspace<{}>) {
 			workspace.add(
 				name,
-				StateFactory.latest<EphemeralInkStroke | null>({ local: null, validator: validateInkState })
+				StateFactory.latest<EphemeralInkStroke | null>({
+					local: null,
+					validator: validateInkState,
+				})
 			);
 			this.state = workspace.states[name];
 		}

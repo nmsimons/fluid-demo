@@ -82,7 +82,10 @@ export function createResizeManager(props: {
 			// Register this resize manager's state with the Fluid workspace
 			workspace.add(
 				name,
-				StateFactory.latest<ResizePackage | null>({ local: null, validator: validateResizeState })
+				StateFactory.latest<ResizePackage | null>({
+					local: null,
+					validator: validateResizeState,
+				})
 			);
 			this.state = workspace.states[name];
 		}

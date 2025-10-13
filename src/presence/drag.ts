@@ -99,7 +99,10 @@ export function createDragManager(props: {
 			// Register this drag manager's state with the Fluid workspace
 			workspace.add(
 				name,
-				StateFactory.latest<DragAndRotatePackage | null>({ local: null, validator: validateDragState })
+				StateFactory.latest<DragAndRotatePackage | null>({
+					local: null,
+					validator: validateDragState,
+				})
 			);
 			this.state = workspace.states[name];
 		}

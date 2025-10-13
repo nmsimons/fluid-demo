@@ -80,7 +80,10 @@ export function createCursorManager(props: {
 			// Register this cursor manager's state with the Fluid workspace
 			workspace.add(
 				name,
-				StateFactory.latest<CursorState | null>({ local: null, validator: validateCursorState })
+				StateFactory.latest<CursorState | null>({
+					local: null,
+					validator: validateCursorState,
+				})
 			);
 			this.state = workspace.states[name];
 		}

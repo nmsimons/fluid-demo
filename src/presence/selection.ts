@@ -309,7 +309,10 @@ export function createTypedSelectionManager(props: {
 		constructor(name: string, workspace: StatesWorkspace<{}>) {
 			workspace.add(
 				name,
-				StateFactory.latest<TypedSelection[]>({ local: [], validator: validateTypedSelectionArray })
+				StateFactory.latest<TypedSelection[]>({
+					local: [],
+					validator: validateTypedSelectionArray,
+				})
 			);
 			this.state = workspace.states[name];
 		}
@@ -408,4 +411,3 @@ export function createTypedSelectionManager(props: {
 
 	return new TypedSelectionManagerImpl(name, workspace);
 }
-

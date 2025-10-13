@@ -61,7 +61,10 @@ export function getActiveDragForItem(
 				"attendee" in remote &&
 				isRecord((remote as Record<string, unknown>)["attendee"])
 			) {
-				const att = (remote as Record<string, unknown>)["attendee"] as Record<string, unknown>;
+				const att = (remote as Record<string, unknown>)["attendee"] as Record<
+					string,
+					unknown
+				>;
 				let status: unknown = "Connected";
 				if (typeof att["getConnectionStatus"] === "function") {
 					status = (att["getConnectionStatus"] as (this: unknown) => unknown).call(att);

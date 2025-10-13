@@ -23,7 +23,12 @@ import {
 } from "./Interfaces/ConnectionDragManager.js";
 import { z } from "zod";
 
-const ConnectionSideSchema = z.enum(["top", "right", "bottom", "left"]) as z.ZodType<ConnectionSide>;
+const ConnectionSideSchema = z.enum([
+	"top",
+	"right",
+	"bottom",
+	"left",
+]) as z.ZodType<ConnectionSide>;
 const ConnectionDragStateSchema: z.ZodType<ConnectionDragState> = z
 	.object({
 		fromItemId: z.string(),
