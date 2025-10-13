@@ -27,12 +27,51 @@
 
 import {
 	StateFactory,
-	LatestRawEvents,
+	LatestEvents,
 	StatesWorkspace,
-	LatestRaw,
+	Latest,
+	StateSchemaValidator,
 } from "@fluidframework/presence/beta";
 import { Listenable } from "fluid-framework";
 import { SelectionManager, Selection } from "./Interfaces/SelectionManager.js";
+import { z } from "zod";
+
+/**
+ * Enumeration of supported selection types.
+ * Used for providing context about what kind of element is selected.
+ */
+export type selectionType = "row" | "column" | "cell";
+
+/**
+ * TypedSelection type definition with optional type information.
+ * Extends basic selection with type metadata for enhanced functionality.
+ */
+export type TypedSelection = {
+	id: string;
+	type?: selectionType;
+};
+
+const SelectionTypeSchema = z.enum(["row", "column", "cell"]) as z.ZodType<selectionType>;
+const SelectionSchema = z.object({ id: z.string() }).strict() as z.ZodType<Selection>;
+const TypedSelectionSchema = z
+	.object({
+		id: z.string(),
+		type: SelectionTypeSchema.optional(),
+	})
+	.strict() as z.ZodType<TypedSelection>;
+
+const SelectionArraySchema = SelectionSchema.array();
+const TypedSelectionArraySchema = TypedSelectionSchema.array();
+
+const validateSelectionArray: StateSchemaValidator<Selection[]> = (value) => {
+	const result = SelectionArraySchema.safeParse(value);
+	return result.success ? result.data : undefined;
+};
+
+const validateTypedSelectionArray: StateSchemaValidator<TypedSelection[]> = (value) => {
+	const result = TypedSelectionArraySchema.safeParse(value);
+	return result.success ? result.data : undefined;
+};
 
 /**
  * Creates a new SelectionManager instance for managing collaborative selections.
@@ -56,7 +95,7 @@ export function createSelectionManager(props: {
 	 */
 	class SelectionManagerImpl implements SelectionManager<Selection> {
 		/** Fluid Framework state object for real-time synchronization */
-		state: LatestRaw<Selection[]>;
+		state: Latest<Selection[]>;
 
 		/**
 		 * Initializes the selection manager with Fluid Framework state management.
@@ -67,7 +106,10 @@ export function createSelectionManager(props: {
 		 */
 		constructor(name: string, workspace: StatesWorkspace<{}>) {
 			// Register this selection manager's state with the Fluid workspace
-			workspace.add(name, StateFactory.latest<Selection[]>({ local: [] }));
+			workspace.add(
+				name,
+				StateFactory.latest<Selection[]>({ local: [], validator: validateSelectionArray })
+			);
 			this.state = workspace.states[name];
 		}
 
@@ -75,7 +117,7 @@ export function createSelectionManager(props: {
 		 * Event emitter for selection state changes.
 		 * Components can subscribe to these events to update their UI when selections change.
 		 */
-		public get events(): Listenable<LatestRawEvents<Selection[]>> {
+		public get events(): Listenable<LatestEvents<Selection[]>> {
 			return this.state.events;
 		}
 
@@ -106,10 +148,11 @@ export function createSelectionManager(props: {
 		 */
 		public testRemoteSelection(sel: Selection): string[] {
 			const remoteSelectedClients: string[] = [];
-			for (const cv of this.state.getRemotes()) {
-				if (cv.attendee.getConnectionStatus() === "Connected") {
-					if (this._testForInclusion(sel, cv.value)) {
-						remoteSelectedClients.push(cv.attendee.attendeeId);
+			for (const remote of this.state.getRemotes()) {
+				if (remote.attendee.getConnectionStatus() === "Connected") {
+					const selections = remote.value();
+					if (selections && this._testForInclusion(sel, selections)) {
+						remoteSelectedClients.push(remote.attendee.attendeeId);
 					}
 				}
 			}
@@ -177,7 +220,9 @@ export function createSelectionManager(props: {
 		 * @param sel - The selection to remove
 		 */
 		public removeFromSelection(sel: Selection) {
-			const arr: Selection[] = this.state.local.filter((s) => s.id !== sel.id);
+			const arr: Selection[] = this.state.local.filter(
+				(stateSelection: Selection) => stateSelection.id !== sel.id
+			);
 			this.state.local = arr;
 		}
 
@@ -200,13 +245,17 @@ export function createSelectionManager(props: {
 		 */
 		public getRemoteSelected(): Map<Selection, string[]> {
 			const remoteSelected = new Map<Selection, string[]>();
-			for (const cv of this.state.getRemotes()) {
-				if (cv.attendee.getConnectionStatus() === "Connected") {
-					for (const sel of cv.value) {
+			for (const remote of this.state.getRemotes()) {
+				if (remote.attendee.getConnectionStatus() === "Connected") {
+					const selections = remote.value();
+					if (!selections) {
+						continue;
+					}
+					for (const sel of selections) {
 						if (!remoteSelected.has(sel)) {
 							remoteSelected.set(sel, []);
 						}
-						remoteSelected.get(sel)?.push(cv.attendee.attendeeId);
+						remoteSelected.get(sel)?.push(remote.attendee.attendeeId);
 					}
 				}
 			}
@@ -222,8 +271,11 @@ export function createSelectionManager(props: {
 		 * @param collection - The collection to search in
 		 * @returns True if the selection is found in the collection
 		 */
-		private _testForInclusion(sel: Selection, collection: readonly Selection[]): boolean {
-			return !!collection.find((s) => s.id === sel.id);
+		private _testForInclusion(sel: Selection, collection?: readonly Selection[]): boolean {
+			if (!collection) {
+				return false;
+			}
+			return collection.some((entry) => entry.id === sel.id);
 		}
 	}
 
@@ -249,17 +301,20 @@ export function createTypedSelectionManager(props: {
 	 */
 	class TypedSelectionManagerImpl implements SelectionManager<TypedSelection> {
 		/** Fluid Framework state object for real-time synchronization */
-		state: LatestRaw<TypedSelection[]>;
+		state: Latest<TypedSelection[]>;
 
 		/**
 		 * Initializes the selection manager with Fluid Framework state management.
 		 */
 		constructor(name: string, workspace: StatesWorkspace<{}>) {
-			workspace.add(name, StateFactory.latest<TypedSelection[]>({ local: [] }));
+			workspace.add(
+				name,
+				StateFactory.latest<TypedSelection[]>({ local: [], validator: validateTypedSelectionArray })
+			);
 			this.state = workspace.states[name];
 		}
 
-		public get events(): Listenable<LatestRawEvents<TypedSelection[]>> {
+		public get events(): Listenable<LatestEvents<TypedSelection[]>> {
 			return this.state.events;
 		}
 
@@ -273,10 +328,11 @@ export function createTypedSelectionManager(props: {
 
 		public testRemoteSelection(sel: TypedSelection): string[] {
 			const remoteSelectedClients: string[] = [];
-			for (const cv of this.state.getRemotes()) {
-				if (cv.attendee.getConnectionStatus() === "Connected") {
-					if (this._testForInclusion(sel, cv.value)) {
-						remoteSelectedClients.push(cv.attendee.attendeeId);
+			for (const remote of this.state.getRemotes()) {
+				if (remote.attendee.getConnectionStatus() === "Connected") {
+					const selections = remote.value();
+					if (selections && this._testForInclusion(sel, selections)) {
+						remoteSelectedClients.push(remote.attendee.attendeeId);
 					}
 				}
 			}
@@ -322,13 +378,17 @@ export function createTypedSelectionManager(props: {
 
 		public getRemoteSelected(): Map<TypedSelection, string[]> {
 			const remoteSelected = new Map<TypedSelection, string[]>();
-			for (const cv of this.state.getRemotes()) {
-				if (cv.attendee.getConnectionStatus() === "Connected") {
-					for (const sel of cv.value) {
+			for (const remote of this.state.getRemotes()) {
+				if (remote.attendee.getConnectionStatus() === "Connected") {
+					const selections = remote.value();
+					if (!selections) {
+						continue;
+					}
+					for (const sel of selections) {
 						if (!remoteSelected.has(sel)) {
 							remoteSelected.set(sel, []);
 						}
-						remoteSelected.get(sel)?.push(cv.attendee.attendeeId);
+						remoteSelected.get(sel)?.push(remote.attendee.attendeeId);
 					}
 				}
 			}
@@ -337,28 +397,15 @@ export function createTypedSelectionManager(props: {
 
 		private _testForInclusion(
 			sel: TypedSelection,
-			collection: readonly TypedSelection[]
+			collection?: readonly TypedSelection[]
 		): boolean {
-			return !!collection.find((s) => s.id === sel.id);
+			if (!collection) {
+				return false;
+			}
+			return collection.some((entry) => entry.id === sel.id);
 		}
 	}
 
 	return new TypedSelectionManagerImpl(name, workspace);
 }
 
-/**
- * TypedSelection type definition with optional type information.
- * Extends basic selection with type metadata for enhanced functionality.
- */
-export type TypedSelection = {
-	/** Unique identifier for the selected item */
-	id: string;
-	/** Optional type of the selection (row, column, cell, etc.) */
-	type?: selectionType;
-};
-
-/**
- * Enumeration of supported selection types.
- * Used for providing context about what kind of element is selected.
- */
-export type selectionType = "row" | "column" | "cell";

@@ -21,11 +21,13 @@
 import {
 	StateFactory,
 	StatesWorkspace,
-	LatestRaw,
-	LatestRawEvents,
+	Latest,
+	LatestEvents,
+	StateSchemaValidator,
 } from "@fluidframework/presence/beta";
 import { Listenable } from "fluid-framework";
 import { DragManager, DragPackage } from "./Interfaces/DragManager.js";
+import { z } from "zod";
 
 export interface DragSelectionEntry {
 	id: string;
@@ -33,6 +35,34 @@ export interface DragSelectionEntry {
 	y: number;
 	rotation?: number;
 }
+
+const DragSelectionEntrySchema: z.ZodType<DragSelectionEntry> = z
+	.object({
+		id: z.string(),
+		x: z.number().finite(),
+		y: z.number().finite(),
+		rotation: z.number().finite().optional(),
+	})
+	.strict();
+
+const DragStateSchema: z.ZodType<DragAndRotatePackage | null> = z.union([
+	z.null(),
+	z
+		.object({
+			id: z.string(),
+			x: z.number().finite(),
+			y: z.number().finite(),
+			rotation: z.number().finite(),
+			branch: z.boolean(),
+			selection: DragSelectionEntrySchema.array().optional(),
+		})
+		.strict(),
+]);
+
+const validateDragState: StateSchemaValidator<DragAndRotatePackage | null> = (value) => {
+	const result = DragStateSchema.safeParse(value);
+	return result.success ? result.data : undefined;
+};
 
 /**
  * Creates a new DragManager instance with the given presence and workspace.
@@ -56,7 +86,7 @@ export function createDragManager(props: {
 	 */
 	class DragManagerImpl implements DragManager<DragAndRotatePackage | null> {
 		/** Fluid Framework state object for real-time synchronization */
-		state: LatestRaw<DragAndRotatePackage | null>;
+		state: Latest<DragAndRotatePackage | null>;
 
 		/**
 		 * Initializes the drag manager with Fluid Framework state management.
@@ -67,7 +97,10 @@ export function createDragManager(props: {
 		 */
 		constructor(name: string, workspace: StatesWorkspace<{}>) {
 			// Register this drag manager's state with the Fluid workspace
-			workspace.add(name, StateFactory.latest<DragAndRotatePackage | null>({ local: null }));
+			workspace.add(
+				name,
+				StateFactory.latest<DragAndRotatePackage | null>({ local: null, validator: validateDragState })
+			);
 			this.state = workspace.states[name];
 		}
 
@@ -83,7 +116,7 @@ export function createDragManager(props: {
 		 * Event emitter for drag state changes.
 		 * Components can subscribe to these events to update their UI when drag operations occur.
 		 */
-		public get events(): Listenable<LatestRawEvents<DragAndRotatePackage | null>> {
+		public get events(): Listenable<LatestEvents<DragAndRotatePackage | null>> {
 			return this.state.events;
 		}
 

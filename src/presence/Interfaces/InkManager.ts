@@ -1,4 +1,4 @@
-import { LatestRaw, LatestRawEvents } from "@fluidframework/presence/beta";
+import { Latest, LatestEvents } from "@fluidframework/presence/beta";
 import { Listenable } from "fluid-framework";
 
 /**
@@ -70,9 +70,9 @@ export interface EphemeralInkStroke {
  * Mirrors other presence managers (selection, drag, etc.) for consistency.
  */
 export interface InkPresenceManager {
-	state: LatestRaw<EphemeralInkStroke | null>;
-	events: Listenable<LatestRawEvents<EphemeralInkStroke | null>>;
-	attendees: LatestRaw<EphemeralInkStroke | null>["presence"]["attendees"];
+	state: Latest<EphemeralInkStroke | null>;
+	events: Listenable<LatestEvents<EphemeralInkStroke | null>>;
+	attendees: Latest<EphemeralInkStroke | null>["presence"]["attendees"];
 	/** Begin a new ephemeral stroke for the local user. */
 	setStroke(stroke: EphemeralInkStroke): void;
 	/** Replace the point list of the in‑progress local stroke (cumulative list). */

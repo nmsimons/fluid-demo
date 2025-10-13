@@ -20,11 +20,13 @@
 import {
 	StateFactory,
 	StatesWorkspace,
-	LatestRaw,
-	LatestRawEvents,
+	Latest,
+	LatestEvents,
+	StateSchemaValidator,
 } from "@fluidframework/presence/beta";
 import { Listenable } from "fluid-framework";
 import { CursorManager, CursorState } from "./Interfaces/CursorManager.js";
+import { z } from "zod";
 
 /**
  * Creates a new CursorManager instance with the given workspace.
@@ -36,6 +38,23 @@ import { CursorManager, CursorState } from "./Interfaces/CursorManager.js";
  * @param props.name - Unique name for this cursor manager instance
  * @returns A configured CursorManager instance
  */
+const CursorStateSchema: z.ZodType<CursorState | null> = z.union([
+	z.null(),
+	z
+		.object({
+			x: z.number().finite(),
+			y: z.number().finite(),
+			visible: z.boolean(),
+			timestamp: z.number().finite(),
+		})
+		.strict(),
+]);
+
+const validateCursorState: StateSchemaValidator<CursorState | null> = (value) => {
+	const result = CursorStateSchema.safeParse(value);
+	return result.success ? result.data : undefined;
+};
+
 export function createCursorManager(props: {
 	workspace: StatesWorkspace<{}>;
 	name: string;
@@ -48,7 +67,7 @@ export function createCursorManager(props: {
 	 */
 	class CursorManagerImpl implements CursorManager {
 		/** Fluid Framework state object for real-time synchronization */
-		state: LatestRaw<CursorState | null>;
+		state: Latest<CursorState | null>;
 
 		/**
 		 * Initializes the cursor manager with Fluid Framework state management.
@@ -59,7 +78,10 @@ export function createCursorManager(props: {
 		 */
 		constructor(name: string, workspace: StatesWorkspace<{}>) {
 			// Register this cursor manager's state with the Fluid workspace
-			workspace.add(name, StateFactory.latest<CursorState | null>({ local: null }));
+			workspace.add(
+				name,
+				StateFactory.latest<CursorState | null>({ local: null, validator: validateCursorState })
+			);
 			this.state = workspace.states[name];
 		}
 
@@ -75,7 +97,7 @@ export function createCursorManager(props: {
 		 * Event emitter for cursor state changes.
 		 * Components can subscribe to these events to update their UI when cursor positions change.
 		 */
-		public get events(): Listenable<LatestRawEvents<CursorState | null>> {
+		public get events(): Listenable<LatestEvents<CursorState | null>> {
 			return this.state.events;
 		}
 
@@ -146,7 +168,7 @@ export function createCursorManager(props: {
 			// Get all remote cursor states
 			const remotes = this.state.getRemotes();
 			for (const remote of remotes) {
-				const cursorState = remote.value;
+				const cursorState = remote.value();
 				// Only include visible, non-stale cursors from connected clients
 				if (
 					cursorState &&

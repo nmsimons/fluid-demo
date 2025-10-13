@@ -11,11 +11,35 @@
 import {
 	StateFactory,
 	StatesWorkspace,
-	LatestRaw,
-	LatestRawEvents,
+	Latest,
+	LatestEvents,
+	StateSchemaValidator,
 } from "@fluidframework/presence/beta";
 import { Listenable } from "fluid-framework";
-import { ConnectionDragManager, ConnectionDragState } from "./Interfaces/ConnectionDragManager.js";
+import {
+	ConnectionDragManager,
+	ConnectionDragState,
+	ConnectionSide,
+} from "./Interfaces/ConnectionDragManager.js";
+import { z } from "zod";
+
+const ConnectionSideSchema = z.enum(["top", "right", "bottom", "left"]) as z.ZodType<ConnectionSide>;
+const ConnectionDragStateSchema: z.ZodType<ConnectionDragState> = z
+	.object({
+		fromItemId: z.string(),
+		fromSide: ConnectionSideSchema,
+		cursorX: z.number().finite(),
+		cursorY: z.number().finite(),
+	})
+	.strict();
+
+const validateConnectionDragState: StateSchemaValidator<ConnectionDragState | null> = (value) => {
+	if (value === null) {
+		return null;
+	}
+	const result = ConnectionDragStateSchema.safeParse(value);
+	return result.success ? result.data : undefined;
+};
 
 export function createConnectionDragManager(props: {
 	workspace: StatesWorkspace<{}>;
@@ -24,10 +48,16 @@ export function createConnectionDragManager(props: {
 	const { workspace, name } = props;
 
 	class ConnectionDragManagerImpl implements ConnectionDragManager<ConnectionDragState | null> {
-		state: LatestRaw<ConnectionDragState | null>;
+		state: Latest<ConnectionDragState | null>;
 
 		constructor(id: string, ws: StatesWorkspace<{}>) {
-			ws.add(id, StateFactory.latest<ConnectionDragState | null>({ local: null }));
+			ws.add(
+				id,
+				StateFactory.latest<ConnectionDragState | null>({
+					local: null,
+					validator: validateConnectionDragState,
+				})
+			);
 			this.state = ws.states[id];
 		}
 
@@ -35,7 +65,7 @@ export function createConnectionDragManager(props: {
 			return this.state.presence.attendees;
 		}
 
-		public get events(): Listenable<LatestRawEvents<ConnectionDragState | null>> {
+		public get events(): Listenable<LatestEvents<ConnectionDragState | null>> {
 			return this.state.events;
 		}
 

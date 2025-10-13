@@ -21,13 +21,28 @@
 
 import {
 	StateFactory,
-	LatestRawEvents,
+	LatestEvents,
 	StatesWorkspace,
-	LatestRaw,
+	Latest,
 	AttendeeStatus,
+	StateSchemaValidator,
 } from "@fluidframework/presence/beta";
 import { UsersManager, User, UserInfo } from "./Interfaces/UsersManager.js";
 import { Listenable } from "fluid-framework";
+import { z } from "zod";
+
+const UserInfoSchema: z.ZodType<UserInfo> = z
+	.object({
+		id: z.string(),
+		name: z.string(),
+		image: z.string().optional(),
+	})
+	.strict();
+
+const validateUserInfo: StateSchemaValidator<UserInfo> = (value) => {
+	const result = UserInfoSchema.safeParse(value);
+	return result.success ? result.data : undefined;
+};
 
 /**
  * Creates a new UsersManager instance with the given workspace configuration
@@ -52,7 +67,7 @@ export function createUsersManager(props: {
 	 */
 	class UsersManagerImpl implements UsersManager {
 		/** Fluid Framework state object for real-time synchronization */
-		state: LatestRaw<UserInfo>;
+		state: Latest<UserInfo>;
 
 		/**
 		 * Initializes the users manager with Fluid Framework state management.
@@ -63,7 +78,10 @@ export function createUsersManager(props: {
 		 */
 		constructor(name: string, workspace: StatesWorkspace<{}>) {
 			// Register this users manager's state with the Fluid workspace
-			workspace.add(name, StateFactory.latest({ local: me }));
+			workspace.add(
+				name,
+				StateFactory.latest<UserInfo>({ local: me, validator: validateUserInfo })
+			);
 			this.state = workspace.states[name];
 		}
 
@@ -71,7 +89,7 @@ export function createUsersManager(props: {
 		 * Event emitter for user information changes.
 		 * Components can subscribe to these events to update their UI when user data changes.
 		 */
-		public get events(): Listenable<LatestRawEvents<UserInfo>> {
+		public get events(): Listenable<LatestEvents<UserInfo>> {
 			return this.state.events;
 		}
 
@@ -90,7 +108,15 @@ export function createUsersManager(props: {
 		 * @returns Read-only array of all users with their profile and client data
 		 */
 		getUsers(): readonly User[] {
-			return [...this.state.getRemotes()].map((c) => ({ ...c, client: c.attendee }));
+			const users: User[] = [];
+			for (const remote of this.state.getRemotes()) {
+				const value = remote.value();
+				if (!value) {
+					continue;
+				}
+				users.push({ value, client: remote.attendee });
+			}
+			return users;
 		}
 
 		/**

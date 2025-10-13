@@ -26,6 +26,18 @@ import { useEffect } from "react";
 import { PresenceManager } from "../../presence/Interfaces/PresenceManager.js";
 import { Attendee } from "@fluidframework/presence/alpha";
 
+const extractLatestValue = <TState,>(updated: { value: unknown }): TState => {
+	const candidate = updated.value;
+	if (typeof candidate === "function") {
+		try {
+			return (candidate as () => TState)();
+		} catch {
+			return undefined as TState;
+		}
+	}
+	return candidate as TState;
+};
+
 /**
  * Custom hook to manage presence state changes in a Fluid Framework application.
  * Subscribes to presence events and executes callbacks when state changes occur.
@@ -75,7 +87,7 @@ export function usePresenceManager<TState>(
 	 */
 	useEffect(() => {
 		const unsubscribe = presenceManager.events.on("remoteUpdated", (updated) => {
-			runOnChange(updated.value as TState);
+			runOnChange(extractLatestValue<TState>(updated));
 		});
 		return unsubscribe;
 	}, [presenceManager, runOnChange]);
@@ -87,7 +99,7 @@ export function usePresenceManager<TState>(
 	 */
 	useEffect(() => {
 		const unsubscribe = presenceManager.events.on("localUpdated", (updated) => {
-			runOnChangeLocal(updated.value as TState);
+			runOnChangeLocal(extractLatestValue<TState>(updated));
 		});
 		return unsubscribe;
 	}, [presenceManager, runOnChangeLocal]);

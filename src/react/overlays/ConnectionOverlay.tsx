@@ -42,6 +42,39 @@ interface RemoteDragState extends DragState {
 	clientId: string;
 }
 
+const connectionSides: readonly ConnectionSide[] = ["top", "right", "bottom", "left"];
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+	typeof value === "object" && value !== null;
+const isConnectionSideValue = (value: unknown): value is ConnectionSide =>
+	typeof value === "string" && (connectionSides as readonly string[]).includes(value);
+const getPresenceRecord = (remote: unknown): Record<string, unknown> | undefined => {
+	if (!isRecord(remote)) {
+		return undefined;
+	}
+	const rawValue = remote["value"];
+	try {
+		if (typeof rawValue === "function") {
+			const fn = rawValue as (...args: unknown[]) => unknown;
+			const result = fn.call(remote);
+			return isRecord(result) ? result : undefined;
+		}
+		return isRecord(rawValue) ? (rawValue as Record<string, unknown>) : undefined;
+	} catch {
+		return undefined;
+	}
+};
+const getAttendeeId = (remote: unknown): string | undefined => {
+	if (!isRecord(remote)) {
+		return undefined;
+	}
+	const attendee = remote["attendee"];
+	if (!isRecord(attendee)) {
+		return undefined;
+	}
+	const id = attendee["attendeeId"];
+	return typeof id === "string" ? id : undefined;
+};
+
 /**
  * Calculate bounds for a group based on its children
  * Uses VISUAL bounds with zoom-dependent padding for connection points
@@ -200,15 +233,44 @@ export function ConnectionOverlay(props: ConnectionOverlayProps): JSX.Element {
 		}
 
 		const updateRemotes = () => {
-			const remotes: RemoteDragState[] = [];
-			for (const remote of connectionManager.state.getRemotes() as Iterable<{
-				value: ConnectionDragState | null;
-				attendee: { attendeeId: string };
-			}>) {
-				if (!remote.value) continue;
-				remotes.push({ ...remote.value, clientId: remote.attendee.attendeeId });
+			const nextRemotes: RemoteDragState[] = [];
+			const iterator = connectionManager.state.getRemotes() as Iterable<unknown>;
+			for (const remote of iterator) {
+				const stateRecord = getPresenceRecord(remote);
+				if (!stateRecord) {
+					continue;
+				}
+				const fromItemId =
+					typeof stateRecord["fromItemId"] === "string"
+						? (stateRecord["fromItemId"] as string)
+						: undefined;
+				const fromSide = isConnectionSideValue(stateRecord["fromSide"])
+					? (stateRecord["fromSide"] as ConnectionSide)
+					: undefined;
+				const cursorX =
+					typeof stateRecord["cursorX"] === "number"
+						? (stateRecord["cursorX"] as number)
+						: undefined;
+				const cursorY =
+					typeof stateRecord["cursorY"] === "number"
+						? (stateRecord["cursorY"] as number)
+						: undefined;
+				if (!fromItemId || !fromSide || cursorX === undefined || cursorY === undefined) {
+					continue;
+				}
+				const attendeeId = getAttendeeId(remote);
+				if (!attendeeId) {
+					continue;
+				}
+				const dragState: ConnectionDragState = {
+					fromItemId,
+					fromSide,
+					cursorX,
+					cursorY,
+				};
+				nextRemotes.push({ ...dragState, clientId: attendeeId });
 			}
-			setRemoteDrags(remotes);
+			setRemoteDrags(nextRemotes);
 		};
 
 		updateRemotes();

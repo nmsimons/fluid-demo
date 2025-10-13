@@ -10,10 +10,10 @@
  */
 
 import {
-	LatestRaw,
-	LatestRawEvents,
-	LatestMapRaw,
-	LatestMapRawEvents,
+	Latest,
+	LatestEvents,
+	LatestMap,
+	LatestMapEvents,
 	AttendeesEvents,
 	Attendee,
 	AttendeeId,
@@ -28,8 +28,8 @@ import { Listenable } from "fluid-framework";
  * @template TState - The type of state being managed (e.g., selection, drag, resize)
  */
 export interface PresenceManager<TState> {
-	/** The current state wrapped in Fluid's LatestRaw for real-time sync */
-	state: LatestRaw<TState>;
+	/** The current state wrapped in Fluid's Latest for real-time sync */
+	state: Latest<TState>;
 
 	/** Interface for managing client connections and attendees
 	 * Provides methods to get attendees, their details, and the current user.
@@ -42,7 +42,7 @@ export interface PresenceManager<TState> {
 	};
 
 	/** Event emitter for state change notifications */
-	events: Listenable<LatestRawEvents<TState>>;
+	events: Listenable<LatestEvents<TState>>;
 }
 
 /**
@@ -53,7 +53,7 @@ export interface PresenceManager<TState> {
  */
 export interface PresenceMapManager<TState> {
 	/** The current map state wrapped in Fluid's LatestMapRaw for real-time sync */
-	state: LatestMapRaw<TState>;
+	state: LatestMap<TState>;
 
 	/** Interface for managing client connections and attendees */
 	attendees: {
@@ -64,5 +64,5 @@ export interface PresenceMapManager<TState> {
 	};
 
 	/** Event emitter for map state change notifications */
-	events: Listenable<LatestMapRawEvents<TState, string>>;
+	events: Listenable<LatestMapEvents<TState, string>>;
 }

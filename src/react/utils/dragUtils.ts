@@ -37,15 +37,31 @@ export function getActiveDragForItem(
 	};
 	const isRecord = (v: unknown): v is Record<string, unknown> =>
 		typeof v === "object" && v !== null;
+	const getPresenceValue = (candidate: unknown): Record<string, unknown> | undefined => {
+		if (!isRecord(candidate)) {
+			return undefined;
+		}
+		const rawValue = candidate["value"];
+		try {
+			if (typeof rawValue === "function") {
+				const fn = rawValue as (...args: unknown[]) => unknown;
+				const result = fn.call(candidate);
+				return isRecord(result) ? result : undefined;
+			}
+			return isRecord(rawValue) ? (rawValue as Record<string, unknown>) : undefined;
+		} catch {
+			return undefined;
+		}
+	};
 	if (isIterable(remotesIter)) {
-		for (const cv of remotesIter) {
+		for (const remote of remotesIter) {
 			let connected = true;
 			if (
-				isRecord(cv) &&
-				"attendee" in cv &&
-				isRecord((cv as Record<string, unknown>)["attendee"])
+				isRecord(remote) &&
+				"attendee" in remote &&
+				isRecord((remote as Record<string, unknown>)["attendee"])
 			) {
-				const att = (cv as Record<string, unknown>)["attendee"] as Record<string, unknown>;
+				const att = (remote as Record<string, unknown>)["attendee"] as Record<string, unknown>;
 				let status: unknown = "Connected";
 				if (typeof att["getConnectionStatus"] === "function") {
 					status = (att["getConnectionStatus"] as (this: unknown) => unknown).call(att);
@@ -53,9 +69,7 @@ export function getActiveDragForItem(
 				connected = status === "Connected";
 			}
 			if (!connected) continue;
-			const val = isRecord(cv)
-				? (cv["value"] as Record<string, unknown> | undefined)
-				: undefined;
+			const val = getPresenceValue(remote);
 			if (!val) continue;
 			const baseId = typeof val["id"] === "string" ? (val["id"] as string) : undefined;
 			const x = typeof val["x"] === "number" ? (val["x"] as number) : undefined;

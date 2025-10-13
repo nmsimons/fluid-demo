@@ -22,11 +22,30 @@
 import {
 	StateFactory,
 	StatesWorkspace,
-	LatestRaw,
-	LatestRawEvents,
+	Latest,
+	LatestEvents,
+	StateSchemaValidator,
 } from "@fluidframework/presence/beta";
 import { Listenable } from "fluid-framework";
 import { ResizeManager, ResizePackage } from "./Interfaces/ResizeManager.js";
+import { z } from "zod";
+
+const ResizeStateSchema: z.ZodType<ResizePackage | null> = z.union([
+	z.null(),
+	z
+		.object({
+			id: z.string(),
+			x: z.number().finite(),
+			y: z.number().finite(),
+			size: z.number().finite(),
+		})
+		.strict(),
+]);
+
+const validateResizeState: StateSchemaValidator<ResizePackage | null> = (value) => {
+	const result = ResizeStateSchema.safeParse(value);
+	return result.success ? result.data : undefined;
+};
 
 /**
  * Creates a new ResizeManager instance with the given workspace configuration.
@@ -50,7 +69,7 @@ export function createResizeManager(props: {
 	 */
 	class ResizeManagerImpl implements ResizeManager<ResizePackage | null> {
 		/** Fluid Framework state object for real-time synchronization */
-		state: LatestRaw<ResizePackage | null>;
+		state: Latest<ResizePackage | null>;
 
 		/**
 		 * Initializes the resize manager with Fluid Framework state management.
@@ -61,7 +80,10 @@ export function createResizeManager(props: {
 		 */
 		constructor(name: string, workspace: StatesWorkspace<{}>) {
 			// Register this resize manager's state with the Fluid workspace
-			workspace.add(name, StateFactory.latest<ResizePackage | null>({ local: null }));
+			workspace.add(
+				name,
+				StateFactory.latest<ResizePackage | null>({ local: null, validator: validateResizeState })
+			);
 			this.state = workspace.states[name];
 		}
 
@@ -77,7 +99,7 @@ export function createResizeManager(props: {
 		 * Event emitter for resize state changes.
 		 * Components can subscribe to these events to update their UI when resize operations occur.
 		 */
-		public get events(): Listenable<LatestRawEvents<ResizePackage | null>> {
+		public get events(): Listenable<LatestEvents<ResizePackage | null>> {
 			return this.state.events;
 		}
 
