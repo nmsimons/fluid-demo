@@ -20,6 +20,7 @@ import {
 } from "../../../../utils/itemsHelpers.js";
 import { isGroupGridEnabled } from "../../../layout/groupGrid.js";
 import { useTree } from "../../../hooks/useTree.js";
+import { createSchemaUser } from "../../../../utils/userUtils.js";
 
 export function GroupButton(props: { selectedItems: Item[] }): JSX.Element {
 	const { selectedItems } = props;
@@ -58,7 +59,11 @@ export function GroupButton(props: { selectedItems: Item[] }): JSX.Element {
 					// Keep the selection on all items (now including items added to group)
 					presence.itemSelection.setSelection(selectedIds);
 				} else {
-					const grouped = groupItems(selectedItems);
+					const currentUser = presence.users.getMyself().value;
+					const grouped = groupItems(
+						selectedItems,
+						createSchemaUser({ id: currentUser.id, name: currentUser.name })
+					);
 					if (grouped) {
 						// Keep the selection on the child items (now inside the group)
 						presence.itemSelection.setSelection(selectedIds);

@@ -1,9 +1,10 @@
 import React, { JSX } from "react";
-import { DateTime, Vote, FluidRow, FluidColumn } from "../../../schema/appSchema.js";
+import { DateTime, Votes, FluidRow, FluidColumn } from "../../../schema/appSchema.js";
 import { Tree, TreeStatus } from "fluid-framework";
 import { ThumbLikeFilled, ThumbLikeRegular } from "@fluentui/react-icons";
 import { ToolbarButton } from "@fluentui/react-toolbar";
 import { objectIdNumber, useTree } from "../../hooks/useTree.js";
+import { createSchemaUser } from "../../../utils/userUtils.js";
 
 export function ColumnInput(props: { column: FluidColumn }): JSX.Element {
 	const { column } = props;
@@ -167,22 +168,23 @@ export function CellInputDate(props: {
 
 // A control that allows users to vote by clicking a button in a cell
 export function CellInputVote(props: {
-	value: Vote | undefined;
+	value: Votes | undefined;
 	row: FluidRow;
 	column: FluidColumn;
-	userId: string;
+	user: { id: string; name: string };
 }): JSX.Element {
-	const { value, row, column, userId } = props;
+	const { value, row, column, user } = props;
 
 	useTree(row, true);
 	useTree(column);
 
 	// Get the value of the cell
-	const vote = value ?? new Vote({ votes: [] });
+	const vote = value ?? new Votes([]);
+	const schemaUser = React.useMemo(() => createSchemaUser(user), [user.id, user.name]);
 
 	// handle a click event in the cell
 	const handleClick = () => {
-		vote.toggleVote(userId);
+		vote.toggleVote(schemaUser);
 		// Check if the vote object is in the table and that there are votes in it
 		if (Tree.status(vote) !== TreeStatus.InDocument && vote.numberOfVotes > 0) {
 			// If not, add it to the table
@@ -193,7 +195,7 @@ export function CellInputVote(props: {
 	return (
 		<div className="flex items-center justify-center w-full h-full">
 			<ToolbarButton
-				icon={vote.hasVoted(userId) ? <ThumbLikeFilled /> : <ThumbLikeRegular />}
+				icon={vote.hasVoted(schemaUser) ? <ThumbLikeFilled /> : <ThumbLikeRegular />}
 				onClick={handleClick}
 				appearance="transparent"
 			>

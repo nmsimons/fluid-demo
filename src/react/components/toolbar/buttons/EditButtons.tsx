@@ -16,7 +16,8 @@ import { TooltipButton } from "../../forms/Button.js";
 import { useTree } from "../../../hooks/useTree.js";
 import { PresenceContext } from "../../../contexts/PresenceContext.js";
 import { CommentPaneContext } from "../../app/App.js";
-import { Vote, Item } from "../../../../schema/appSchema.js";
+import { Votes, Item } from "../../../../schema/appSchema.js";
+import { createSchemaUser } from "../../../../utils/userUtils.js";
 
 // Basic actions
 export function DeleteButton(props: { delete: () => void; count?: number }): JSX.Element {
@@ -45,19 +46,20 @@ export function DuplicateButton(props: { duplicate: () => void; count?: number }
 	);
 }
 
-export function VoteButton(props: { vote: Vote }): JSX.Element {
+export function VoteButton(props: { vote: Votes }): JSX.Element {
 	const { vote } = props;
 	const presence = useContext(PresenceContext);
-	const userId = presence.users.getMyself().value.id;
+	const currentUserInfo = presence.users.getMyself().value;
+	const schemaUser = createSchemaUser({ id: currentUserInfo.id, name: currentUserInfo.name });
 	useTree(vote);
-	const has = vote.hasVoted(userId);
+	const has = vote.hasVoted(schemaUser);
 	const cnt = vote.numberOfVotes;
 	return (
 		<TooltipButton
 			icon={has ? <ThumbLikeFilled /> : <ThumbLikeRegular />}
 			onClick={(e) => {
 				e.stopPropagation();
-				vote.toggleVote(userId);
+				vote.toggleVote(schemaUser);
 			}}
 			tooltip={has ? `Remove your vote (${cnt})` : `Vote (${cnt})`}
 			keyboardShortcut="V"

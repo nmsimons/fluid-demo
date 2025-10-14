@@ -35,6 +35,8 @@ import {
 } from "../../../../constants/text.js";
 import { Tree } from "@fluidframework/tree";
 import { ColorPicker } from "./ShapeButtons.js";
+import { PresenceContext } from "../../../contexts/PresenceContext.js";
+import { createSchemaUser } from "../../../../utils/userUtils.js";
 
 const TEXT_COLOR_SWATCH_ITEMS = TEXT_COLOR_SWATCHES.map((value) => ({
 	value,
@@ -72,22 +74,28 @@ export function NewTextButton(props: {
 	} = props;
 
 	useTree(items);
+	const presence = React.useContext(PresenceContext);
 
 	return (
 		<TooltipButton
 			onClick={(e) => {
 				e.stopPropagation();
-				items.createTextItem(canvasSize, {
-					color: textColor,
-					fontSize,
-					bold,
-					italic,
-					underline,
-					strikethrough,
-					cardStyle,
-					textAlign,
-					width: TEXT_DEFAULT_WIDTH,
-				});
+				const currentUser = presence.users.getMyself().value;
+				items.createTextItem(
+					createSchemaUser({ id: currentUser.id, name: currentUser.name }),
+					canvasSize,
+					{
+						color: textColor,
+						fontSize,
+						bold,
+						italic,
+						underline,
+						strikethrough,
+						cardStyle,
+						textAlign,
+						width: TEXT_DEFAULT_WIDTH,
+					}
+				);
 				const estimatedHeight = fontSize * 2.8 + 32;
 				centerLastItem(items, pan, zoom, canvasSize, TEXT_DEFAULT_WIDTH, estimatedHeight);
 			}}

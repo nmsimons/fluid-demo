@@ -3,6 +3,8 @@
  * Licensed under the MIT License.
  */
 
+import { User as SchemaUser } from "../schema/appSchema.js";
+
 /**
  * Gets initials from a user's name.
  *
@@ -44,4 +46,11 @@ export function getUserColor(userId: string): string {
 	let hash = 0;
 	for (let i = 0; i < userId.length; i++) hash = userId.charCodeAt(i) + ((hash << 5) - hash);
 	return colors[Math.abs(hash) % colors.length];
+}
+
+/**
+ * Creates a schema User node from presence user info.
+ */
+export function createSchemaUser(user: { id: string; name: string }): SchemaUser {
+	return new SchemaUser({ id: user.id, name: user.name });
 }

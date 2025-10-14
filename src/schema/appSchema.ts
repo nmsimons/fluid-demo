@@ -41,6 +41,11 @@ const sf = new SchemaFactoryAlpha("fc1db2e8-0a00-11ee-be56-0242ac120002");
 
 const NOTE_ROTATION_SPREAD_DEGREES = 8;
 
+export class User extends sf.object("User", {
+	id: sf.string,
+	name: sf.string,
+}) {}
+
 export class Shape extends sf.object("Shape", {
 	size: sf.required(sf.number, {
 		metadata: { description: "The width and height of the shape" },
@@ -90,42 +95,43 @@ export class DateTime extends sf.object(hintValues.date, {
 /**
  * A SharedTree object that allows users to vote
  */
-export class Vote extends sf.object(hintValues.vote, {
-	votes: sf.array(sf.string), // Map of votes
-}) {
+export class Votes extends sf.array(hintValues.vote, User) {
 	/**
-	 * Add a vote to the map of votes
-	 * The key is the user id and the value is irrelevant
-	 * @param vote The vote to add
+	 * Add a vote for the given user if they have not already voted.
+	 * Updates the stored user name when the same user votes again.
+	 * @param user - The user casting the vote
 	 */
-	addVote(vote: string): void {
-		if (this.votes.includes(vote)) {
+	addVote(user: User): void {
+		const existingIndex = this.findIndex((entry) => entry.id === user.id);
+		if (existingIndex !== -1) {
+			this[existingIndex].name = user.name;
 			return;
 		}
-		this.votes.insertAtEnd(vote);
+		this.insertAtEnd(user);
 	}
 
 	/**
-	 * Remove a vote from the map of votes
-	 * @param vote The vote to remove
+	 * Remove an existing vote by user id.
+	 * @param user - The user whose vote should be removed
 	 */
-	removeVote(vote: string): void {
-		if (!this.votes.includes(vote)) {
+	removeVote(user: User): void {
+		const index = this.findIndex((entry) => entry.id === user.id);
+		if (index === -1) {
 			return;
 		}
-		const index = this.votes.indexOf(vote);
-		this.votes.removeAt(index);
+		this.removeAt(index);
 	}
 
 	/**
-	 * Toggle a vote in the map of votes
+	 * Toggle a vote for the given user.
 	 */
-	toggleVote(vote: string): void {
-		if (this.votes.includes(vote)) {
-			this.removeVote(vote);
-		} else {
-			this.addVote(vote);
+	toggleVote(user: User): void {
+		const hasVote = this.hasVoted(user);
+		if (hasVote) {
+			this.removeVote(user);
+			return;
 		}
+		this.addVote(user);
 	}
 
 	/**
@@ -133,32 +139,23 @@ export class Vote extends sf.object(hintValues.vote, {
 	 * @returns The number of votes
 	 */
 	get numberOfVotes(): number {
-		return this.votes.length;
+		return this.length;
 	}
 
 	/**
 	 * Return whether the user has voted
-	 * @param userId The user id
+	 * @param user - The user to check
 	 * @return Whether the user has voted
 	 */
-	hasVoted(userId: string): boolean {
-		return this.votes.includes(userId);
+	hasVoted(user: User): boolean {
+		return this.some((entry) => entry.id === user.id);
 	}
 }
 export class Comment extends sf.object("Comment", {
 	id: sf.string,
 	text: sf.string,
-	userId: sf.required(sf.string, {
-		metadata: {
-			description: `A unique user id for the author of the node, or "AI Agent" if created by an agent`,
-		},
-	}),
-	username: sf.required(sf.string, {
-		metadata: {
-			description: `A user-friendly name for the author of the node (e.g. "Alex Pardes"), or "AI Agent" if created by an agent`,
-		},
-	}),
-	votes: Vote,
+	user: User,
+	votes: Votes,
 	createdAt: DateTime,
 }) {
 	delete(): void {
@@ -170,13 +167,12 @@ export class Comment extends sf.object("Comment", {
 }
 
 export class Comments extends sf.array("Comments", [Comment]) {
-	addComment(text: string, userId: string, username: string): void {
+	addComment(text: string, user: User): void {
 		const comment = new Comment({
 			id: crypto.randomUUID(),
 			text,
-			userId,
-			username,
-			votes: new Vote({ votes: [] }),
+			user,
+			votes: [],
 			createdAt: new DateTime({ ms: Date.now() }),
 		});
 		this.insertAtEnd(comment);
@@ -189,11 +185,6 @@ export class Note extends sf.object(
 	// These fields are exposed as members of instances of the Note class.
 	{
 		text: sf.string,
-		author: sf.required(sf.string, {
-			metadata: {
-				description: `A unique user id for author of the node, or "AI Agent" if created by an agent`,
-			},
-		}),
 	}
 ) {}
 
@@ -243,7 +234,7 @@ export class TextBlock extends sf.object("TextBlock", {
 }) {}
 
 export type typeDefinition = TreeNodeFromImplicitAllowedTypes<typeof schemaTypes>;
-const schemaTypes = [sf.string, sf.number, sf.boolean, DateTime, Vote] as const;
+const schemaTypes = [sf.string, sf.number, sf.boolean, DateTime, Votes] as const;
 
 // Create column schema with properties for hint and name
 export const FluidColumnSchema = TableSchema.column({
@@ -432,6 +423,10 @@ export class Group extends sf.objectRecursive("Group", {
 
 export class Item extends sf.objectRecursive("Item", {
 	id: sf.string,
+	createdBy: User,
+	createdAt: DateTime,
+	updatedBy: sf.array(User),
+	updatedAt: DateTime,
 	x: sf.required(sf.number, {
 		metadata: {
 			description:
@@ -450,7 +445,7 @@ export class Item extends sf.objectRecursive("Item", {
 		},
 	}),
 	comments: Comments,
-	votes: Vote,
+	votes: Votes,
 	connections: sf.array(sf.string),
 	content: [Shape, Note, TextBlock, FluidTable, Group],
 }) {
@@ -509,7 +504,8 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 		shapeType: "circle" | "square" | "triangle" | "star",
 		canvasSize: { width: number; height: number },
 		shapeColors: string[],
-		filled = true
+		filled = true,
+		user: User
 	): Item {
 		// Spawn within a moderate sub-range so new shapes aren't extreme
 		const maxSize = Math.min(SHAPE_SPAWN_MAX_SIZE, SHAPE_MAX_SIZE);
@@ -524,10 +520,14 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 
 		const item = new Item({
 			id: crypto.randomUUID(),
+			createdBy: user,
+			createdAt: new DateTime({ ms: Date.now() }),
+			updatedBy: [],
+			updatedAt: new DateTime({ ms: Date.now() }),
 			x: this.getRandomNumber(0, canvasSize.width - maxSize - minSize),
 			y: this.getRandomNumber(0, canvasSize.height - maxSize - minSize),
 			comments: [],
-			votes: new Vote({ votes: [] }),
+			votes: [],
 			connections: [],
 			content: shape,
 			rotation:
@@ -543,19 +543,22 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 	/**
 	 * Create a new note item and add it to the items collection
 	 */
-	createNoteItem(canvasSize: { width: number; height: number }, authorId: string): Item {
+	createNoteItem(canvasSize: { width: number; height: number }, user: User): Item {
 		const note = new Note({
 			text: "",
-			author: authorId,
 		});
 
 		const noteRotationOffset = this.getRandomNumber(0, NOTE_ROTATION_SPREAD_DEGREES);
 		const item = new Item({
 			id: crypto.randomUUID(),
+			createdBy: user,
+			createdAt: new DateTime({ ms: Date.now() }),
+			updatedBy: [],
+			updatedAt: new DateTime({ ms: Date.now() }),
 			x: this.getRandomNumber(0, canvasSize.width - 200),
 			y: this.getRandomNumber(0, canvasSize.height - 200),
 			comments: [],
-			votes: new Vote({ votes: [] }),
+			votes: [],
 			connections: [],
 			content: note,
 			rotation:
@@ -571,15 +574,19 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 	/**
 	 * Create a new table item and add it to the items collection
 	 */
-	createTableItem(canvasSize: { width: number; height: number }): Item {
+	createTableItem(canvasSize: { width: number; height: number }, user: User): Item {
 		const table = this.createDefaultTable();
 
 		const item = new Item({
 			id: crypto.randomUUID(),
+			createdBy: user,
+			createdAt: new DateTime({ ms: Date.now() }),
+			updatedBy: [],
+			updatedAt: new DateTime({ ms: Date.now() }),
 			x: this.getRandomNumber(0, canvasSize.width - 200),
 			y: this.getRandomNumber(0, canvasSize.height - 200),
 			comments: [],
-			votes: new Vote({ votes: [] }),
+			votes: [],
 			connections: [],
 			content: table,
 			rotation: 0,
@@ -630,7 +637,7 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 	/**
 	 * Duplicate an existing item
 	 */
-	duplicateItem(item: Item, canvasSize: { width: number; height: number }): Item {
+	duplicateItem(item: Item, user: User, canvasSize: { width: number; height: number }): Item {
 		// Calculate new position with offset
 		const offsetX = 20;
 		const offsetY = 20;
@@ -660,7 +667,6 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 		} else if (Tree.is(item.content, Note)) {
 			duplicatedContent = new Note({
 				text: item.content.text,
-				author: item.content.author,
 			});
 		} else if (Tree.is(item.content, TextBlock)) {
 			duplicatedContent = new TextBlock({
@@ -721,10 +727,14 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 
 		const duplicatedItem = new Item({
 			id: crypto.randomUUID(),
+			createdBy: user,
+			createdAt: new DateTime({ ms: Date.now() }),
+			updatedBy: [],
+			updatedAt: new DateTime({ ms: Date.now() }),
 			x: newX,
 			y: newY,
 			comments: [],
-			votes: new Vote({ votes: [] }),
+			votes: [],
 			connections: [],
 			content: duplicatedContent,
 			rotation: item.rotation,
@@ -742,6 +752,7 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 	}
 
 	createTextItem(
+		user: User,
 		canvasSize: { width: number; height: number },
 		props?: {
 			text?: string;
@@ -772,10 +783,14 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 
 		const item = new Item({
 			id: crypto.randomUUID(),
+			createdBy: user,
+			createdAt: new DateTime({ ms: Date.now() }),
+			updatedBy: [],
+			updatedAt: new DateTime({ ms: Date.now() }),
 			x: this.getRandomNumber(0, canvasSize.width - width),
 			y: this.getRandomNumber(0, canvasSize.height - 200),
 			comments: [],
-			votes: new Vote({ votes: [] }),
+			votes: [],
 			connections: [],
 			content: textBlock,
 			rotation: 0,

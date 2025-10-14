@@ -17,7 +17,7 @@ import {
 import React, { JSX, useState, useContext, useMemo } from "react";
 import {
 	DateTime,
-	Vote,
+	Votes,
 	FluidTable,
 	FluidRow,
 	FluidColumn,
@@ -599,16 +599,18 @@ export function TableCellViewContent(props: { cell: Cell<FluidRow, cellValue> })
 					cellId={cell.id}
 				/>
 			);
-		case "Vote":
+		case "Vote": {
+			const currentUser = users.getMyself().value;
 			return (
 				<CellInputVote
 					key={objectIdNumber(fluidRow)}
-					value={value as Vote}
+					value={value as Votes}
 					row={fluidRow}
 					column={fluidColumn}
-					userId={users.getMyself().value.id} // Replace with actual user ID from context or props
+					user={{ id: currentUser.id, name: currentUser.name }}
 				/>
 			);
+		}
 		default:
 			// If the value is undefined, make it a string
 			return (
@@ -790,15 +792,15 @@ const voteSortingFn: SortingFn<FluidRow> = (
 	rowB: Row<FluidRow>,
 	columnId: string
 ) => {
-	const valueA = rowA.getValue(columnId) as { value: Vote | undefined };
-	const valueB = rowB.getValue(columnId) as { value: Vote | undefined };
+	const valueA = rowA.getValue(columnId) as { value: Votes | undefined };
+	const valueB = rowB.getValue(columnId) as { value: Votes | undefined };
 	if (valueA === undefined && valueB === undefined) {
 		return 0;
 	} else if (valueA === undefined) {
 		return 1;
 	} else if (valueB === undefined) {
 		return -1;
-	} else if (Tree.is(valueA, Vote) && Tree.is(valueB, Vote)) {
+	} else if (Tree.is(valueA, Votes) && Tree.is(valueB, Votes)) {
 		const dateA = valueA.numberOfVotes;
 		const dateB = valueB.numberOfVotes;
 		if (dateA < dateB) {

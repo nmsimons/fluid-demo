@@ -3,7 +3,7 @@
  * Licensed under the MIT License.
  */
 
-import React, { JSX } from "react";
+import React, { JSX, useContext } from "react";
 import { TreeView, Tree } from "fluid-framework";
 import { App, Shape, TextBlock } from "../../../schema/appSchema.js";
 import { undoRedo } from "../../../undo/undo.js";
@@ -44,6 +44,8 @@ import {
 import { MessageBar, MessageBarBody, MessageBarTitle } from "@fluentui/react-message-bar";
 import { Toolbar, ToolbarDivider, ToolbarGroup } from "@fluentui/react-toolbar";
 import type { SelectionManager } from "../../../presence/Interfaces/SelectionManager.js";
+import { PresenceContext } from "../../contexts/PresenceContext.js";
+import { createSchemaUser } from "../../../utils/userUtils.js";
 
 export interface AppToolbarProps {
 	view: TreeView<typeof App>;
@@ -143,6 +145,7 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 		textAlign,
 		onTextAlignChange,
 	} = props;
+	const presence = useContext(PresenceContext);
 
 	const selectedItems = findItemsByIds(view.root.items, selectedItemIds);
 	const selectedShapes = selectedItems.filter(isShape).map((item) => item.content as Shape);
@@ -307,8 +310,14 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 												Tree.runTransaction(view.root.items, () => {
 													selectedItems.forEach((item) => {
 														if (item) {
+															const currentUser =
+																presence.users.getMyself().value;
 															view.root.items.duplicateItem(
 																item,
+																createSchemaUser({
+																	id: currentUser.id,
+																	name: currentUser.name,
+																}),
 																canvasSize
 															);
 														}

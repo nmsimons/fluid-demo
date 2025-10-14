@@ -1,6 +1,6 @@
 ﻿import { Tree } from "fluid-framework";
 
-import { Group, Item, Items, Vote } from "../schema/appSchema.js";
+import { DateTime, Group, Item, Items, User } from "../schema/appSchema.js";
 
 function findItemRecursive(items: Items, predicate: (item: Item) => boolean): Item | undefined {
 	for (const node of items) {
@@ -198,7 +198,7 @@ export function canGroupItems(items: Item[]): boolean {
 	return true;
 }
 
-export function groupItems(items: Item[]): Item | undefined {
+export function groupItems(items: Item[], user: User): Item | undefined {
 	if (!canGroupItems(items)) {
 		return undefined;
 	}
@@ -216,17 +216,22 @@ export function groupItems(items: Item[]): Item | undefined {
 	const targetIndex = Math.min(...indices);
 	let createdGroup: Item | undefined;
 	Tree.runTransaction(parent, () => {
+		const now = Date.now();
 		const groupContent = new Group({
 			name: "Group",
 			items: new Items([]),
 		});
 		const groupItem = new Item({
 			id: crypto.randomUUID(),
+			createdBy: user,
+			createdAt: new DateTime({ ms: now }),
+			updatedBy: [],
+			updatedAt: new DateTime({ ms: now }),
 			x: minX,
 			y: minY,
 			rotation: 0,
 			comments: [],
-			votes: new Vote({ votes: [] }),
+			votes: [],
 			connections: [],
 			content: groupContent,
 		});

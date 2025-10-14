@@ -22,6 +22,7 @@ import {
 	TEXT_DEFAULT_FONT_SIZE,
 	TEXT_DEFAULT_WIDTH,
 } from "../../constants/text.js";
+import { createSchemaUser } from "../../utils/userUtils.js";
 
 /**
  * Props interface for the useAppKeyboardShortcuts hook.
@@ -106,6 +107,8 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 		textStrikethrough,
 	} = props;
 
+	const getSchemaUser = () => createSchemaUser(users.getMyself().value);
+
 	return [
 		// Undo/Redo shortcuts - Essential for collaborative editing
 		{
@@ -133,7 +136,14 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 			action: () => {
 				// Use the specific color or fallback to random selection (same logic as buttons)
 				const colors = shapeColor ? [shapeColor] : SHAPE_COLORS;
-				view.root.items.createShapeItem("circle", canvasSize, colors, shapeFilled ?? true);
+				const schemaUser = getSchemaUser();
+				view.root.items.createShapeItem(
+					"circle",
+					canvasSize,
+					colors,
+					shapeFilled ?? true,
+					schemaUser
+				);
 				centerLastItem(view.root.items, pan, zoom, props.canvasSize, 120, 120);
 			},
 		},
@@ -142,7 +152,14 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 			action: () => {
 				// Use the specific color or fallback to random selection (same logic as buttons)
 				const colors = shapeColor ? [shapeColor] : SHAPE_COLORS;
-				view.root.items.createShapeItem("square", canvasSize, colors, shapeFilled ?? true);
+				const schemaUser = getSchemaUser();
+				view.root.items.createShapeItem(
+					"square",
+					canvasSize,
+					colors,
+					shapeFilled ?? true,
+					schemaUser
+				);
 				centerLastItem(view.root.items, pan, zoom, props.canvasSize, 120, 120);
 			},
 		},
@@ -151,11 +168,13 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 			action: () => {
 				// Use the specific color or fallback to random selection (same logic as buttons)
 				const colors = shapeColor ? [shapeColor] : SHAPE_COLORS;
+				const schemaUser = getSchemaUser();
 				view.root.items.createShapeItem(
 					"triangle",
 					canvasSize,
 					colors,
-					shapeFilled ?? true
+					shapeFilled ?? true,
+					schemaUser
 				);
 				centerLastItem(view.root.items, pan, zoom, props.canvasSize, 120, 120);
 			},
@@ -165,14 +184,22 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 			action: () => {
 				// Use the specific color or fallback to random selection (same logic as buttons)
 				const colors = shapeColor ? [shapeColor] : SHAPE_COLORS;
-				view.root.items.createShapeItem("star", canvasSize, colors, shapeFilled ?? true);
+				const schemaUser = getSchemaUser();
+				view.root.items.createShapeItem(
+					"star",
+					canvasSize,
+					colors,
+					shapeFilled ?? true,
+					schemaUser
+				);
 				centerLastItem(view.root.items, pan, zoom, props.canvasSize, 120, 120);
 			},
 		},
 		{
 			key: "n",
 			action: () => {
-				view.root.items.createNoteItem(canvasSize, users.getMyself().value.id);
+				const schemaUser = getSchemaUser();
+				view.root.items.createNoteItem(canvasSize, schemaUser);
 				centerLastItem(view.root.items, pan, zoom, props.canvasSize, 180, 120);
 			},
 		},
@@ -186,7 +213,8 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 				const italic = textItalic ?? false;
 				const underline = textUnderline ?? false;
 				const strikethrough = textStrikethrough ?? false;
-				view.root.items.createTextItem(canvasSize, {
+				const schemaUser = getSchemaUser();
+				view.root.items.createTextItem(schemaUser, canvasSize, {
 					color,
 					fontSize,
 					bold,
@@ -209,7 +237,8 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 		{
 			key: "b",
 			action: () => {
-				view.root.items.createTableItem(canvasSize);
+				const schemaUser = getSchemaUser();
+				view.root.items.createTableItem(canvasSize, schemaUser);
 				centerLastItem(view.root.items, pan, zoom, props.canvasSize, 240, 160);
 			},
 		},
@@ -240,7 +269,8 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 
 					// Then duplicate each item
 					itemsToDuplicate.forEach((selectedItem) => {
-						view.root.items.duplicateItem(selectedItem, canvasSize);
+						const schemaUser = getSchemaUser();
+						view.root.items.duplicateItem(selectedItem, schemaUser, canvasSize);
 					});
 				});
 			},
@@ -357,13 +387,13 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 		{
 			key: "v",
 			action: () => {
-				const userId = users.getMyself().value.id;
 				// Vote on all selected items in a transaction
 				Tree.runTransaction(view.root, () => {
+					const userInfo = users.getMyself().value;
 					selectedItemIds.forEach((itemId) => {
 						const selectedItem = findItemById(view.root.items, itemId);
 						if (selectedItem) {
-							selectedItem.votes.toggleVote(userId);
+							selectedItem.votes.toggleVote(createSchemaUser(userInfo));
 						}
 					});
 				});

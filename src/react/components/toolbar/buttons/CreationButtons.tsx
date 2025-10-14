@@ -25,6 +25,7 @@ import { useTree } from "../../../hooks/useTree.js";
 import { PresenceContext } from "../../../contexts/PresenceContext.js";
 import { Items } from "../../../../schema/appSchema.js";
 import { centerLastItem } from "../../../../utils/centerItem.js";
+import { createSchemaUser } from "../../../../utils/userUtils.js";
 
 export const SHAPE_COLORS = [
 	"#000000",
@@ -50,13 +51,21 @@ export function NewCircleButton(props: {
 }): JSX.Element {
 	const { items, canvasSize, pan, zoom, shapeColor, shapeFilled } = props;
 	useTree(items);
+	const presence = useContext(PresenceContext);
 	return (
 		<TooltipButton
 			onClick={(e) => {
 				e.stopPropagation();
 				// Use the specific color or fallback to random selection
 				const colors = shapeColor ? [shapeColor] : SHAPE_COLORS;
-				items.createShapeItem("circle", canvasSize, colors, shapeFilled ?? true);
+				const currentUser = presence.users.getMyself().value;
+				items.createShapeItem(
+					"circle",
+					canvasSize,
+					colors,
+					shapeFilled ?? true,
+					createSchemaUser({ id: currentUser.id, name: currentUser.name })
+				);
 				centerLastItem(items, pan, zoom, canvasSize);
 			}}
 			icon={<CircleRegular />}
@@ -76,13 +85,21 @@ export function NewSquareButton(props: {
 }): JSX.Element {
 	const { items, canvasSize, pan, zoom, shapeColor, shapeFilled } = props;
 	useTree(items);
+	const presence = useContext(PresenceContext);
 	return (
 		<TooltipButton
 			onClick={(e) => {
 				e.stopPropagation();
 				// Use the specific color or fallback to random selection
 				const colors = shapeColor ? [shapeColor] : SHAPE_COLORS;
-				items.createShapeItem("square", canvasSize, colors, shapeFilled ?? true);
+				const currentUser = presence.users.getMyself().value;
+				items.createShapeItem(
+					"square",
+					canvasSize,
+					colors,
+					shapeFilled ?? true,
+					createSchemaUser({ id: currentUser.id, name: currentUser.name })
+				);
 				centerLastItem(items, pan, zoom, canvasSize);
 			}}
 			icon={<SquareRegular />}
@@ -102,13 +119,21 @@ export function NewTriangleButton(props: {
 }): JSX.Element {
 	const { items, canvasSize, pan, zoom, shapeColor, shapeFilled } = props;
 	useTree(items);
+	const presence = useContext(PresenceContext);
 	return (
 		<TooltipButton
 			onClick={(e) => {
 				e.stopPropagation();
 				// Use the specific color or fallback to random selection
 				const colors = shapeColor ? [shapeColor] : SHAPE_COLORS;
-				items.createShapeItem("triangle", canvasSize, colors, shapeFilled ?? true);
+				const currentUser = presence.users.getMyself().value;
+				items.createShapeItem(
+					"triangle",
+					canvasSize,
+					colors,
+					shapeFilled ?? true,
+					createSchemaUser({ id: currentUser.id, name: currentUser.name })
+				);
 				centerLastItem(items, pan, zoom, canvasSize);
 			}}
 			icon={<TriangleRegular />}
@@ -128,13 +153,21 @@ export function NewStarButton(props: {
 }): JSX.Element {
 	const { items, canvasSize, pan, zoom, shapeColor, shapeFilled } = props;
 	useTree(items);
+	const presence = useContext(PresenceContext);
 	return (
 		<TooltipButton
 			onClick={(e) => {
 				e.stopPropagation();
 				// Use the specific color or fallback to random selection
 				const colors = shapeColor ? [shapeColor] : SHAPE_COLORS;
-				items.createShapeItem("star", canvasSize, colors, shapeFilled ?? true);
+				const currentUser = presence.users.getMyself().value;
+				items.createShapeItem(
+					"star",
+					canvasSize,
+					colors,
+					shapeFilled ?? true,
+					createSchemaUser({ id: currentUser.id, name: currentUser.name })
+				);
 				centerLastItem(items, pan, zoom, canvasSize);
 			}}
 			icon={<StarRegular />}
@@ -157,7 +190,11 @@ export function NewNoteButton(props: {
 		<TooltipButton
 			onClick={(e) => {
 				e.stopPropagation();
-				items.createNoteItem(canvasSize, presence.users.getMyself().value.id);
+				const currentUser = presence.users.getMyself().value;
+				items.createNoteItem(
+					canvasSize,
+					createSchemaUser({ id: currentUser.id, name: currentUser.name })
+				);
 				centerLastItem(items, pan, zoom, canvasSize, 180, 120);
 			}}
 			icon={<NoteRegular />}
@@ -175,11 +212,16 @@ export function NewTableButton(props: {
 }): JSX.Element {
 	const { items, canvasSize, pan, zoom } = props;
 	useTree(items);
+	const presence = useContext(PresenceContext);
 	return (
 		<TooltipButton
 			onClick={(e) => {
 				e.stopPropagation();
-				items.createTableItem(canvasSize);
+				const currentUser = presence.users.getMyself().value;
+				items.createTableItem(
+					canvasSize,
+					createSchemaUser({ id: currentUser.id, name: currentUser.name })
+				);
 				centerLastItem(items, pan, zoom, canvasSize, 240, 160);
 			}}
 			icon={<TableRegular />}
@@ -216,10 +258,18 @@ export function ShapeMenu(props: {
 	const { items, canvasSize, pan, zoom, shapeColor, shapeFilled, currentShape, onShapeChange } =
 		props;
 	useTree(items);
+	const presence = useContext(PresenceContext);
 
 	const createShape = (shapeType: ShapeType) => {
 		const colors = shapeColor ? [shapeColor] : SHAPE_COLORS;
-		items.createShapeItem(shapeType, canvasSize, colors, shapeFilled ?? true);
+		const currentUser = presence.users.getMyself().value;
+		items.createShapeItem(
+			shapeType,
+			canvasSize,
+			colors,
+			shapeFilled ?? true,
+			createSchemaUser({ id: currentUser.id, name: currentUser.name })
+		);
 		centerLastItem(items, pan, zoom, canvasSize);
 	};
 

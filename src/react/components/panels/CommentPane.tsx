@@ -17,6 +17,7 @@ import { useTree } from "../../hooks/useTree.js";
 import { getContentHandler } from "../../../utils/contentHandlers.js";
 import { PresenceContext } from "../../contexts/PresenceContext.js";
 import { VoteButton } from "../toolbar/buttons/EditButtons.js";
+import { createSchemaUser } from "../../../utils/userUtils.js";
 
 export interface CommentPaneRef {
 	focusInput: () => void;
@@ -55,11 +56,9 @@ export const CommentPane = forwardRef<
 
 	const handleAddComment = (comment: string) => {
 		if (comment.trim() === "") return;
-		item.comments.addComment(
-			comment,
-			presence.users.getMyself().value.id,
-			presence.users.getMyself().value.name
-		);
+		const currentUserInfo = presence.users.getMyself().value;
+		const schemaUser = createSchemaUser({ id: currentUserInfo.id, name: currentUserInfo.name });
+		item.comments.addComment(comment, schemaUser);
 	};
 
 	return (
@@ -93,11 +92,12 @@ export function CommentView(props: { comment: Comment }): JSX.Element {
 	const { comment } = props;
 	useTree(comment, true);
 	const presence = useContext(PresenceContext);
-	const isMyComment = comment.userId === presence.users.getMyself().value.id;
+	const myUserInfo = presence.users.getMyself().value;
+	const isMyComment = comment.user.id === myUserInfo.id;
 	return (
 		<div className={`z-100 ${isMyComment ? "ml-6" : "mr-6"} `}>
 			<div className={`flex items-center justify-between mb-2`}>
-				<div className="text-xs">{comment.username}</div>
+				<div className="text-xs">{comment.user.name}</div>
 				<div className="text-xs text-gray-500">
 					{comment.createdAt.value.toLocaleString("en-US", {
 						month: "short",
@@ -110,7 +110,7 @@ export function CommentView(props: { comment: Comment }): JSX.Element {
 			<SpeechBubble isUser={isMyComment}>
 				<div className="">{comment.text}</div>
 				<div className="flex items-center justify-between">
-					<div className="text-xs text-gray-500">{comment.votes.votes.length} votes</div>
+					<div className="text-xs text-gray-500">{comment.votes.numberOfVotes} votes</div>
 					<div className="flex items-center">
 						<VoteButton vote={comment.votes} />
 					</div>
