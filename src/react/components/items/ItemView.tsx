@@ -182,7 +182,7 @@ export function ContentElement({
 		);
 	}
 	if (handler.type === "note" && Tree.is(item.content, Note)) {
-		return <NoteView key={objectIdNumber(item.content)} note={item.content} />;
+		return <NoteView key={objectIdNumber(item.content)} note={item.content} item={item} />;
 	}
 	if (handler.type === "text" && Tree.is(item.content, TextBlock)) {
 		return (
