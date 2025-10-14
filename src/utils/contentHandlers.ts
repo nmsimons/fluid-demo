@@ -11,6 +11,7 @@
 
 import { Tree } from "fluid-framework";
 import { Item, Shape, Note, FluidTable, Group, TextBlock } from "../schema/appSchema.js";
+import { getShapeKind, getShapeSize } from "./shapeUtils.js";
 
 /**
  * Content type enumeration for type-safe handling
@@ -53,11 +54,11 @@ class ShapeHandler implements ContentHandler {
 	) {}
 
 	getSize(): number {
-		return this.sizeOverride ?? this.shape.size;
+		return this.sizeOverride ?? getShapeSize(this.shape);
 	}
 
 	getName(): string {
-		return this.shape.type;
+		return getShapeKind(this.shape);
 	}
 
 	canResize(): boolean {

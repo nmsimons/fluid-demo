@@ -95,6 +95,12 @@ import {
 	GroupHierarchyInfo,
 	getGroupActivePosition,
 } from "../../utils/presenceGeometry.js";
+import {
+	getScaledShapeDimensions,
+	getShapeDimensions as getShapeDimensionsFromShape,
+	getShapeSize,
+	setShapeSize,
+} from "../../../utils/shapeUtils.js";
 
 // ============================================================================
 // Helpers
@@ -574,12 +580,13 @@ export function ItemView(props: {
 			if (isShape(currentItem)) {
 				const size = r.size;
 				setContentProps({ sizeOverride: size });
-				intrinsic.current = { w: size, h: size };
+				const dims = getScaledShapeDimensions(currentItem.content, size);
+				intrinsic.current = { w: dims.width, h: dims.height };
 				layout.set(currentItem.id, {
 					left: r.x,
 					top: r.y,
-					right: r.x + size,
-					bottom: r.y + size,
+					right: r.x + dims.width,
+					bottom: r.y + dims.height,
 				});
 				scheduleLayoutInvalidation();
 			} else if (Tree.is(currentItem.content, TextBlock)) {
@@ -1302,10 +1309,16 @@ export function ItemView(props: {
 				h = 0;
 			const overrideSize = contentProps.sizeOverride ?? contentProps.textWidthOverride;
 			const handler = getContentHandler(item, overrideSize);
-			if (handler.type === "shape") {
-				const size = handler.getSize();
-				w = size;
-				h = size;
+			if (handler.type === "shape" && isShape(item)) {
+				if (contentProps.sizeOverride !== undefined) {
+					const dims = getScaledShapeDimensions(item.content, contentProps.sizeOverride);
+					w = dims.width;
+					h = dims.height;
+				} else {
+					const dims = getShapeDimensionsFromShape(item.content);
+					w = dims.width;
+					h = dims.height;
+				}
 			} else {
 				// For HTML-backed items (notes / tables) we rely on DOM measurement.
 				// offsetWidth/Height are in CSS pixels; if zoomed, divide by zoom to
@@ -1705,7 +1718,10 @@ export function CornerResizeHandles({
 	const presence = useContext(PresenceContext);
 	const [resizing, setResizing] = useState(false);
 	const scale = zoom ?? 1;
-	const initSize = useRef(shape.size);
+	const initSize = useRef(getShapeSize(shape));
+	const initDimensions = useRef<{ width: number; height: number }>(
+		getShapeDimensionsFromShape(shape)
+	);
 	const centerModel = useRef({ x: 0, y: 0 });
 	const centerScreen = useRef({ x: 0, y: 0 });
 	const initDist = useRef(0);
@@ -1728,12 +1744,17 @@ export function CornerResizeHandles({
 		}
 		// Get absolute position for resize
 		const { absX, absY } = getAbsolutePosition();
+		const currentDimensions = getShapeDimensionsFromShape(shape);
+		initDimensions.current = currentDimensions;
+		initSize.current = getShapeSize(shape);
 		// Seed resize presence so pan guard sees active manipulation instantly
-		presence.resize.setResizing({ id: item.id, x: absX, y: absY, size: shape.size });
+		presence.resize.setResizing({ id: item.id, x: absX, y: absY, size: initSize.current });
 		document.documentElement.dataset.manipulating = "1";
-		initSize.current = shape.size;
 		// Calculate center in absolute canvas space
-		centerModel.current = { x: absX + shape.size / 2, y: absY + shape.size / 2 };
+		centerModel.current = {
+			x: absX + currentDimensions.width / 2,
+			y: absY + currentDimensions.height / 2,
+		};
 		let el: HTMLElement | null = e.currentTarget.parentElement;
 		while (el && !el.getAttribute("data-item-id")) el = el.parentElement;
 		if (el) {
@@ -1755,8 +1776,11 @@ export function CornerResizeHandles({
 			// Increased max size from 300 to 1200 (4x) to match expanded shape size limits
 			const desired = initSize.current * ratio;
 			const newSize = clampShapeSize(desired);
-			const newX = centerModel.current.x - newSize / 2;
-			const newY = centerModel.current.y - newSize / 2;
+			const scaleFactor = initSize.current > 0 ? newSize / initSize.current : 1;
+			const scaledWidth = initDimensions.current.width * scaleFactor;
+			const scaledHeight = initDimensions.current.height * scaleFactor;
+			const newX = centerModel.current.x - scaledWidth / 2;
+			const newY = centerModel.current.y - scaledHeight / 2;
 			presence.resize.setResizing({ id: item.id, x: newX, y: newY, size: newSize });
 		};
 		const up = () => {
@@ -1772,7 +1796,7 @@ export function CornerResizeHandles({
 			if (r && r.id === item.id) {
 				// Use the passed group offsets to convert absolute coordinates back to relative
 				Tree.runTransaction(item, () => {
-					shape.size = r.size;
+					setShapeSize(shape, r.size);
 					item.x = r.x - groupOffsetX;
 					item.y = r.y - groupOffsetY;
 				});

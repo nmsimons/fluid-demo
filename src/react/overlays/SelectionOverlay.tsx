@@ -36,6 +36,7 @@ import { isGroupGridEnabled } from "../layout/groupGrid.js";
 import { resolveItemTransform } from "../utils/presenceGeometry.js";
 import { useOptionalTree, useTree } from "../hooks/useTree.js";
 import { getContentHandler } from "../../utils/contentHandlers.js";
+import { getScaledShapeDimensions, getShapeDimensions } from "../../utils/shapeUtils.js";
 
 export function SelectionOverlay(props: {
 	item: Item;
@@ -67,8 +68,9 @@ export function SelectionOverlay(props: {
 	const resizePresence = presence.resize.state?.local;
 	if (resizePresence && resizePresence.id === item.id) {
 		if (Tree.is(item.content, Shape)) {
-			w = resizePresence.size;
-			h = resizePresence.size;
+			const { width, height } = getScaledShapeDimensions(item.content, resizePresence.size);
+			w = width;
+			h = height;
 			left = resizePresence.x;
 			top = resizePresence.y;
 		} else if (Tree.is(item.content, TextBlock)) {
@@ -87,6 +89,11 @@ export function SelectionOverlay(props: {
 			h = rect.height / (zoom || 1);
 		}
 		if (w === 0 || h === 0) return null;
+	}
+	if (Tree.is(item.content, Shape) && (w === 0 || h === 0)) {
+		const { width, height } = getShapeDimensions(item.content);
+		w = width;
+		h = height;
 	}
 
 	// Check if we're on iOS for larger touch targets

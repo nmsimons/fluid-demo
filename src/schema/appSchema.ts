@@ -47,24 +47,57 @@ export class User extends sf.object("User", {
 	name: sf.string,
 }) {}
 
-export class Shape extends sf.object("Shape", {
-	size: sf.required(sf.number, {
-		metadata: { description: "The width and height of the shape" },
+export class Circle extends sf.object("Circle", {
+	radius: sf.required(sf.number, {
+		metadata: { description: "The radius of the circle" },
 	}),
+}) {}
+
+export class Square extends sf.object("Square", {
+	size: sf.required(sf.number, {
+		metadata: { description: "The size of the square" },
+	}),
+}) {}
+
+export class Triangle extends sf.object("Triangle", {
+	base: sf.required(sf.number, {
+		metadata: { description: "The base of the triangle" },
+	}),
+	height: sf.required(sf.number, {
+		metadata: { description: "The height of the triangle" },
+	}),
+}) {}
+
+export class Star extends sf.object("Star", {
+	size: sf.required(sf.number, {
+		metadata: { description: "The size of the star" },
+	}),
+}) {}
+
+export class Rectangle extends sf.object("Rectangle", {
+	width: sf.required(sf.number, {
+		metadata: { description: "The width of the rectangle" },
+	}),
+	height: sf.required(sf.number, {
+		metadata: { description: "The height of the rectangle" },
+	}),
+}) {}
+
+export class Shape extends sf.object("Shape", {
 	color: sf.required(sf.string, {
 		metadata: {
 			description: `The color of this shape, as a hexadecimal RGB string, e.g. "#00FF00" for bright green`,
 		},
 	}),
-	type: sf.required(sf.string, {
-		metadata: { description: `One of "circle", "square", "triangle", or "star"` },
+	type: sf.required([Circle, Square, Triangle, Star, Rectangle], {
+		metadata: { description: `One of "circle", "square", "triangle", "star", or "rectangle"` },
 	}),
 	filled: sf.optional(sf.boolean, {
 		metadata: {
 			description: "Whether the shape is rendered filled (true) or outline-only (false)",
 		},
 	}),
-}) {} // The size is a number that represents the size of the shape
+}) {}
 
 /**
  * A SharedTree object date-time
@@ -505,7 +538,7 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 	 * Create a new shape item and add it to the items collection
 	 */
 	createShapeItem(
-		shapeType: "circle" | "square" | "triangle" | "star",
+		shapeType: "circle" | "square" | "triangle" | "star" | "rectangle",
 		canvasSize: { width: number; height: number },
 		shapeColors: string[],
 		filled = true,
@@ -515,12 +548,54 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 		const maxSize = Math.min(SHAPE_SPAWN_MAX_SIZE, SHAPE_MAX_SIZE);
 		const minSize = Math.max(SHAPE_SPAWN_MIN_SIZE, SHAPE_MIN_SIZE);
 
+		const baseSize = this.getRandomNumber(minSize, maxSize);
+		let shapeTypeNode: Shape["type"]; // Narrowed per case
+		switch (shapeType) {
+			case "circle": {
+				const radius = Math.max(4, Math.round(baseSize / 2));
+				shapeTypeNode = new Circle({ radius });
+				break;
+			}
+			case "square": {
+				const edge = Math.max(minSize, baseSize);
+				shapeTypeNode = new Square({ size: edge });
+				break;
+			}
+			case "triangle": {
+				const base = Math.max(minSize, baseSize);
+				const height = Math.max(minSize, Math.round(baseSize * 0.866));
+				shapeTypeNode = new Triangle({ base, height });
+				break;
+			}
+			case "star": {
+				const starSize = Math.max(minSize, baseSize);
+				shapeTypeNode = new Star({ size: starSize });
+				break;
+			}
+			case "rectangle": {
+				const width = Math.max(minSize, this.getRandomNumber(minSize, maxSize));
+				const height = Math.max(minSize, this.getRandomNumber(minSize, maxSize));
+				shapeTypeNode = new Rectangle({ width, height });
+				break;
+			}
+			default: {
+				const edge = Math.max(minSize, baseSize);
+				shapeTypeNode = new Square({ size: edge });
+				break;
+			}
+		}
+
 		const shape = new Shape({
-			size: this.getRandomNumber(minSize, maxSize),
 			color: shapeColors[Math.floor(Math.random() * shapeColors.length)],
-			type: shapeType,
+			type: shapeTypeNode,
 			filled,
 		});
+
+		const { width: shapeWidth, height: shapeHeight } = this.getShapeDimensionsForType(
+			shape.type
+		);
+		const maxX = Math.max(0, Math.floor(canvasSize.width - shapeWidth));
+		const maxY = Math.max(0, Math.floor(canvasSize.height - shapeHeight));
 
 		const item = new Item({
 			id: crypto.randomUUID(),
@@ -528,8 +603,8 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 			createdAt: new DateTime({ ms: Date.now() }),
 			updatedBy: [],
 			updatedAt: new DateTime({ ms: Date.now() }),
-			x: this.getRandomNumber(0, canvasSize.width - maxSize - minSize),
-			y: this.getRandomNumber(0, canvasSize.height - maxSize - minSize),
+			x: this.getRandomNumber(0, maxX),
+			y: this.getRandomNumber(0, maxY),
 			comments: [],
 			votes: [],
 			connections: [],
@@ -667,11 +742,32 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 		let duplicatedContent;
 
 		if (Tree.is(item.content, Shape)) {
+			const originalShape = item.content;
+			let duplicatedType: Shape["type"];
+			if (Tree.is(originalShape.type, Circle)) {
+				duplicatedType = new Circle({ radius: originalShape.type.radius });
+			} else if (Tree.is(originalShape.type, Square)) {
+				duplicatedType = new Square({ size: originalShape.type.size });
+			} else if (Tree.is(originalShape.type, Triangle)) {
+				duplicatedType = new Triangle({
+					base: originalShape.type.base,
+					height: originalShape.type.height,
+				});
+			} else if (Tree.is(originalShape.type, Star)) {
+				duplicatedType = new Star({ size: originalShape.type.size });
+			} else if (Tree.is(originalShape.type, Rectangle)) {
+				duplicatedType = new Rectangle({
+					width: originalShape.type.width,
+					height: originalShape.type.height,
+				});
+			} else {
+				throw new Error("Unknown shape subtype, cannot duplicate");
+			}
+
 			duplicatedContent = new Shape({
-				size: item.content.size,
-				color: item.content.color,
-				type: item.content.type,
-				filled: item.content.filled ?? true,
+				color: originalShape.color,
+				type: duplicatedType,
+				filled: originalShape.filled,
 			});
 		} else if (Tree.is(item.content, Note)) {
 			duplicatedContent = new Note({
@@ -759,6 +855,26 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 	 */
 	private getRandomNumber(min: number, max: number): number {
 		return Math.floor(Math.random() * (max - min + 1)) + min;
+	}
+
+	private getShapeDimensionsForType(typeNode: Shape["type"]): { width: number; height: number } {
+		if (Tree.is(typeNode, Circle)) {
+			const diameter = typeNode.radius * 2;
+			return { width: diameter, height: diameter };
+		}
+		if (Tree.is(typeNode, Square)) {
+			return { width: typeNode.size, height: typeNode.size };
+		}
+		if (Tree.is(typeNode, Triangle)) {
+			return { width: typeNode.base, height: typeNode.height };
+		}
+		if (Tree.is(typeNode, Star)) {
+			return { width: typeNode.size, height: typeNode.size };
+		}
+		if (Tree.is(typeNode, Rectangle)) {
+			return { width: typeNode.width, height: typeNode.height };
+		}
+		return { width: SHAPE_MIN_SIZE, height: SHAPE_MIN_SIZE };
 	}
 
 	createTextItem(

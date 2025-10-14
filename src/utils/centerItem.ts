@@ -5,8 +5,9 @@
 
 import { Tree } from "@fluidframework/tree";
 import { Items } from "../schema/appSchema.js";
-import { getContentHandler } from "./contentHandlers.js";
+import { getContentHandler, isShape } from "./contentHandlers.js";
 import { getAllItems } from "./itemsHelpers.js";
+import { getShapeDimensions } from "./shapeUtils.js";
 
 /**
  * Centers the last item in the given items array within the viewport.
@@ -46,22 +47,15 @@ export function centerLastItem(
 	// Try to get actual size from content
 	try {
 		const handler = getContentHandler(lastItem);
-		if (handler.type === "shape") {
-			itemWidth = itemHeight = handler.getSize();
+		if (handler.type === "shape" && isShape(lastItem)) {
+			const { width, height } = getShapeDimensions(lastItem.content);
+			itemWidth = width;
+			itemHeight = height;
 		} else if (handler.type === "text") {
 			itemWidth = handler.getSize();
 		}
 	} catch {
-		// Fallback: try direct size access (for compatibility)
-		try {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const content: any = lastItem.content;
-			if (content && typeof content.size === "number") {
-				itemWidth = itemHeight = content.size;
-			}
-		} catch {
-			// Use estimated dimensions
-		}
+		// Use estimated dimensions when metadata is unavailable
 	}
 
 	// Calculate viewport dimensions and position
