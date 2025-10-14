@@ -2,12 +2,13 @@
 // Note object
 
 import React from "react";
-import { ThumbLikeFilled, ThumbLikeRegular } from "@fluentui/react-icons";
+import { ThumbLike16Filled, ThumbLike16Regular } from "@fluentui/react-icons";
 import { Tooltip } from "@fluentui/react-tooltip";
-import { Item, Note } from "../../../schema/appSchema.js";
+import { Item, Note, Votes } from "../../../schema/appSchema.js";
 import { PresenceContext } from "../../contexts/PresenceContext.js";
 import { useTree } from "../../hooks/useTree.js";
 import { createSchemaUser } from "../../../utils/userUtils.js";
+import { Button } from "@fluentui/react-button";
 
 const NOTE_DIMENSION_PX = 200;
 const NOTE_BACKGROUND_COLOR = "#feff68";
@@ -105,8 +106,6 @@ export function NoteText(props: { note: Note; minHeight: number }): JSX.Element 
 
 function NoteFooter(props: { item: Item; onHeightChange: (height: number) => void }): JSX.Element {
 	const { item, onHeightChange } = props;
-	const presence = React.useContext(PresenceContext);
-	const currentUserInfo = presence.users.getMyself().value;
 
 	useTree(item);
 	useTree(item.createdBy);
@@ -130,9 +129,6 @@ function NoteFooter(props: { item: Item; onHeightChange: (height: number) => voi
 		return () => observer.disconnect();
 	}, [onHeightChange]);
 
-	const voteCount = item.votes.numberOfVotes;
-	const hasVoted = item.votes.some((entry) => entry.id === currentUserInfo.id);
-
 	const creationDate = item.createdAt?.value;
 	const creationTooltip = creationDate
 		? creationDate.toLocaleString("en-US", {
@@ -145,63 +141,47 @@ function NoteFooter(props: { item: Item; onHeightChange: (height: number) => voi
 		: "Creation time unavailable";
 	const tooltipContent = creationDate ? `Created ${creationTooltip}` : creationTooltip;
 
-	const handleVoteClick = React.useCallback(
-		(event: React.MouseEvent<HTMLButtonElement>) => {
-			event.stopPropagation();
-			const schemaUser = createSchemaUser({
-				id: currentUserInfo.id,
-				name: currentUserInfo.name,
-			});
-			item.votes.toggleVote(schemaUser);
-		},
-		[item.votes, currentUserInfo.id, currentUserInfo.name]
-	);
-
-	const handleVotePointerDown = React.useCallback(
-		(event: React.PointerEvent<HTMLButtonElement>) => {
-			event.stopPropagation();
-		},
-		[]
-	);
-
 	const creatorName = item.createdBy?.name?.trim() ? item.createdBy.name : "Unknown";
-	const voteCountDisplay = voteCount > 999 ? "999+" : String(voteCount);
 	return (
 		<div
 			ref={footerRef}
-			className="flex items-center justify-between gap-3 px-3 py-2 text-xs text-slate-800"
+			className="flex items-center justify-between px-3 pb-3 text-xs text-slate-800"
 		>
 			<Tooltip content={tooltipContent} relationship="description">
-				<span className="max-w-[120px] truncate font-semibold" title={creatorName}>
-					{creatorName}
-				</span>
+				<span className="max-w-[120px] truncate font-semibold">{creatorName}</span>
 			</Tooltip>
-			<div className="flex items-center">
-				<button
-					type="button"
-					className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 font-semibold transition-colors ${
-						hasVoted
-							? "border-blue-500 bg-blue-600 text-white"
-							: "border-yellow-500/60 bg-white/80 text-slate-700 hover:bg-white"
-					}`}
-					onClick={handleVoteClick}
-					onPointerDown={handleVotePointerDown}
-					aria-pressed={hasVoted}
-					aria-label={hasVoted ? "Remove your vote" : "Add your vote"}
-				>
-					{hasVoted ? (
-						<ThumbLikeFilled className="h-4 w-4" />
-					) : (
-						<ThumbLikeRegular className="h-4 w-4" />
-					)}
-					<span
-						className="text-xs font-semibold tabular-nums"
-						title={`${voteCount} vote${voteCount === 1 ? "" : "s"}`}
-					>
-						{voteCountDisplay}
-					</span>
-				</button>
-			</div>
+			<VoteButton vote={item.votes} />
 		</div>
+	);
+}
+
+function VoteButton(props: { vote: Votes }): JSX.Element {
+	const { vote } = props;
+	const presence = React.useContext(PresenceContext);
+	const currentUserInfo = presence.users.getMyself().value;
+	const userId = currentUserInfo.id;
+	const hasVoted = vote.some((entry) => entry.id === userId);
+	return (
+		<Button
+			appearance="outline"
+			size="small"
+			shape="circular"
+			onClick={(e) => {
+				e.stopPropagation();
+				const schemaUser = createSchemaUser({
+					id: currentUserInfo.id,
+					name: currentUserInfo.name,
+				});
+				vote.toggleVote(schemaUser);
+			}}
+			onPointerDown={(e) => {
+				e.stopPropagation();
+			}}
+			aria-pressed={hasVoted}
+			aria-label={hasVoted ? "Remove your vote" : "Add your vote"}
+			icon={hasVoted ? <ThumbLike16Filled /> : <ThumbLike16Regular />}
+		>
+			{vote.numberOfVotes > 999 ? "999+" : String(vote.numberOfVotes)}
+		</Button>
 	);
 }
