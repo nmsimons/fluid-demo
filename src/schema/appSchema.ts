@@ -39,6 +39,8 @@ export const hintValues = {
 // As this schema uses a recursive type, the beta SchemaFactoryRecursive is used instead of just SchemaFactory.
 const sf = new SchemaFactoryAlpha("fc1db2e8-0a00-11ee-be56-0242ac120002");
 
+const NOTE_ROTATION_SPREAD_DEGREES = 8;
+
 export class Shape extends sf.object("Shape", {
 	size: sf.required(sf.number, {
 		metadata: { description: "The width and height of the shape" },
@@ -547,6 +549,7 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 			author: authorId,
 		});
 
+		const noteRotationOffset = this.getRandomNumber(0, NOTE_ROTATION_SPREAD_DEGREES);
 		const item = new Item({
 			id: crypto.randomUUID(),
 			x: this.getRandomNumber(0, canvasSize.width - 200),
@@ -557,8 +560,8 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 			content: note,
 			rotation:
 				this.getRandomNumber(0, 1) === 0
-					? this.getRandomNumber(0, 15)
-					: this.getRandomNumber(345, 360),
+					? noteRotationOffset
+					: (360 - noteRotationOffset) % 360,
 		});
 
 		this.insertAtEnd(item);

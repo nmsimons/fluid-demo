@@ -6,6 +6,8 @@ import { Note } from "../../../schema/appSchema.js";
 import { Textarea } from "@fluentui/react-textarea";
 import { useTree } from "../../hooks/useTree.js";
 
+const NOTE_DIMENSION_PX = 200;
+
 export function NoteView(props: { note: Note }): JSX.Element {
 	const { note } = props;
 
@@ -13,10 +15,11 @@ export function NoteView(props: { note: Note }): JSX.Element {
 
 	return (
 		<div
-			className="flex items-center justify-center shadow-md"
+			className="shadow-md"
 			style={{
-				width: "200px",
-				height: "200px",
+				width: `${NOTE_DIMENSION_PX}px`,
+				minHeight: `${NOTE_DIMENSION_PX}px`,
+				height: "auto",
 			}}
 		>
 			<NoteText {...props} />
@@ -29,22 +32,49 @@ export function NoteText(props: { note: Note }): JSX.Element {
 
 	useTree(note);
 
-	const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-		note.text = e.target.value;
+	const textareaRef = React.useRef<HTMLTextAreaElement>(null);
+
+	const updateTextareaHeight = React.useCallback((element?: HTMLTextAreaElement | null) => {
+		const target = element ?? textareaRef.current;
+		if (!target) {
+			return;
+		}
+		target.style.maxHeight = "none";
+		target.style.height = "auto";
+		target.style.height = `${Math.max(target.scrollHeight, NOTE_DIMENSION_PX)}px`;
+	}, []);
+
+	React.useLayoutEffect(() => {
+		updateTextareaHeight();
+	}, [note.text, updateTextareaHeight]);
+
+	const handleChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+		note.text = event.target.value;
+		updateTextareaHeight(event.target);
 	};
 
 	return (
 		<Textarea
 			id="msg"
 			name="msg"
-			className="w-full h-full note-item-textarea"
+			className="w-full note-item-textarea"
 			rows={4}
 			value={note.text}
 			onChange={handleChange}
 			placeholder="Type your note here..."
 			appearance="filled-lighter"
 			size="large"
-			style={{ resize: "none", backgroundColor: "#feff68" }}
+			style={{ width: "100%" }}
+			textarea={{
+				ref: textareaRef,
+				style: {
+					resize: "none",
+					overflow: "hidden",
+					backgroundColor: "#feff68",
+					maxHeight: "none",
+					minHeight: `${NOTE_DIMENSION_PX}px`,
+				},
+			}}
 			autoComplete="off"
 			data-item-editable
 		/>
