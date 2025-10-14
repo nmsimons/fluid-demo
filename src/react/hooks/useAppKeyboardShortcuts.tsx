@@ -23,6 +23,7 @@ import {
 	TEXT_DEFAULT_WIDTH,
 } from "../../constants/text.js";
 import { createSchemaUser } from "../../utils/userUtils.js";
+import { DEFAULT_NOTE_COLOR, type NoteColor } from "../../constants/note.js";
 
 /**
  * Props interface for the useAppKeyboardShortcuts hook.
@@ -35,6 +36,7 @@ export interface UseAppKeyboardShortcutsProps {
 	zoom?: number;
 	shapeColor?: string;
 	shapeFilled?: boolean;
+	noteColor?: NoteColor;
 	textColor?: string;
 	textFontSize?: number;
 	textBold?: boolean;
@@ -99,6 +101,7 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 		zoom,
 		shapeColor,
 		shapeFilled,
+		noteColor,
 		textColor,
 		textFontSize,
 		textBold,
@@ -199,8 +202,9 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 			key: "n",
 			action: () => {
 				const schemaUser = getSchemaUser();
-				view.root.items.createNoteItem(canvasSize, schemaUser);
-				centerLastItem(view.root.items, pan, zoom, props.canvasSize, 180, 120);
+				const colorToUse = noteColor ?? DEFAULT_NOTE_COLOR;
+				view.root.items.createNoteItem(canvasSize, schemaUser, colorToUse);
+				centerLastItem(view.root.items, pan, zoom, props.canvasSize, 200, 200);
 			},
 		},
 		{

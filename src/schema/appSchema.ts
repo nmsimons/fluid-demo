@@ -10,6 +10,7 @@ import {
 	SHAPE_SPAWN_MIN_SIZE,
 	SHAPE_SPAWN_MAX_SIZE,
 } from "../constants/shape.js";
+import { DEFAULT_NOTE_COLOR, type NoteColor } from "../constants/note.js";
 import {
 	TEXT_DEFAULT_FONT_SIZE,
 	TEXT_DEFAULT_COLOR,
@@ -185,6 +186,9 @@ export class Note extends sf.object(
 	// These fields are exposed as members of instances of the Note class.
 	{
 		text: sf.string,
+		color: sf.required(sf.string, {
+			metadata: { description: "Hex color used to render the sticky note background" },
+		}),
 	}
 ) {}
 
@@ -543,9 +547,14 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 	/**
 	 * Create a new note item and add it to the items collection
 	 */
-	createNoteItem(canvasSize: { width: number; height: number }, user: User): Item {
+	createNoteItem(
+		canvasSize: { width: number; height: number },
+		user: User,
+		color: NoteColor = DEFAULT_NOTE_COLOR
+	): Item {
 		const note = new Note({
 			text: "",
+			color,
 		});
 
 		const noteRotationOffset = this.getRandomNumber(0, NOTE_ROTATION_SPREAD_DEGREES);
@@ -667,6 +676,7 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 		} else if (Tree.is(item.content, Note)) {
 			duplicatedContent = new Note({
 				text: item.content.text,
+				color: item.content.color ?? DEFAULT_NOTE_COLOR,
 			});
 		} else if (Tree.is(item.content, TextBlock)) {
 			duplicatedContent = new TextBlock({

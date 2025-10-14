@@ -50,8 +50,9 @@ import { PaneContext } from "../../contexts/PaneContext.js";
 import { AppToolbar } from "../toolbar/AppToolbar.js";
 import { InkPresenceManager } from "../../../presence/Interfaces/InkManager.js";
 import { TEXT_DEFAULT_COLOR, TEXT_DEFAULT_FONT_SIZE } from "../../../constants/text.js";
+import { DEFAULT_NOTE_COLOR, type NoteColor } from "../../../constants/note.js";
 import { findItemById } from "../../../utils/itemsHelpers.js";
-import { isShape, isText } from "../../../utils/contentHandlers.js";
+import { isShape, isText, isNote } from "../../../utils/contentHandlers.js";
 // Removed circle ink creation; ink tool toggles freehand drawing.
 
 // Context for comment pane actions
@@ -98,6 +99,7 @@ export function ReactApp(props: {
 	const [inkWidth, setInkWidth] = useState<number>(4);
 	const [shapeColor, setShapeColor] = useState<string>("#FF0000"); // Default to red
 	const [shapeFilled, setShapeFilled] = useState<boolean>(true);
+	const [noteColor, setNoteColor] = useState<NoteColor>(DEFAULT_NOTE_COLOR);
 	const [currentShapeType, setCurrentShapeType] = useState<
 		"circle" | "square" | "triangle" | "star"
 	>("circle");
@@ -240,6 +242,40 @@ export function ReactApp(props: {
 		shapeColor,
 		shapeFilled,
 	]);
+	const noteSelectionAnalysis = (() => {
+		let firstColor: NoteColor | null = null;
+		const signatureParts: string[] = [];
+
+		for (const id of selectedItemIds) {
+			const item = findItemById(view.root.items, id);
+			if (!item) {
+				signatureParts.push(id);
+				continue;
+			}
+			if (isNote(item)) {
+				const color = (item.content.color ?? DEFAULT_NOTE_COLOR) as NoteColor;
+				signatureParts.push(`${id}:${color}`);
+				if (firstColor === null) {
+					firstColor = color;
+				}
+			} else {
+				signatureParts.push(id);
+			}
+		}
+
+		return {
+			color: firstColor,
+			signature: signatureParts.join("|") || "",
+		};
+	})();
+	const { color: firstSelectedNoteColor, signature: selectedNotesSignature } =
+		noteSelectionAnalysis;
+
+	useEffect(() => {
+		if (firstSelectedNoteColor !== null && firstSelectedNoteColor !== noteColor) {
+			setNoteColor(firstSelectedNoteColor);
+		}
+	}, [selectedNotesSignature, firstSelectedNoteColor, noteColor]);
 
 	useEffect(() => {
 		if (firstSelectedTextColor !== null && firstSelectedTextColor !== textColor) {
@@ -383,6 +419,7 @@ export function ReactApp(props: {
 		zoom,
 		shapeColor,
 		shapeFilled,
+		noteColor,
 		textColor,
 		textFontSize,
 		textBold,
@@ -457,6 +494,8 @@ export function ReactApp(props: {
 						onShapeColorChange={setShapeColor}
 						shapeFilled={shapeFilled}
 						onShapeFilledChange={setShapeFilled}
+						noteColor={noteColor}
+						onNoteColorChange={setNoteColor}
 						currentShapeType={currentShapeType}
 						onShapeTypeChange={setCurrentShapeType}
 						textColor={textColor}

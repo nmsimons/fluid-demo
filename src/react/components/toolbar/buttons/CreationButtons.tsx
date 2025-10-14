@@ -26,6 +26,7 @@ import { PresenceContext } from "../../../contexts/PresenceContext.js";
 import { Items } from "../../../../schema/appSchema.js";
 import { centerLastItem } from "../../../../utils/centerItem.js";
 import { createSchemaUser } from "../../../../utils/userUtils.js";
+import { DEFAULT_NOTE_COLOR, type NoteColor } from "../../../../constants/note.js";
 
 export const SHAPE_COLORS = [
 	"#000000",
@@ -109,40 +110,6 @@ export function NewSquareButton(props: {
 	);
 }
 
-export function NewTriangleButton(props: {
-	items: Items;
-	canvasSize: { width: number; height: number };
-	pan?: { x: number; y: number };
-	zoom?: number;
-	shapeColor?: string;
-	shapeFilled?: boolean;
-}): JSX.Element {
-	const { items, canvasSize, pan, zoom, shapeColor, shapeFilled } = props;
-	useTree(items);
-	const presence = useContext(PresenceContext);
-	return (
-		<TooltipButton
-			onClick={(e) => {
-				e.stopPropagation();
-				// Use the specific color or fallback to random selection
-				const colors = shapeColor ? [shapeColor] : SHAPE_COLORS;
-				const currentUser = presence.users.getMyself().value;
-				items.createShapeItem(
-					"triangle",
-					canvasSize,
-					colors,
-					shapeFilled ?? true,
-					createSchemaUser({ id: currentUser.id, name: currentUser.name })
-				);
-				centerLastItem(items, pan, zoom, canvasSize);
-			}}
-			icon={<TriangleRegular />}
-			tooltip="Add a triangle shape"
-			keyboardShortcut="T"
-		/>
-	);
-}
-
 export function NewStarButton(props: {
 	items: Items;
 	canvasSize: { width: number; height: number };
@@ -182,8 +149,9 @@ export function NewNoteButton(props: {
 	canvasSize: { width: number; height: number };
 	pan?: { x: number; y: number };
 	zoom?: number;
+	noteColor?: NoteColor;
 }): JSX.Element {
-	const { items, canvasSize, pan, zoom } = props;
+	const { items, canvasSize, pan, zoom, noteColor } = props;
 	useTree(items);
 	const presence = useContext(PresenceContext);
 	return (
@@ -191,11 +159,13 @@ export function NewNoteButton(props: {
 			onClick={(e) => {
 				e.stopPropagation();
 				const currentUser = presence.users.getMyself().value;
+				const colorToUse: NoteColor = noteColor ?? DEFAULT_NOTE_COLOR;
 				items.createNoteItem(
 					canvasSize,
-					createSchemaUser({ id: currentUser.id, name: currentUser.name })
+					createSchemaUser({ id: currentUser.id, name: currentUser.name }),
+					colorToUse
 				);
-				centerLastItem(items, pan, zoom, canvasSize, 180, 120);
+				centerLastItem(items, pan, zoom, canvasSize, 200, 200);
 			}}
 			icon={<NoteRegular />}
 			tooltip="Add a sticky note"

@@ -9,14 +9,15 @@ import { PresenceContext } from "../../contexts/PresenceContext.js";
 import { useTree } from "../../hooks/useTree.js";
 import { createSchemaUser } from "../../../utils/userUtils.js";
 import { Button } from "@fluentui/react-button";
+import { DEFAULT_NOTE_COLOR } from "../../../constants/note.js";
 
 const NOTE_DIMENSION_PX = 200;
-const NOTE_BACKGROUND_COLOR = "#feff68";
 const NOTE_DEFAULT_FOOTER_HEIGHT = 48;
 
 export function NoteView(props: { note: Note; item: Item }): JSX.Element {
 	const { note, item } = props;
 	const [footerHeight, setFooterHeight] = React.useState<number | null>(null);
+	const backgroundColor = note.color ?? DEFAULT_NOTE_COLOR;
 
 	const handleFooterHeight = React.useCallback((height: number) => {
 		setFooterHeight((prev) => {
@@ -40,17 +41,21 @@ export function NoteView(props: { note: Note; item: Item }): JSX.Element {
 				width: `${NOTE_DIMENSION_PX}px`,
 				minHeight: `${NOTE_DIMENSION_PX}px`,
 				height: "auto",
-				backgroundColor: NOTE_BACKGROUND_COLOR,
+				backgroundColor,
 			}}
 		>
-			<NoteText note={note} minHeight={minTextHeight} />
+			<NoteText note={note} minHeight={minTextHeight} backgroundColor={backgroundColor} />
 			<NoteFooter item={item} onHeightChange={handleFooterHeight} />
 		</div>
 	);
 }
 
-export function NoteText(props: { note: Note; minHeight: number }): JSX.Element {
-	const { note, minHeight } = props;
+export function NoteText(props: {
+	note: Note;
+	minHeight: number;
+	backgroundColor: string;
+}): JSX.Element {
+	const { note, minHeight, backgroundColor } = props;
 
 	useTree(note);
 
@@ -91,7 +96,7 @@ export function NoteText(props: { note: Note; minHeight: number }): JSX.Element 
 			style={{
 				resize: "none",
 				overflow: "hidden",
-				backgroundColor: NOTE_BACKGROUND_COLOR,
+				backgroundColor,
 				outline: "none",
 				boxShadow: "none",
 				border: "none",

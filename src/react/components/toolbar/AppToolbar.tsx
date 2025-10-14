@@ -7,7 +7,7 @@ import React, { JSX, useContext } from "react";
 import { TreeView, Tree } from "fluid-framework";
 import { App, Shape, TextBlock } from "../../../schema/appSchema.js";
 import { undoRedo } from "../../../undo/undo.js";
-import { isShape, isTable, isText, isGroup } from "../../../utils/contentHandlers.js";
+import { isShape, isTable, isText, isGroup, isNote } from "../../../utils/contentHandlers.js";
 import { findItemsByIds } from "../../../utils/itemsHelpers.js";
 import { TypedSelection } from "../../../presence/selection.js";
 import { getParentGroupInfo } from "../../utils/presenceGeometry.js";
@@ -46,6 +46,8 @@ import { Toolbar, ToolbarDivider, ToolbarGroup } from "@fluentui/react-toolbar";
 import type { SelectionManager } from "../../../presence/Interfaces/SelectionManager.js";
 import { PresenceContext } from "../../contexts/PresenceContext.js";
 import { createSchemaUser } from "../../../utils/userUtils.js";
+import { NoteColorPicker } from "./buttons/NoteButtons.js";
+import type { NoteColor } from "../../../constants/note.js";
 
 export interface AppToolbarProps {
 	view: TreeView<typeof App>;
@@ -76,6 +78,8 @@ export interface AppToolbarProps {
 	onShapeColorChange: (c: string) => void;
 	shapeFilled: boolean;
 	onShapeFilledChange: (filled: boolean) => void;
+	noteColor: NoteColor;
+	onNoteColorChange: (color: NoteColor) => void;
 	currentShapeType: "circle" | "square" | "triangle" | "star";
 	onShapeTypeChange: (type: "circle" | "square" | "triangle" | "star") => void;
 	textColor: string;
@@ -126,6 +130,8 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 		onShapeColorChange,
 		shapeFilled,
 		onShapeFilledChange,
+		noteColor,
+		onNoteColorChange,
 		currentShapeType,
 		onShapeTypeChange,
 		textColor,
@@ -148,8 +154,11 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 	const presence = useContext(PresenceContext);
 
 	const selectedItems = findItemsByIds(view.root.items, selectedItemIds);
-	const selectedShapes = selectedItems.filter(isShape).map((item) => item.content as Shape);
+	const selectedShapeItems = selectedItems.filter(isShape);
+	const selectedShapes = selectedShapeItems.map((item) => item.content as Shape);
 	const selectedTexts = selectedItems.filter(isText).map((item) => item.content as TextBlock);
+	const selectedNoteItems = selectedItems.filter(isNote);
+	const selectedNotes = selectedNoteItems.map((item) => item.content);
 
 	// Determine if all selected items belong to a single group
 	const commonParentGroup = (() => {
@@ -258,14 +267,23 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 				/>
 			</ToolbarGroup>
 			<ToolbarDivider />
-			{/* Note and Table creation buttons */}
+			{/* Note creation controls */}
 			<ToolbarGroup>
 				<NewNoteButton
 					items={view.root.items}
 					canvasSize={canvasSize}
 					pan={pan}
 					zoom={zoom}
+					noteColor={noteColor}
 				/>
+				<NoteColorPicker
+					color={noteColor}
+					onColorChange={onNoteColorChange}
+					selectedNotes={selectedNotes}
+				/>
+			</ToolbarGroup>
+			<ToolbarDivider />
+			<ToolbarGroup>
 				<NewTableButton
 					items={view.root.items}
 					canvasSize={canvasSize}
