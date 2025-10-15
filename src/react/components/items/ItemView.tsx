@@ -98,7 +98,6 @@ import {
 import {
 	getScaledShapeDimensions,
 	getShapeDimensions as getShapeDimensionsFromShape,
-	getShapeKind,
 	getShapeSize,
 	isRectangleShape,
 	setShapeDimensions,
