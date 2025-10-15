@@ -63,6 +63,10 @@ export type ResizePackage = {
 	x: number;
 	/** Current Y coordinate of the element's position */
 	y: number;
-	/** Current size/scale of the element */
+	/** Current size/scale of the element (legacy uniform scaling) */
 	size: number;
+	/** Optional width for elements that support non-uniform resizing */
+	width?: number;
+	/** Optional height for elements that support non-uniform resizing */
+	height?: number;
 };

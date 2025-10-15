@@ -98,7 +98,10 @@ import {
 import {
 	getScaledShapeDimensions,
 	getShapeDimensions as getShapeDimensionsFromShape,
+	getShapeKind,
 	getShapeSize,
+	isRectangleShape,
+	setShapeDimensions,
 	setShapeSize,
 } from "../../../utils/shapeUtils.js";
 
@@ -172,7 +175,12 @@ export function ContentElement({
 	contentProps,
 }: {
 	item: Item;
-	contentProps?: { sizeOverride?: number; textWidthOverride?: number };
+	contentProps?: {
+		sizeOverride?: number;
+		shapeWidthOverride?: number;
+		shapeHeightOverride?: number;
+		textWidthOverride?: number;
+	};
 }) {
 	useTree(item.content);
 	const overrideSize = contentProps?.sizeOverride ?? contentProps?.textWidthOverride;
@@ -184,6 +192,8 @@ export function ContentElement({
 				key={objectIdNumber(item.content)}
 				shape={item.content}
 				sizeOverride={contentProps?.sizeOverride}
+				widthOverride={contentProps?.shapeWidthOverride}
+				heightOverride={contentProps?.shapeHeightOverride}
 			/>
 		);
 	}
@@ -363,6 +373,8 @@ export function ItemView(props: {
 	const [selected, setSelected] = useState(presence.itemSelection.testSelection({ id: item.id }));
 	const [contentProps, setContentProps] = useState<{
 		sizeOverride?: number;
+		shapeWidthOverride?: number;
+		shapeHeightOverride?: number;
 		textWidthOverride?: number;
 	}>({});
 	const dragRef = useRef<DragState | null>(null);
@@ -480,6 +492,15 @@ export function ItemView(props: {
 			const handler = getContentHandler(currentItem, overrideSize);
 			const ensureDimensions = () => {
 				if (handler.type === "shape") {
+					if (
+						contentProps.shapeWidthOverride !== undefined &&
+						contentProps.shapeHeightOverride !== undefined
+					) {
+						return {
+							width: contentProps.shapeWidthOverride,
+							height: contentProps.shapeHeightOverride,
+						};
+					}
 					const size = handler.getSize();
 					return {
 						width: intrinsic.current.w || size,
@@ -570,7 +591,14 @@ export function ItemView(props: {
 				}
 			}
 		},
-		[parentGroup, contentProps.sizeOverride, contentProps.textWidthOverride, layout]
+		[
+			parentGroup,
+			contentProps.sizeOverride,
+			contentProps.textWidthOverride,
+			contentProps.shapeWidthOverride,
+			contentProps.shapeHeightOverride,
+			layout,
+		]
 	);
 	const applyResize = (r: ResizePackage | null) => {
 		const currentItem = itemRef.current;
@@ -578,17 +606,37 @@ export function ItemView(props: {
 		if (r && r.id === currentItem.id && handler.canResize()) {
 			setView((v) => ({ ...v, left: r.x, top: r.y }));
 			if (isShape(currentItem)) {
-				const size = r.size;
-				setContentProps({ sizeOverride: size });
-				const dims = getScaledShapeDimensions(currentItem.content, size);
-				intrinsic.current = { w: dims.width, h: dims.height };
-				layout.set(currentItem.id, {
-					left: r.x,
-					top: r.y,
-					right: r.x + dims.width,
-					bottom: r.y + dims.height,
-				});
-				scheduleLayoutInvalidation();
+				const shape = currentItem.content;
+				if (isRectangleShape(shape) && r.width !== undefined && r.height !== undefined) {
+					const width = clampShapeSize(r.width);
+					const height = clampShapeSize(r.height);
+					const maxSize = Math.max(width, height);
+					setContentProps({
+						sizeOverride: maxSize,
+						shapeWidthOverride: width,
+						shapeHeightOverride: height,
+					});
+					intrinsic.current = { w: width, h: height };
+					layout.set(currentItem.id, {
+						left: r.x,
+						top: r.y,
+						right: r.x + width,
+						bottom: r.y + height,
+					});
+					scheduleLayoutInvalidation();
+				} else {
+					const size = r.size;
+					setContentProps({ sizeOverride: size });
+					const dims = getScaledShapeDimensions(shape, size);
+					intrinsic.current = { w: dims.width, h: dims.height };
+					layout.set(currentItem.id, {
+						left: r.x,
+						top: r.y,
+						right: r.x + dims.width,
+						bottom: r.y + dims.height,
+					});
+					scheduleLayoutInvalidation();
+				}
 			} else if (Tree.is(currentItem.content, TextBlock)) {
 				const width = clampTextWidth(r.size);
 				setContentProps({ textWidthOverride: width });
@@ -1310,7 +1358,13 @@ export function ItemView(props: {
 			const overrideSize = contentProps.sizeOverride ?? contentProps.textWidthOverride;
 			const handler = getContentHandler(item, overrideSize);
 			if (handler.type === "shape" && isShape(item)) {
-				if (contentProps.sizeOverride !== undefined) {
+				if (
+					contentProps.shapeWidthOverride !== undefined &&
+					contentProps.shapeHeightOverride !== undefined
+				) {
+					w = contentProps.shapeWidthOverride;
+					h = contentProps.shapeHeightOverride;
+				} else if (contentProps.sizeOverride !== undefined) {
 					const dims = getScaledShapeDimensions(item.content, contentProps.sizeOverride);
 					w = dims.width;
 					h = dims.height;
@@ -1359,6 +1413,8 @@ export function ItemView(props: {
 		view.left,
 		view.top,
 		contentProps.sizeOverride,
+		contentProps.shapeWidthOverride,
+		contentProps.shapeHeightOverride,
 		contentProps.textWidthOverride,
 		props.zoom,
 		layout,
@@ -1748,7 +1804,14 @@ export function CornerResizeHandles({
 		initDimensions.current = currentDimensions;
 		initSize.current = getShapeSize(shape);
 		// Seed resize presence so pan guard sees active manipulation instantly
-		presence.resize.setResizing({ id: item.id, x: absX, y: absY, size: initSize.current });
+		presence.resize.setResizing({
+			id: item.id,
+			x: absX,
+			y: absY,
+			size: initSize.current,
+			width: isRectangleShape(shape) ? currentDimensions.width : undefined,
+			height: isRectangleShape(shape) ? currentDimensions.height : undefined,
+		});
 		document.documentElement.dataset.manipulating = "1";
 		// Calculate center in absolute canvas space
 		centerModel.current = {
@@ -1769,6 +1832,34 @@ export function CornerResizeHandles({
 		const move = (ev: PointerEvent) => {
 			const dx = ev.clientX - centerScreen.current.x;
 			const dy = ev.clientY - centerScreen.current.y;
+			if (isRectangleShape(shape)) {
+				const rotationDeg = item.rotation ?? 0;
+				const theta = (rotationDeg * Math.PI) / 180;
+				const cos = Math.cos(theta);
+				const sin = Math.sin(theta);
+				const initLocalX = initVec.current.dx * cos + initVec.current.dy * sin;
+				const initLocalY = -initVec.current.dx * sin + initVec.current.dy * cos;
+				const currentLocalX = dx * cos + dy * sin;
+				const currentLocalY = -dx * sin + dy * cos;
+				const safeInitWidth = Math.abs(initLocalX) > 0 ? Math.abs(initLocalX) : 1;
+				const safeInitHeight = Math.abs(initLocalY) > 0 ? Math.abs(initLocalY) : 1;
+				const widthRatio = Math.max(0.1, Math.abs(currentLocalX) / safeInitWidth);
+				const heightRatio = Math.max(0.1, Math.abs(currentLocalY) / safeInitHeight);
+				const newWidth = clampShapeSize(initDimensions.current.width * widthRatio);
+				const newHeight = clampShapeSize(initDimensions.current.height * heightRatio);
+				const newX = centerModel.current.x - newWidth / 2;
+				const newY = centerModel.current.y - newHeight / 2;
+				const newSize = Math.max(newWidth, newHeight);
+				presence.resize.setResizing({
+					id: item.id,
+					x: newX,
+					y: newY,
+					size: newSize,
+					width: newWidth,
+					height: newHeight,
+				});
+				return;
+			}
 			const dot = dx * initVec.current.dx + dy * initVec.current.dy;
 			const initMagSq = initVec.current.dx ** 2 + initVec.current.dy ** 2;
 			const proj = dot / Math.sqrt(initMagSq || 1);
@@ -1796,7 +1887,15 @@ export function CornerResizeHandles({
 			if (r && r.id === item.id) {
 				// Use the passed group offsets to convert absolute coordinates back to relative
 				Tree.runTransaction(item, () => {
-					setShapeSize(shape, r.size);
+					if (
+						isRectangleShape(shape) &&
+						r.width !== undefined &&
+						r.height !== undefined
+					) {
+						setShapeDimensions(shape, { width: r.width, height: r.height });
+					} else {
+						setShapeSize(shape, r.size);
+					}
 					item.x = r.x - groupOffsetX;
 					item.y = r.y - groupOffsetY;
 				});

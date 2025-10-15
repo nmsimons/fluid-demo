@@ -68,9 +68,17 @@ export function SelectionOverlay(props: {
 	const resizePresence = presence.resize.state?.local;
 	if (resizePresence && resizePresence.id === item.id) {
 		if (Tree.is(item.content, Shape)) {
-			const { width, height } = getScaledShapeDimensions(item.content, resizePresence.size);
-			w = width;
-			h = height;
+			if (resizePresence.width !== undefined && resizePresence.height !== undefined) {
+				w = resizePresence.width;
+				h = resizePresence.height;
+			} else {
+				const { width, height } = getScaledShapeDimensions(
+					item.content,
+					resizePresence.size
+				);
+				w = width;
+				h = height;
+			}
 			left = resizePresence.x;
 			top = resizePresence.y;
 		} else if (Tree.is(item.content, TextBlock)) {

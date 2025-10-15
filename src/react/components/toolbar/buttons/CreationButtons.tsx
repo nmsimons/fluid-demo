@@ -9,6 +9,7 @@ import {
 	SquareRegular,
 	TriangleRegular,
 	StarRegular,
+	RectangleLandscapeRegular,
 	NoteRegular,
 	TableRegular,
 } from "@fluentui/react-icons";
@@ -201,7 +202,7 @@ export function NewTableButton(props: {
 	);
 }
 
-type ShapeType = "circle" | "square" | "triangle" | "star";
+export type ShapeType = "circle" | "square" | "triangle" | "star" | "rectangle";
 
 const SHAPE_TYPES: Array<{
 	type: ShapeType;
@@ -213,6 +214,7 @@ const SHAPE_TYPES: Array<{
 	{ type: "square", icon: <SquareRegular />, label: "Square", shortcut: "S" },
 	{ type: "triangle", icon: <TriangleRegular />, label: "Triangle", shortcut: "T" },
 	{ type: "star", icon: <StarRegular />, label: "Star", shortcut: "R" },
+	{ type: "rectangle", icon: <RectangleLandscapeRegular />, label: "Rectangle", shortcut: "E" },
 ];
 
 export function ShapeMenu(props: {

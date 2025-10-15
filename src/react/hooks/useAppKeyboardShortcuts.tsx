@@ -71,6 +71,7 @@ export interface UseAppKeyboardShortcutsProps {
  * - S: Create square shape
  * - T: Create triangle shape
  * - R: Create star shape
+ * - E: Create rectangle shape
  * - N: Create note item
  * - X: Create text item
  * - B: Create table
@@ -196,6 +197,21 @@ export function useAppKeyboardShortcuts(props: UseAppKeyboardShortcutsProps): Ke
 					schemaUser
 				);
 				centerLastItem(view.root.items, pan, zoom, props.canvasSize, 120, 120);
+			},
+		},
+		{
+			key: "e",
+			action: () => {
+				const colors = shapeColor ? [shapeColor] : SHAPE_COLORS;
+				const schemaUser = getSchemaUser();
+				view.root.items.createShapeItem(
+					"rectangle",
+					canvasSize,
+					colors,
+					shapeFilled ?? true,
+					schemaUser
+				);
+				centerLastItem(view.root.items, pan, zoom, props.canvasSize, 160, 120);
 			},
 		},
 		{

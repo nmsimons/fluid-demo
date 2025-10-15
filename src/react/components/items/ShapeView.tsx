@@ -6,17 +6,26 @@ import { getShapeDimensions, getShapeKind, getShapeSize } from "../../../utils/s
 export function ShapeView(props: {
 	shape: Shape;
 	sizeOverride?: number;
+	widthOverride?: number;
+	heightOverride?: number;
 	colorOverride?: string;
 }): JSX.Element {
-	const { shape, sizeOverride, colorOverride } = props;
+	const { shape, sizeOverride, widthOverride, heightOverride, colorOverride } = props;
 	useTree(shape);
 
 	const baseDimensions = getShapeDimensions(shape);
 	const baseSize = Math.max(baseDimensions.width, baseDimensions.height) || 1;
-	const desiredSize = sizeOverride ?? baseSize;
-	const scale = desiredSize / baseSize;
-	const width = baseDimensions.width * scale;
-	const height = baseDimensions.height * scale;
+	let width = baseDimensions.width;
+	let height = baseDimensions.height;
+	if (widthOverride !== undefined && heightOverride !== undefined) {
+		width = widthOverride;
+		height = heightOverride;
+	} else {
+		const desiredSize = sizeOverride ?? baseSize;
+		const scale = desiredSize / baseSize;
+		width = baseDimensions.width * scale;
+		height = baseDimensions.height * scale;
+	}
 	const color = colorOverride ?? shape.color;
 	const filled = shape.filled !== false;
 	const sizeForStroke = Math.max(width, height) || getShapeSize(shape);

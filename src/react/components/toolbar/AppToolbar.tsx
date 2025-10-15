@@ -12,6 +12,7 @@ import { findItemsByIds } from "../../../utils/itemsHelpers.js";
 import { TypedSelection } from "../../../presence/selection.js";
 import { getParentGroupInfo } from "../../utils/presenceGeometry.js";
 import { ShapeMenu, NewNoteButton, NewTableButton } from "./buttons/CreationButtons.js";
+import type { ShapeType } from "./buttons/CreationButtons.js";
 import { NewTextButton, TextFormattingMenu } from "./buttons/TextButtons.js";
 import { VoteButton, DeleteButton, DuplicateButton, CommentButton } from "./buttons/EditButtons.js";
 import { ShapeColorPicker } from "./buttons/ShapeButtons.js";
@@ -80,8 +81,8 @@ export interface AppToolbarProps {
 	onShapeFilledChange: (filled: boolean) => void;
 	noteColor: NoteColor;
 	onNoteColorChange: (color: NoteColor) => void;
-	currentShapeType: "circle" | "square" | "triangle" | "star";
-	onShapeTypeChange: (type: "circle" | "square" | "triangle" | "star") => void;
+	currentShapeType: ShapeType;
+	onShapeTypeChange: (type: ShapeType) => void;
 	textColor: string;
 	onTextColorChange: (color: string) => void;
 	textFontSize: number;

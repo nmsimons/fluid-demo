@@ -48,6 +48,7 @@ import { useKeyboardShortcuts } from "../../hooks/useKeyboardShortcuts.js";
 import { useAppKeyboardShortcuts } from "../../hooks/useAppKeyboardShortcuts.js";
 import { PaneContext } from "../../contexts/PaneContext.js";
 import { AppToolbar } from "../toolbar/AppToolbar.js";
+import type { ShapeType } from "../toolbar/buttons/CreationButtons.js";
 import { InkPresenceManager } from "../../../presence/Interfaces/InkManager.js";
 import { TEXT_DEFAULT_COLOR, TEXT_DEFAULT_FONT_SIZE } from "../../../constants/text.js";
 import { DEFAULT_NOTE_COLOR, type NoteColor } from "../../../constants/note.js";
@@ -100,9 +101,7 @@ export function ReactApp(props: {
 	const [shapeColor, setShapeColor] = useState<string>("#FF0000"); // Default to red
 	const [shapeFilled, setShapeFilled] = useState<boolean>(true);
 	const [noteColor, setNoteColor] = useState<NoteColor>(DEFAULT_NOTE_COLOR);
-	const [currentShapeType, setCurrentShapeType] = useState<
-		"circle" | "square" | "triangle" | "star"
-	>("circle");
+	const [currentShapeType, setCurrentShapeType] = useState<ShapeType>("circle");
 	const [textColor, setTextColor] = useState<string>(TEXT_DEFAULT_COLOR);
 	const [textFontSize, setTextFontSize] = useState<number>(TEXT_DEFAULT_FONT_SIZE);
 	const [textBold, setTextBold] = useState<boolean>(false);

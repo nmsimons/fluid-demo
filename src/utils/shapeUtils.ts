@@ -98,6 +98,26 @@ export function setShapeSize(shape: Shape, newSize: number): void {
 	}
 }
 
+export function setShapeDimensions(
+	shape: Shape,
+	dimensions: { width: number; height: number }
+): void {
+	const { width, height } = dimensions;
+	const safeWidth = Math.max(1, Math.round(width));
+	const safeHeight = Math.max(1, Math.round(height));
+	const typeNode = shape.type;
+	if (Tree.is(typeNode, Rectangle)) {
+		typeNode.width = safeWidth;
+		typeNode.height = safeHeight;
+		return;
+	}
+	setShapeSize(shape, Math.max(safeWidth, safeHeight));
+}
+
+export function isRectangleShape(shape: Shape): boolean {
+	return Tree.is(shape.type, Rectangle);
+}
+
 export function cloneShapeType(typeNode: Shape["type"]): Shape["type"] {
 	if (Tree.is(typeNode, Circle)) {
 		return new Circle({ radius: typeNode.radius });
