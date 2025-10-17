@@ -24,6 +24,25 @@ export default defineConfig(({ mode }) => {
 		build: {
 			outDir: "dist",
 			sourcemap: true,
+			rollupOptions: {
+				/**
+				 * It'd be nice to turn this on, but the following pattern used in tree is not properly processed by rollup:
+				 *
+				 * ```ts
+				 * export const MapNodeSchema = {
+				 * 	[Symbol.hasInstance](value: TreeNodeSchema): value is MapNodeSchema {
+				 * 		return isMapNodeSchema(value);
+				 * 	},
+				 * } as const;
+				 * ```
+				 *
+				 * Specifically, rollup decides the Symbol.hasInstance property is dead code and removes it.
+				 * There is some commentary on this PR which is related, but alludes to this behavior being pre-existing
+				 * (and the PR description seems to imply this is by design):
+				 * https://github.com/rollup/rollup/pull/6046
+				 */
+				treeshake: false,
+			},
 			// Let Vite handle chunking automatically - no manual chunking
 		},
 		server: {
@@ -43,6 +62,20 @@ export default defineConfig(({ mode }) => {
 			"process.env.AZURE_CLIENT_ID": JSON.stringify(env.AZURE_CLIENT_ID),
 			"process.env.AZURE_REDIRECT_URI": JSON.stringify(env.AZURE_REDIRECT_URI),
 			"process.env.NODE_ENV": JSON.stringify(env.NODE_ENV || mode),
+			// Azure OpenAI environment variables
+			"process.env.AZURE_OPENAI_API_KEY": JSON.stringify(env.AZURE_OPENAI_API_KEY),
+			"process.env.AZURE_OPENAI_API_INSTANCE_NAME": JSON.stringify(
+				env.AZURE_OPENAI_API_INSTANCE_NAME
+			),
+			"process.env.AZURE_OPENAI_API_DEPLOYMENT_NAME": JSON.stringify(
+				env.AZURE_OPENAI_API_DEPLOYMENT_NAME
+			),
+			"process.env.AZURE_OPENAI_API_VERSION": JSON.stringify(env.AZURE_OPENAI_API_VERSION),
+			"process.env.AZURE_OPENAI_BASE_PATH": JSON.stringify(env.AZURE_OPENAI_BASE_PATH),
+			"process.env.OPENAI_API_KEY": JSON.stringify(env.OPENAI_API_KEY),
+			"process.env.OPENAI_MODEL": JSON.stringify(env.OPENAI_MODEL),
+			"process.env.AZURE_OPENAI_MANUAL_TOKEN": JSON.stringify(env.AZURE_OPENAI_MANUAL_TOKEN),
+			"process.env.AUTHORITY": JSON.stringify(env.AUTHORITY),
 		},
 	};
 });
