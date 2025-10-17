@@ -39,6 +39,9 @@ export async function getZumoAuthToken(msalInstance: PublicClientApplication): P
 
 	// Get the base URL from environment variable
 	const baseUrl = import.meta.env.VITE_OPENAI_BASE_URL;
+	if (!baseUrl) {
+		throw new Error("VITE_OPENAI_BASE_URL environment variable is not set");
+	}
 	if (baseUrl.startsWith("http://localhost")) {
 		// Azure functions run locally don't have their full auth stack and some of the endpoints fail.
 		return "mock token";

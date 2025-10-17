@@ -76,6 +76,7 @@ export default defineConfig(({ mode }) => {
 			"process.env.OPENAI_MODEL": JSON.stringify(env.OPENAI_MODEL),
 			"process.env.AZURE_OPENAI_MANUAL_TOKEN": JSON.stringify(env.AZURE_OPENAI_MANUAL_TOKEN),
 			"process.env.AUTHORITY": JSON.stringify(env.AUTHORITY),
+			"process.env.VITE_OPENAI_BASE_URL": JSON.stringify(env.VITE_OPENAI_BASE_URL),
 		},
 	};
 });

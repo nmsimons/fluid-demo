@@ -50,6 +50,8 @@
 		"@fluidframework/protocol-definitions": "^3.2.0",
 		"@fluidframework/tree": "^2.63.0",
 		"@fluidframework/tree-agent": "^2.63.0",
+		"@fluidframework/tree-agent-langchain": "^2.63.0",
+		"@langchain/openai": "^0.6.16",
 		"@microsoft/microsoft-graph-client": "^3.0.7",
 		"@tailwindcss/vite": "^4.0.9",
 		"@tanstack/react-table": "^8.20.6",

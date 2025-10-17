@@ -188,8 +188,20 @@ export async function generateFallbackAvatar(account: AccountInfo): Promise<stri
 }
 
 /**
+ * Checks if the current context is inside an iframe
+ */
+function isInIframe(): boolean {
+	try {
+		return window.self !== window.top;
+	} catch {
+		// If accessing window.top throws, we're in an iframe with restricted access
+		return true;
+	}
+}
+
+/**
  * Gets the Microsoft Graph access token from MSAL with appropriate scopes
- * Handles interactive consent when required
+ * Handles interactive consent when required with better error handling for restricted contexts
  */
 export async function getGraphAccessToken(
 	msalInstance: PublicClientApplication
@@ -220,6 +232,16 @@ export async function getGraphAccessToken(
 				error.errorCode === "consent_required" ||
 				error.errorCode === "interaction_required"
 			) {
+				// Check if we're in an iframe context which may have sandbox restrictions
+				const inIframe = isInIframe();
+				if (inIframe) {
+					console.warn(
+						"⚠️ Microsoft Graph access requires consent, but application is running in an iframe. " +
+							"Popup authentication may not work in restricted sandboxes. Continuing without Graph access."
+					);
+					return null;
+				}
+
 				// Show user-friendly message about consent
 				console.log(
 					"🔐 Microsoft Graph access requires additional permissions. A popup window will open for consent."
@@ -235,7 +257,28 @@ export async function getGraphAccessToken(
 
 					return interactiveResponse.accessToken;
 				} catch (popupError: unknown) {
-					console.warn("Popup authentication failed:", popupError);
+					const popupErr = popupError as { errorCode?: string; message?: string };
+					const errorMsg = popupErr.errorCode || popupErr.message || String(popupError);
+
+					// Check if this is a popup-blocked error
+					if (
+						errorMsg.includes("popup") ||
+						errorMsg.includes("Popup") ||
+						errorMsg.includes("blocked") ||
+						errorMsg.includes("Popup window already open")
+					) {
+						console.warn(
+							"🔐 Popup window was blocked or unavailable. " +
+								"Please check your browser's popup blocker settings or try again. " +
+								"The application will continue with limited functionality (no profile pictures)."
+						);
+					} else {
+						console.warn(
+							"⚠️ Microsoft Graph consent flow failed. " +
+								"The application will continue with limited functionality (no profile pictures).",
+							popupError
+						);
+					}
 
 					// If popup fails (e.g., blocked), we'll continue without Graph access
 					// The application should still work with fallback avatars
