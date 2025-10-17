@@ -6,7 +6,8 @@ import { Pane } from "./Pane.js";
 import { ImplicitFieldSchema, TreeViewAlpha } from "@fluidframework/tree/alpha";
 import { OperationTracker } from "../../../utils/dirtyNodeTracker.js";
 // import the function, not the type
-import { SharedTreeSemanticAgent, createSemanticAgent } from "@fluidframework/tree-agent/alpha";
+import { SharedTreeSemanticAgent } from "@fluidframework/tree-agent/alpha";
+import { createLangchainChatModel } from "@fluidframework/tree-agent-langchain/alpha";
 import { App } from "../../../schema/appSchema.js";
 import { AzureChatOpenAI, ChatOpenAI } from "@langchain/openai";
 import { AuthContext } from "../../contexts/AuthContext.js";
@@ -23,7 +24,7 @@ export function AIPane(props: {
 	const { hidden, setHidden, main, branch, setRenderView } = props;
 	const [localBranch, setLocalBranch] = useState<typeof main | undefined>(undefined);
 	const [chats, setChats] = useState<string[]>([]);
-	const [agent, setAgent] = useState<SharedTreeSemanticAgent | undefined>();
+	const [agent, setAgent] = useState<SharedTreeSemanticAgent<typeof App> | undefined>();
 	const { msalInstance } = useContext(AuthContext);
 
 	// Dirty tracking state - tracks nodes that have been modified by AI operations
@@ -94,9 +95,11 @@ export function AIPane(props: {
 							model: process.env.OPENAI_MODEL || "gpt-4",
 						});
 
+						const model = createLangchainChatModel(chatOpenAI);
+
 						setAgent(
-							createSemanticAgent(chatOpenAI, localBranch, {
-								log: (msg) => console.log(msg),
+							new SharedTreeSemanticAgent(model, localBranch, {
+								logger: { log: (msg: unknown) => console.log(msg) },
 								domainHints,
 							})
 						);
@@ -217,9 +220,12 @@ export function AIPane(props: {
 							model: process.env.OPENAI_MODEL || "gpt-5",
 						});
 
+						// Create the semantic agent
+						const model = createLangchainChatModel(chatOpenAI);
+
 						setAgent(
-							createSemanticAgent(chatOpenAI, localBranch, {
-								log: (msg) => console.log(msg),
+							new SharedTreeSemanticAgent(model, localBranch, {
+								logger: { log: (msg: unknown) => console.log(msg) },
 								domainHints,
 							})
 						);
@@ -273,9 +279,11 @@ export function AIPane(props: {
 							azureOpenAIApiVersion: azureApiVersion,
 						});
 
+						const model = createLangchainChatModel(chatOpenAI);
+
 						setAgent(
-							createSemanticAgent(chatOpenAI, localBranch, {
-								log: (msg) => console.log(msg),
+							new SharedTreeSemanticAgent(model, localBranch, {
+								logger: { log: (msg: unknown) => console.log(msg) },
 								domainHints,
 							})
 						);
@@ -313,10 +321,12 @@ export function AIPane(props: {
 						azureOpenAIApiVersion: azureApiVersion,
 						azureOpenAIBasePath: endpoint,
 					});
+					// Create the semantic agent
+					const model = createLangchainChatModel(chatOpenAI);
 
 					setAgent(
-						createSemanticAgent(chatOpenAI, localBranch, {
-							log: (msg) => console.log(msg),
+						new SharedTreeSemanticAgent(model, localBranch, {
+							logger: { log: (msg: unknown) => console.log(msg) },
 							domainHints,
 						})
 					);
