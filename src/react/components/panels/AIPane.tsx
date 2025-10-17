@@ -84,34 +84,6 @@ export function AIPane(props: {
 		if (localBranch !== undefined) {
 			const setupAgent = async () => {
 				console.log("Setting up AI agent...");
-
-				// Check for OpenAI API key first
-				const openaiApiKey = process.env.OPENAI_API_KEY;
-				if (openaiApiKey) {
-					console.log("Using OpenAI with API key");
-					try {
-						const chatOpenAI = new ChatOpenAI({
-							apiKey: openaiApiKey,
-							model: process.env.OPENAI_MODEL || "gpt-4",
-						});
-
-						const model = createLangchainChatModel(chatOpenAI);
-
-						setAgent(
-							new SharedTreeSemanticAgent(model, localBranch, {
-								logger: { log: (msg: unknown) => console.log(msg) },
-								domainHints,
-							})
-						);
-
-						console.log("AI agent successfully created with OpenAI");
-						return;
-					} catch (error) {
-						console.error("Failed to set up OpenAI agent:", error);
-						// Continue to Azure fallback
-					}
-				}
-
 				const endpoint = `${import.meta.env.VITE_OPENAI_BASE_URL}/api/v1`;
 				if (endpoint) {
 					console.log(`Using OpenAI at ${endpoint}`);
@@ -223,6 +195,9 @@ export function AIPane(props: {
 						// Create the semantic agent
 						const model = createLangchainChatModel(chatOpenAI);
 
+						// Log the model's edit tool name
+						console.log(model.editToolName);
+
 						setAgent(
 							new SharedTreeSemanticAgent(model, localBranch, {
 								logger: { log: (msg: unknown) => console.log(msg) },
@@ -321,8 +296,11 @@ export function AIPane(props: {
 						azureOpenAIApiVersion: azureApiVersion,
 						azureOpenAIBasePath: endpoint,
 					});
+
 					// Create the semantic agent
 					const model = createLangchainChatModel(chatOpenAI);
+
+					console.log(model.editToolName);
 
 					setAgent(
 						new SharedTreeSemanticAgent(model, localBranch, {
