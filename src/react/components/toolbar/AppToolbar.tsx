@@ -32,7 +32,7 @@ import {
 } from "./buttons/ZOrderButtons.js";
 import { InkColorPicker, InkToggleButton, EraserToggleButton } from "./buttons/InkButtons.js";
 import { UndoButton, RedoButton, ClearAllButton } from "./buttons/ActionButtons.js";
-import { CommentsPaneToggleButton } from "./buttons/PaneButtons.js";
+import { CommentsPaneToggleButton, AiPaneToggleButton } from "./buttons/PaneButtons.js";
 import { ZoomMenu } from "./buttons/ViewButtons.js";
 import { DeleteSelectedRowsButton } from "./buttons/TableButtons.js";
 import {
@@ -42,7 +42,6 @@ import {
 	ToggleGridLayoutButton,
 } from "./buttons/GroupButtons.js";
 // All toolbar button UIs now componentized; direct TooltipButton usage removed.
-import { MessageBar, MessageBarBody, MessageBarTitle } from "@fluentui/react-message-bar";
 import { Toolbar, ToolbarDivider, ToolbarGroup } from "@fluentui/react-toolbar";
 import type { SelectionManager } from "../../../presence/Interfaces/SelectionManager.js";
 import { PresenceContext } from "../../contexts/PresenceContext.js";
@@ -61,6 +60,8 @@ export interface AppToolbarProps {
 	selectedRowId: string;
 	commentPaneHidden: boolean;
 	setCommentPaneHidden: (hidden: boolean) => void;
+	aiPaneHidden: boolean;
+	setAiPaneHidden: (hidden: boolean) => void;
 	undoRedo: undoRedo;
 	canUndo: boolean;
 	canRedo: boolean;
@@ -104,7 +105,6 @@ export interface AppToolbarProps {
 export function AppToolbar(props: AppToolbarProps): JSX.Element {
 	const {
 		view,
-		tree,
 		canvasSize,
 		pan,
 		selectedItemId,
@@ -113,6 +113,8 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 		selectedRowId,
 		commentPaneHidden,
 		setCommentPaneHidden,
+		aiPaneHidden,
+		setAiPaneHidden,
 		undoRedo,
 		canUndo,
 		canRedo,
@@ -465,27 +467,15 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 					paneHidden={commentPaneHidden}
 					onToggle={(h) => setCommentPaneHidden(h)}
 				/>
+				<AiPaneToggleButton
+					paneHidden={aiPaneHidden}
+					onToggle={(h) => setAiPaneHidden(h)}
+				/>
 			</ToolbarGroup>
 			{/* Right side grouping (auto) */}
 			<ToolbarGroup style={{ marginLeft: "auto" }}>
-				{view !== tree && (
-					<div className="mr-4">
-						<MessageBarComponent message="While viewing an AI Task, others will not see your changes (and you will not see theirs) until you complete the task." />
-					</div>
-				)}
 				<ZoomMenu zoom={zoom} onZoomChange={onZoomChange} />
 			</ToolbarGroup>
 		</Toolbar>
-	);
-}
-
-function MessageBarComponent(props: { message: string }): JSX.Element {
-	const { message } = props;
-	return (
-		<MessageBar>
-			<MessageBarBody>
-				<MessageBarTitle>{message}</MessageBarTitle>
-			</MessageBarBody>
-		</MessageBar>
 	);
 }

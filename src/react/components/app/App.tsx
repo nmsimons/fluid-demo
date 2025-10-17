@@ -11,6 +11,7 @@ import "../../../styles/ios-minimal.css";
 // import "../../../styles/ios-safari-fixes.css";
 // import { fixIOSZIndexIssues } from "../../../utils/iosZIndexFix.js";
 import { ConnectionState, IFluidContainer, TreeView } from "fluid-framework";
+import { asAlpha } from "@fluidframework/tree/alpha";
 import { Canvas } from "../canvas/Canvas.js";
 import type { SelectionManager } from "../../../presence/Interfaces/SelectionManager.js";
 import { undoRedo } from "../../../undo/undo.js";
@@ -26,6 +27,14 @@ import {
 	partitionAvatarGroupItems,
 } from "@fluentui/react-avatar";
 import { Text } from "@fluentui/react-text";
+import {
+	MessageBar,
+	MessageBarBody,
+	MessageBarTitle,
+	MessageBarActions,
+} from "@fluentui/react-message-bar";
+import { Button } from "@fluentui/react-components";
+import { DismissRegular } from "@fluentui/react-icons";
 import { ToolbarDivider } from "@fluentui/react-toolbar";
 import { Tooltip } from "@fluentui/react-tooltip";
 import { Menu, MenuTrigger, MenuPopover, MenuList, MenuItem } from "@fluentui/react-menu";
@@ -43,6 +52,7 @@ import {
 	ConnectionDragState,
 } from "../../../presence/Interfaces/ConnectionDragManager.js";
 import { CommentPane, CommentPaneRef } from "../panels/CommentPane.js";
+import { AIPane } from "../panels/AIPane.js";
 import { useTree } from "../../hooks/useTree.js";
 import { useKeyboardShortcuts } from "../../hooks/useKeyboardShortcuts.js";
 import { useAppKeyboardShortcuts } from "../../hooks/useAppKeyboardShortcuts.js";
@@ -119,10 +129,12 @@ export function ReactApp(props: {
 	const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
 	const [selectedColumnId, setSelectedColumnId] = useState<string>("");
 	const [selectedRowId, setSelectedRowId] = useState<string>("");
-	const [view] = useState<TreeView<typeof App>>(tree);
+	const [view, setView] = useState<TreeView<typeof App>>(tree);
 	const [canUndo, setCanUndo] = useState(false);
 	const [canRedo, setCanRedo] = useState(false);
 	const commentPaneRef = useRef<CommentPaneRef>(null);
+	const [aiPaneHidden, setAiPaneHidden] = useState(true);
+	const [showAiBranchMessage, setShowAiBranchMessage] = useState(false);
 	const shapeSelectionAnalysis = (() => {
 		let firstColor: string | null = null;
 		let firstFilled: boolean | null = null;
@@ -443,6 +455,15 @@ export function ReactApp(props: {
 		shortcuts,
 	});
 
+	// Monitor AI pane and show/hide branch message
+	useEffect(() => {
+		if (!aiPaneHidden) {
+			setShowAiBranchMessage(true);
+		} else {
+			setShowAiBranchMessage(false);
+		}
+	}, [aiPaneHidden]);
+
 	return (
 		<PresenceContext.Provider
 			value={{
@@ -474,6 +495,8 @@ export function ReactApp(props: {
 						selectedRowId={selectedRowId}
 						commentPaneHidden={commentPaneHidden}
 						setCommentPaneHidden={setCommentPaneHidden}
+						aiPaneHidden={aiPaneHidden}
+						setAiPaneHidden={setAiPaneHidden}
 						undoRedo={undoRedo}
 						canUndo={canUndo}
 						canRedo={canRedo}
@@ -515,31 +538,60 @@ export function ReactApp(props: {
 						onTextAlignChange={setTextAlign}
 					/>
 					{/* </div> */}
-					<div className="canvas-container flex h-[calc(100vh-96px)] w-full flex-row ">
-						<PaneContext.Provider
-							value={{
-								panes: [{ name: "comments", visible: !commentPaneHidden }],
-							}}
-						>
-							<Canvas
-								items={view.root.items}
-								container={container}
-								setSize={(width, height) => setCanvasSize({ width, height })}
-								zoom={zoom}
-								onZoomChange={setZoom}
-								onPanChange={setPan}
-								inkActive={inkActive}
-								eraserActive={eraserActive}
-								inkColor={inkColor}
-								inkWidth={inkWidth}
-							/>
-						</PaneContext.Provider>
+					<div className="flex flex-row h-[calc(100vh-96px)] w-full">
+						<div className="flex flex-col flex-1 relative">
+							{showAiBranchMessage && (
+								<MessageBar
+									intent="info"
+									className="absolute top-2 left-2 right-2 z-10 shadow-lg"
+								>
+									<MessageBarBody>
+										<MessageBarTitle>
+											You&apos;re working with an AI branch. Changes are not
+											saved until you commit them.
+										</MessageBarTitle>
+									</MessageBarBody>
+									<MessageBarActions>
+										<Button
+											onClick={() => setShowAiBranchMessage(false)}
+											appearance="subtle"
+											icon={<DismissRegular />}
+										/>
+									</MessageBarActions>
+								</MessageBar>
+							)}
+							<PaneContext.Provider
+								value={{
+									panes: [{ name: "comments", visible: !commentPaneHidden }],
+								}}
+							>
+								<Canvas
+									items={view.root.items}
+									container={container}
+									setSize={(width, height) => setCanvasSize({ width, height })}
+									zoom={zoom}
+									onZoomChange={setZoom}
+									onPanChange={setPan}
+									inkActive={inkActive}
+									eraserActive={eraserActive}
+									inkColor={inkColor}
+									inkWidth={inkWidth}
+								/>
+							</PaneContext.Provider>
+						</div>
 						<CommentPane
 							ref={commentPaneRef}
 							hidden={commentPaneHidden}
 							setHidden={setCommentPaneHidden}
 							itemId={selectedItemId}
 							app={view.root}
+						/>
+						<AIPane
+							hidden={aiPaneHidden}
+							setHidden={setAiPaneHidden}
+							main={asAlpha(tree)}
+							branch={view !== tree ? asAlpha(view) : undefined}
+							setRenderView={(newView) => setView(newView as TreeView<typeof App>)}
 						/>
 					</div>
 				</div>
