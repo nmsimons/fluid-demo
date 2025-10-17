@@ -49,7 +49,6 @@ import { AccountInfo, PublicClientApplication } from "@azure/msal-browser";
 import { createDragManager } from "./presence/drag.js";
 import { createResizeManager } from "./presence/resize.js";
 import { createInkPresenceManager } from "./presence/ink.js";
-import { asTreeViewAlpha } from "@fluidframework/tree/alpha";
 import { createCursorManager } from "./presence/cursor.js";
 
 export async function loadApp(props: {
@@ -66,9 +65,7 @@ export async function loadApp(props: {
 		const { container } = await loadFluidData(containerId, containerSchema, client);
 
 		// Initialize the SharedTree DDSes
-		const appTree = asTreeViewAlpha(
-			container.initialObjects.appData.viewWith(appTreeConfiguration)
-		);
+		const appTree = container.initialObjects.appData.viewWith(appTreeConfiguration);
 		if (appTree.compatibility.canInitialize) {
 			appTree.initialize(new App({ items: [], comments: [], inks: [], jobs: [] }));
 		}

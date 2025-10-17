@@ -4,8 +4,7 @@
  */
 
 import React, { JSX, useContext } from "react";
-import { Tree } from "fluid-framework";
-import { TreeViewAlpha } from "@fluidframework/tree/alpha";
+import { Tree, TreeView } from "fluid-framework";
 import { App, Shape } from "../../../schema/appSchema.js";
 import { undoRedo } from "../../../undo/undo.js";
 import { isShape, isTable } from "../../../utils/contentHandlers.js";
@@ -46,8 +45,8 @@ import type { SelectionManager } from "../../../presence/Interfaces/SelectionMan
 import { PresenceContext } from "../../contexts/PresenceContext.js";
 
 export interface AppToolbarProps {
-	view: TreeViewAlpha<typeof App>;
-	tree: TreeViewAlpha<typeof App>;
+	view: TreeView<typeof App>;
+	tree: TreeView<typeof App>;
 	canvasSize: { width: number; height: number };
 	pan?: { x: number; y: number };
 	selectedItemId: string;
