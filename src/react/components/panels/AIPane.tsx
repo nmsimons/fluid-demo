@@ -5,13 +5,16 @@ import React, { ReactNode, useEffect, useState, useRef, useContext } from "react
 import { Pane } from "./Pane.js";
 import { TreeViewAlpha } from "@fluidframework/tree/alpha";
 // import the function, not the type
-import { SharedTreeSemanticAgent } from "@fluidframework/tree-agent/alpha";
+import { defaultEditor, SharedTreeSemanticAgent } from "@fluidframework/tree-agent/alpha";
 import { createLangchainChatModel } from "@fluidframework/tree-agent-langchain/alpha";
 import { App } from "../../../schema/appSchema.js";
 import { AzureChatOpenAI, ChatOpenAI } from "@langchain/openai";
 import { AuthContext } from "../../contexts/AuthContext.js";
 import { getZumoAuthToken } from "../../../utils/zumoAuth.js";
 import { domainHints } from "../../../constants/domainHints.js";
+
+/** If set to true, the browser will automatically debug generated LLM code (dev tools must be open). */
+const debugLLMCode = false;
 
 export function AIPane(props: {
 	hidden: boolean;
@@ -172,6 +175,7 @@ export function AIPane(props: {
 							new SharedTreeSemanticAgent(model, localBranch, {
 								logger: { log: (msg: unknown) => console.log(msg) },
 								domainHints,
+								editor: debuggingEditor
 							})
 						);
 
@@ -230,6 +234,7 @@ export function AIPane(props: {
 							new SharedTreeSemanticAgent(model, localBranch, {
 								logger: { log: (msg: unknown) => console.log(msg) },
 								domainHints,
+								editor: debuggingEditor
 							})
 						);
 
@@ -276,6 +281,7 @@ export function AIPane(props: {
 						new SharedTreeSemanticAgent(model, localBranch, {
 							logger: { log: (msg: unknown) => console.log(msg) },
 							domainHints,
+							editor: debuggingEditor
 						})
 					);
 
@@ -472,11 +478,10 @@ export function SpeechBubble(props: { children: ReactNode; isUser: boolean }): J
 	const { children, isUser } = props;
 	return (
 		<div
-			className={`w-full px-4 py-2 rounded-xl ${
-				isUser
-					? "bg-indigo-100 text-black rounded-br-none"
-					: "bg-white text-black rounded-bl-none"
-			}`}
+			className={`w-full px-4 py-2 rounded-xl ${isUser
+				? "bg-indigo-100 text-black rounded-br-none"
+				: "bg-white text-black rounded-bl-none"
+				}`}
 		>
 			{children}
 		</div>
@@ -527,4 +532,13 @@ export function CancelResponseButton(props: { callback: () => void }): JSX.Eleme
 			Clear
 		</Button>
 	);
+}
+
+function debuggingEditor(context: Record<string, unknown>, code: string): void {
+	if (!debugLLMCode) {
+		defaultEditor(context, code);
+		return;
+	}
+	const debugCode = `//# sourceURL=debugLLMCode.ts\n\ndebugger;\n${code}`;
+	defaultEditor(context, debugCode);
 }
