@@ -333,110 +333,108 @@ EXAMPLES:
 User request:
 "Make a table containing the largest ten countries by population, their GDP in USD, and their population."
 
-Function written to accomplish the edit:
+Snippet written to accomplish the edit:
 
-function editTree({ root, create }) {
-  // Create a new table on the canvas
-  const tableItem = root.items.createTableItem({ width: 1600, height: 900 }, "AI Agent", "AI Agent");
-  const table = tableItem.content;
+const { root, create } = context;
+// Create a new table on the canvas
+const tableItem = root.items.createTableItem({ width: 1600, height: 900 }, "AI Agent", "AI Agent");
+const table = tableItem.content;
 
-  // Remove any default rows
-  if (table.rows && typeof table.rows.removeRange === 'function') {
-    table.rows.removeRange(0, table.rows.length);
-  }
-
-  // Remove any default columns using the provided API
-  if (table.columns) {
-    // Delete columns from first to last
-    while (table.columns.length > 0) {
-      table.deleteColumn(table.columns[0]);
-    }
-  }
-
-  // Add the columns we need: Country, Population (millions), GDP (USD, billions)
-  table.addColumn("AI Agent");
-  let colCountry = table.columns[table.columns.length - 1];
-  colCountry.props.name = "Country";
-  colCountry.props.hint = "string";
-
-  table.addColumn("AI Agent");
-  let colPopulation = table.columns[table.columns.length - 1];
-  colPopulation.props.name = "Population (millions)";
-  colPopulation.props.hint = "number";
-
-  table.addColumn("AI Agent");
-  let colGDP = table.columns[table.columns.length - 1];
-  colGDP.props.name = "GDP (USD, billions)";
-  colGDP.props.hint = "number";
-
-  const countryColId = colCountry.id;
-  const popColId = colPopulation.id;
-  const gdpColId = colGDP.id;
-
-  // Data for the ten most populous countries (population in millions, GDP in USD billions; recent estimates)
-  const data = [
-    { country: "India", pop: 1429, gdp: 3940 },
-    { country: "China", pop: 1412, gdp: 18530 },
-    { country: "United States", pop: 334, gdp: 27970 },
-    { country: "Indonesia", pop: 278, gdp: 1570 },
-    { country: "Pakistan", pop: 241, gdp: 346 },
-    { country: "Nigeria", pop: 224, gdp: 354 },
-    { country: "Brazil", pop: 215, gdp: 2330 },
-    { country: "Bangladesh", pop: 173, gdp: 459 },
-    { country: "Russia", pop: 144, gdp: 2220 },
-    { country: "Mexico", pop: 129, gdp: 1920 },
-  ];
-
-  data.forEach(entry => {
-    table.addRow("AI Agent");
-    const row = table.rows[table.rows.length - 1];
-    if (countryColId) row.cells[countryColId] = entry.country;
-    if (popColId) row.cells[popColId] = entry.pop;
-    if (gdpColId) row.cells[gdpColId] = entry.gdp;
-  });
+// Remove any default rows
+if (table.rows && typeof table.rows.removeRange === 'function') {
+  table.rows.removeRange(0, table.rows.length);
 }
+
+// Remove any default columns using the provided API
+if (table.columns) {
+  // Delete columns from first to last
+  while (table.columns.length > 0) {
+    table.deleteColumn(table.columns[0]);
+  }
+}
+
+// Add the columns we need: Country, Population (millions), GDP (USD, billions)
+table.addColumn("AI Agent");
+let colCountry = table.columns[table.columns.length - 1];
+colCountry.props.name = "Country";
+colCountry.props.hint = "string";
+
+table.addColumn("AI Agent");
+let colPopulation = table.columns[table.columns.length - 1];
+colPopulation.props.name = "Population (millions)";
+colPopulation.props.hint = "number";
+
+table.addColumn("AI Agent");
+let colGDP = table.columns[table.columns.length - 1];
+colGDP.props.name = "GDP (USD, billions)";
+colGDP.props.hint = "number";
+
+const countryColId = colCountry.id;
+const popColId = colPopulation.id;
+const gdpColId = colGDP.id;
+
+// Data for the ten most populous countries (population in millions, GDP in USD billions; recent estimates)
+const data = [
+  { country: "India", pop: 1429, gdp: 3940 },
+  { country: "China", pop: 1412, gdp: 18530 },
+  { country: "United States", pop: 334, gdp: 27970 },
+  { country: "Indonesia", pop: 278, gdp: 1570 },
+  { country: "Pakistan", pop: 241, gdp: 346 },
+  { country: "Nigeria", pop: 224, gdp: 354 },
+  { country: "Brazil", pop: 215, gdp: 2330 },
+  { country: "Bangladesh", pop: 173, gdp: 459 },
+  { country: "Russia", pop: 144, gdp: 2220 },
+  { country: "Mexico", pop: 129, gdp: 1920 },
+];
+
+data.forEach(entry => {
+  table.addRow("AI Agent");
+  const row = table.rows[table.rows.length - 1];
+  if (countryColId) row.cells[countryColId] = entry.country;
+  if (popColId) row.cells[popColId] = entry.pop;
+  if (gdpColId) row.cells[gdpColId] = entry.gdp;
+});
 
 2.
 User request: "Add a sticky note that has text that is the average of the colors of all the shapes on the canvas."
 
-Function written to accomplish the edit:
+Snippet written to accomplish the edit:
 
-function editTree({ root, create }) {
-  // Collect all shape colors on the canvas
-  const shapeTypes = new Set(['circle', 'square', 'triangle', 'star']);
-  let rSum = 0, gSum = 0, bSum = 0, count = 0;
+const { root, create } = context;
+// Collect all shape colors on the canvas
+const shapeTypes = new Set(['circle', 'square', 'triangle', 'star']);
+let rSum = 0, gSum = 0, bSum = 0, count = 0;
 
-  root.items.forEach((item) => {
-    const content = item && item.content;
-    if (content && typeof content === 'object' && typeof content.type === 'string' && shapeTypes.has(content.type)) {
-      const color = content.color;
-      if (typeof color === 'string' && /^#([0-9A-Fa-f]{6})$/.test(color)) {
-        const r = parseInt(color.slice(1, 3), 16);
-        const g = parseInt(color.slice(3, 5), 16);
-        const b = parseInt(color.slice(5, 7), 16);
-        rSum += r; gSum += g; bSum += b; count += 1;
-      }
+root.items.forEach((item) => {
+  const content = item && item.content;
+  if (content && typeof content === 'object' && typeof content.type === 'string' && shapeTypes.has(content.type)) {
+    const color = content.color;
+    if (typeof color === 'string' && /^#([0-9A-Fa-f]{6})$/.test(color)) {
+      const r = parseInt(color.slice(1, 3), 16);
+      const g = parseInt(color.slice(3, 5), 16);
+      const b = parseInt(color.slice(5, 7), 16);
+      rSum += r; gSum += g; bSum += b; count += 1;
     }
-  });
-
-  // Compute the average color (rounded to nearest integer per channel)
-  let avgHex = '#000000';
-  if (count > 0) {
-    const rAvg = Math.round(rSum / count);
-    const gAvg = Math.round(gSum / count);
-    const bAvg = Math.round(bSum / count);
-    const toHex = (n) => n.toString(16).toUpperCase().padStart(2, '0');
-    avgHex = \`#\${toHex(rAvg)}\${toHex(gAvg)}\${toHex(bAvg)}\`;
   }
+});
 
-  // Create a new sticky note and set its text to the average color hex string
-  const noteItem = root.items.createNoteItem({ width: 1600, height: 900 }, 'AI Agent', 'AI Agent', 'AI Agent');
-  if (noteItem && noteItem.content && typeof noteItem.content === 'object') {
-    noteItem.content.text = avgHex;
-  }
+// Compute the average color (rounded to nearest integer per channel)
+let avgHex = '#000000';
+if (count > 0) {
+  const rAvg = Math.round(rSum / count);
+  const gAvg = Math.round(gSum / count);
+  const bAvg = Math.round(bSum / count);
+  const toHex = (n) => n.toString(16).toUpperCase().padStart(2, '0');
+  avgHex = \`#\${toHex(rAvg)}\${toHex(gAvg)}\${toHex(bAvg)}\`;
 }
 
-A common mistake in the generated function: data cannot be removed from the tree and then directly re-inserted. Instead, it must be cloned - i.e. create an equivalent new instance of that data - and then the new instance can be inserted.
+// Create a new sticky note and set its text to the average color hex string
+const noteItem = root.items.createNoteItem({ width: 1600, height: 900 }, 'AI Agent', 'AI Agent', 'AI Agent');
+if (noteItem && noteItem.content && typeof noteItem.content === 'object') {
+  noteItem.content.text = avgHex;
+}
+
+A common mistake in the generated code: data cannot be removed from the tree and then directly re-inserted. Instead, it must be cloned - i.e. create an equivalent new instance of that data - and then the new instance can be inserted.
 
 When responding to the user, YOU MUST NEVER reference technical details like "schema" or "data", "tree" or "pixels" - explain what has happened with high-level user-friendly language.
 `;
