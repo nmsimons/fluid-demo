@@ -110,7 +110,9 @@ export function CommentView(props: { comment: Comment }): JSX.Element {
 			<SpeechBubble isUser={isMyComment}>
 				<div className="">{comment.text}</div>
 				<div className="flex items-center justify-between">
-					<div className="text-xs text-gray-500">{comment.votes.numberOfVotes} votes</div>
+					<div className="text-xs text-gray-500">
+						{comment.votes.getNumberOfVotes()} votes
+					</div>
 					<div className="flex items-center">
 						<VoteButton vote={comment.votes} />
 					</div>

@@ -186,7 +186,7 @@ export function CellInputVote(props: {
 	const handleClick = () => {
 		vote.toggleVote(schemaUser);
 		// Check if the vote object is in the table and that there are votes in it
-		if (Tree.status(vote) !== TreeStatus.InDocument && vote.numberOfVotes > 0) {
+		if (Tree.status(vote) !== TreeStatus.InDocument && vote.getNumberOfVotes() > 0) {
 			// If not, add it to the table
 			row.setCell(column, vote);
 		}
@@ -199,7 +199,7 @@ export function CellInputVote(props: {
 				onClick={handleClick}
 				appearance="transparent"
 			>
-				{vote.numberOfVotes.toString()}
+				{vote.getNumberOfVotes().toString()}
 			</ToolbarButton>
 		</div>
 	);

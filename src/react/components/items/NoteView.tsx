@@ -186,7 +186,7 @@ function VoteButton(props: { vote: Votes }): JSX.Element {
 			aria-label={hasVoted ? "Remove your vote" : "Add your vote"}
 			icon={hasVoted ? <ThumbLike16Filled /> : <ThumbLike16Regular />}
 		>
-			{vote.numberOfVotes > 999 ? "999+" : String(vote.numberOfVotes)}
+			{vote.getNumberOfVotes() > 999 ? "999+" : String(vote.getNumberOfVotes())}
 		</Button>
 	);
 }

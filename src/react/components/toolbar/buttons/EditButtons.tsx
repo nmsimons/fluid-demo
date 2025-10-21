@@ -53,7 +53,7 @@ export function VoteButton(props: { vote: Votes }): JSX.Element {
 	const schemaUser = createSchemaUser({ id: currentUserInfo.id, name: currentUserInfo.name });
 	useTree(vote);
 	const has = vote.hasVoted(schemaUser);
-	const cnt = vote.numberOfVotes;
+	const cnt = vote.getNumberOfVotes();
 	return (
 		<TooltipButton
 			icon={has ? <ThumbLikeFilled /> : <ThumbLikeRegular />}

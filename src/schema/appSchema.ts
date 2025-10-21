@@ -23,6 +23,8 @@ import {
 	TreeNodeFromImplicitAllowedTypes,
 	TreeStatus,
 } from "fluid-framework";
+import { ExposedMethods, buildFunc, exposeMethodsSymbol } from "@fluidframework/tree-agent/alpha";
+import { z } from "zod";
 
 export type HintValues = (typeof hintValues)[keyof typeof hintValues];
 export const hintValues = {
@@ -129,7 +131,7 @@ export class DateTime extends sf.object(hintValues.date, {
 /**
  * A SharedTree object that allows users to vote
  */
-export class Votes extends sf.array(hintValues.vote, User) {
+export class Votes extends sf.array("Votes", User) {
 	/**
 	 * Add a vote for the given user if they have not already voted.
 	 * Updates the stored user name when the same user votes again.
@@ -172,7 +174,7 @@ export class Votes extends sf.array(hintValues.vote, User) {
 	 * Get the number of votes
 	 * @returns The number of votes
 	 */
-	get numberOfVotes(): number {
+	getNumberOfVotes(): number {
 		return this.length;
 	}
 
@@ -183,6 +185,30 @@ export class Votes extends sf.array(hintValues.vote, User) {
 	 */
 	hasVoted(user: User): boolean {
 		return this.some((entry) => entry.id === user.id);
+	}
+
+	public static [exposeMethodsSymbol](methods: ExposedMethods): void {
+		methods.expose(
+			Votes,
+			"addVote",
+			buildFunc({ returns: z.void() }, ["user", methods.instanceOf(User)])
+		);
+		methods.expose(
+			Votes,
+			"removeVote",
+			buildFunc({ returns: z.void() }, ["user", methods.instanceOf(User)])
+		);
+		methods.expose(
+			Votes,
+			"toggleVote",
+			buildFunc({ returns: z.void() }, ["user", methods.instanceOf(User)])
+		);
+		methods.expose(
+			Votes,
+			"hasVoted",
+			buildFunc({ returns: z.boolean() }, ["user", methods.instanceOf(User)])
+		);
+		methods.expose(Votes, "getNumberOfVotes", buildFunc({ returns: z.number() }));
 	}
 }
 export class Comment extends sf.object("Comment", {
@@ -198,6 +224,10 @@ export class Comment extends sf.object("Comment", {
 			parent.removeAt(parent.indexOf(this));
 		}
 	}
+
+	public static [exposeMethodsSymbol](methods: ExposedMethods): void {
+		methods.expose(Comment, "delete", buildFunc({ returns: z.void() }));
+	}
 }
 
 export class Comments extends sf.array("Comments", [Comment]) {
@@ -210,6 +240,18 @@ export class Comments extends sf.array("Comments", [Comment]) {
 			createdAt: new DateTime({ ms: Date.now() }),
 		});
 		this.insertAtEnd(comment);
+	}
+
+	public static [exposeMethodsSymbol](methods: ExposedMethods): void {
+		methods.expose(
+			Comments,
+			"addComment",
+			buildFunc(
+				{ returns: z.void() },
+				["text", z.string()],
+				["user", methods.instanceOf(User)]
+			)
+		);
 	}
 }
 
@@ -450,6 +492,54 @@ export class FluidTable extends TableSchema.table({
 	private getRandomDate(start: Date, end: Date): Date {
 		return new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime()));
 	}
+
+	public static [exposeMethodsSymbol](methods: ExposedMethods): void {
+		methods.expose(
+			FluidTable,
+			"createDetachedRow",
+			buildFunc({ returns: methods.instanceOf(FluidRowSchema) })
+		);
+		methods.expose(
+			FluidTable,
+			"deleteColumn",
+			buildFunc({ returns: z.void() }, ["column", methods.instanceOf(FluidColumnSchema)])
+		);
+		methods.expose(
+			FluidTable,
+			"getColumnByCellId",
+			buildFunc({ returns: methods.instanceOf(FluidColumnSchema).optional() }, [
+				"cellId",
+				z.string(),
+			])
+		);
+		methods.expose(FluidTable, "addColumn", buildFunc({ returns: z.void() }));
+		methods.expose(FluidTable, "addRow", buildFunc({ returns: z.void() }));
+		methods.expose(
+			FluidTable,
+			"moveColumnLeft",
+			buildFunc({ returns: z.boolean() }, ["column", methods.instanceOf(FluidColumnSchema)])
+		);
+		methods.expose(
+			FluidTable,
+			"moveColumnRight",
+			buildFunc({ returns: z.boolean() }, ["column", methods.instanceOf(FluidColumnSchema)])
+		);
+		methods.expose(
+			FluidTable,
+			"moveRowUp",
+			buildFunc({ returns: z.boolean() }, ["row", methods.instanceOf(FluidRowSchema)])
+		);
+		methods.expose(
+			FluidTable,
+			"moveRowDown",
+			buildFunc({ returns: z.boolean() }, ["row", methods.instanceOf(FluidRowSchema)])
+		);
+		methods.expose(
+			FluidTable,
+			"createRowWithValues",
+			buildFunc({ returns: methods.instanceOf(FluidRowSchema) })
+		);
+	}
 }
 
 export class Group extends sf.objectRecursive("Group", {
@@ -529,6 +619,26 @@ export class Item extends sf.objectRecursive("Item", {
 	 */
 	getConnections(): string[] {
 		return Array.from(this.connections);
+	}
+
+	public static [exposeMethodsSymbol](methods: ExposedMethods): void {
+		methods.expose(Item, "delete", buildFunc({ returns: z.void() }));
+		methods.expose(
+			Item,
+			"addConnection",
+			buildFunc({ returns: z.void() }, ["fromItemId", z.string()])
+		);
+		methods.expose(
+			Item,
+			"removeConnection",
+			buildFunc({ returns: z.void() }, ["fromItemId", z.string()])
+		);
+		methods.expose(
+			Item,
+			"hasConnection",
+			buildFunc({ returns: z.boolean() }, ["fromItemId", z.string()])
+		);
+		methods.expose(Item, "getConnections", buildFunc({ returns: z.array(z.string()) }));
 	}
 }
 
@@ -673,6 +783,63 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 			votes: [],
 			connections: [],
 			content: table,
+			rotation: 0,
+		});
+
+		this.insertAtEnd(item);
+		return item;
+	}
+
+	/**
+	 * Create a new Group item and add it to the items collection
+	 */
+	createGroupItem(name: string, canvasSize: { width: number; height: number }, user: User): Item {
+		const group = new Group({
+			name,
+			items: new Items(),
+			viewAsGrid: false,
+		});
+		const item = new Item({
+			id: crypto.randomUUID(),
+			createdBy: user,
+			createdAt: new DateTime({ ms: Date.now() }),
+			updatedBy: [],
+			updatedAt: new DateTime({ ms: Date.now() }),
+			x: this.getRandomNumber(0, canvasSize.width - 200),
+			y: this.getRandomNumber(0, canvasSize.height - 200),
+			comments: [],
+			votes: [],
+			connections: [],
+			content: group,
+			rotation: 0,
+		});
+
+		this.insertAtEnd(item);
+		return item;
+	}
+
+	/**
+	 * Create a new text block item and add it to the items collection
+	 */
+	createTextBlockItem(canvasSize: { width: number; height: number }, user: User): Item {
+		const textBlock = new TextBlock({
+			text: "",
+			color: TEXT_DEFAULT_COLOR,
+			width: TEXT_DEFAULT_WIDTH,
+			fontSize: TEXT_DEFAULT_FONT_SIZE,
+		});
+		const item = new Item({
+			id: crypto.randomUUID(),
+			createdBy: user,
+			createdAt: new DateTime({ ms: Date.now() }),
+			updatedBy: [],
+			updatedAt: new DateTime({ ms: Date.now() }),
+			x: this.getRandomNumber(0, canvasSize.width - 200),
+			y: this.getRandomNumber(0, canvasSize.height - 200),
+			comments: [],
+			votes: [],
+			connections: [],
+			content: textBlock,
 			rotation: 0,
 		});
 
@@ -975,6 +1142,118 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 			this.moveToStart(itemIndex);
 		});
 		return true;
+	}
+
+	public static [exposeMethodsSymbol](methods: ExposedMethods): void {
+		methods.expose(
+			Items,
+			"createShapeItem",
+			buildFunc(
+				{ returns: methods.instanceOf(Item) },
+				["shapeType", z.enum(["circle", "square", "triangle", "star", "rectangle"])],
+				["canvasSize", z.object({ width: z.number(), height: z.number() })],
+				["shapeColors", z.array(z.string())],
+				["filled", z.boolean().optional()],
+				["user", methods.instanceOf(User)]
+			)
+		);
+		methods.expose(
+			Items,
+			"createNoteItem",
+			buildFunc(
+				{ returns: methods.instanceOf(Item) },
+				["canvasSize", z.object({ width: z.number(), height: z.number() })],
+				["user", methods.instanceOf(User)],
+				[
+					"color",
+					z.enum(["#FEFF68", "#FFE4A7", "#C8F7C5", "#FAD4D8", "#D7E8FF"]).optional(),
+				]
+			)
+		);
+		methods.expose(
+			Items,
+			"createTableItem",
+			buildFunc(
+				{ returns: methods.instanceOf(Item) },
+				["canvasSize", z.object({ width: z.number(), height: z.number() })],
+				["user", methods.instanceOf(User)]
+			)
+		);
+		methods.expose(
+			Items,
+			"createGroupItem",
+			buildFunc(
+				{ returns: methods.instanceOf(Item) },
+				["name", z.string()],
+				["canvasSize", z.object({ width: z.number(), height: z.number() })],
+				["user", methods.instanceOf(User)]
+			)
+		);
+		methods.expose(
+			Items,
+			"createTextBlockItem",
+			buildFunc(
+				{ returns: methods.instanceOf(Item) },
+				["canvasSize", z.object({ width: z.number(), height: z.number() })],
+				["user", methods.instanceOf(User)]
+			)
+		);
+		methods.expose(
+			Items,
+			"createTextItem",
+			buildFunc(
+				{ returns: methods.instanceOf(Item) },
+				["user", methods.instanceOf(User)],
+				["canvasSize", z.object({ width: z.number(), height: z.number() })],
+				[
+					"props",
+					z
+						.object({
+							text: z.string().optional(),
+							color: z.string().optional(),
+							width: z.number().optional(),
+							fontSize: z.number().optional(),
+							bold: z.boolean().optional(),
+							italic: z.boolean().optional(),
+							underline: z.boolean().optional(),
+							strikethrough: z.boolean().optional(),
+							cardStyle: z.boolean().optional(),
+							textAlign: z.string().optional(),
+						})
+						.optional(),
+				]
+			)
+		);
+		methods.expose(
+			Items,
+			"duplicateItem",
+			buildFunc(
+				{ returns: methods.instanceOf(Item) },
+				["item", methods.instanceOf(Item)],
+				["user", methods.instanceOf(User)],
+				["canvasSize", z.object({ width: z.number(), height: z.number() })]
+			)
+		);
+		methods.expose(
+			Items,
+			"moveItemForward",
+			buildFunc({ returns: z.boolean() }, ["item", methods.instanceOf(Item)])
+		);
+		methods.expose(
+			Items,
+			"moveItemBackward",
+			buildFunc({ returns: z.boolean() }, ["item", methods.instanceOf(Item)])
+		);
+		methods.expose(
+			Items,
+			"bringItemToFront",
+			buildFunc({ returns: z.boolean() }, ["item", methods.instanceOf(Item)])
+		);
+		methods.expose(
+			Items,
+			"sendItemToBack",
+			buildFunc({ returns: z.boolean() }, ["item", methods.instanceOf(Item)])
+		);
 	}
 }
 

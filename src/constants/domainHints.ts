@@ -1,8 +1,86 @@
-export const domainHints = `This is a 2D application that allows the user to position shapes, notes, and tables on a canvas.
-The canvas also supports ink. The shapes can be moved, rotated, resized and have style properties changed.
-Each shape, note, and table can have comments associated with it as well.
+export const domainHints = `This is a collaborative 2D canvas application built on Fluid Framework that allows users to position shapes, notes, text blocks, tables, and groups on an infinite canvas.
+The canvas also supports ink drawing. Items can be moved, rotated, resized, and have style properties changed.
+Each item can have comments and votes associated with it.
 
-Here's an example of a canvas with five shapes on it:
+⚠️ KNOWN ISSUE WITH WORKAROUND: The createNoteItem(), createShapeItem(), createTableItem(), and createTextItem() 
+methods fail with a schema error when called in the AI editing context because the context.user object is from the main tree
+and cannot be inserted into the forked tree.
+
+WORKAROUND: Create a NEW synthetic AI user for EACH item you create:
+
+  const { root } = context;
+  // Create a NEW AI user for THIS item (don't reuse User objects!)
+  const aiUser = context.create.User({ id: "AI", name: "AI" });
+  const noteItem = root.items.createNoteItem({ width: 1600, height: 900 }, aiUser);
+
+CRITICAL: You MUST create a new User object for each item. You CANNOT reuse the same User object because 
+once it's inserted into the tree (as createdBy), it becomes "attached" and cannot be inserted again.
+
+WRONG - Reusing the same User object:
+  const aiUser = context.create.User({ id: "AI", name: "AI" });
+  const item1 = root.items.createNoteItem({ width: 1600, height: 900 }, aiUser);
+  const item2 = root.items.createShapeItem('circle', { width: 1600, height: 900 }, ['#FF0000'], true, aiUser); // ERROR!
+
+CORRECT - Create a new User for each item:
+  const aiUser1 = context.create.User({ id: "AI", name: "AI" });
+  const item1 = root.items.createNoteItem({ width: 1600, height: 900 }, aiUser1);
+  const aiUser2 = context.create.User({ id: "AI", name: "AI" });
+  const item2 = root.items.createShapeItem('circle', { width: 1600, height: 900 }, ['#FF0000'], true, aiUser2);
+
+✅ WHAT WORKS: You CAN successfully:
+- Create new items (notes, shapes, tables, text blocks) using the User workaround above
+- Modify existing items (change positions, colors, text, properties)
+- Delete items using item.delete()
+- Duplicate items using root.items.duplicateItem() (with User workaround)
+- Add/remove comments on existing items
+- Add/remove votes on existing items
+- Modify table data in existing tables (add/remove rows and columns, change cell values)
+- Query and analyze the canvas state
+- Move items using z-order operations (moveItemForward, bringItemToFront, etc.)
+
+❌ CRITICAL: Always create User in tree context first (see examples above)
+
+CRITICAL CONTEXT OBJECT:
+The 'context' object passed to AI-generated code contains:
+- context.root: The App root object with items, comments, and inks arrays
+- context.tree: The TreeView instance (for advanced operations)
+- context.user: A User object with { id: string, name: string } for the current user
+
+EXECUTION ENVIRONMENT:
+- Your code is executed via 'new Function()' and is NOT async - DO NOT use 'await' or 'async' keywords
+- All operations are synchronous
+- The code runs in a plain JavaScript function context, not a module
+
+USER INFORMATION:
+ALWAYS create a NEW synthetic AI user for EACH item you create. DO NOT reuse User objects.
+Pattern: const aiUser = context.create.User({ id: "AI", name: "AI" });
+Remember: Each User object can only be inserted into the tree once (as createdBy), so create a fresh one for each item.
+
+DATA MODEL OVERVIEW:
+The application has a root App object containing:
+- items: An Items array (all canvas items like shapes, notes, tables, text, groups)
+- comments: A Comments array (canvas-level comments)
+- inks: An array of InkStroke objects (freehand drawings)
+
+Each Item contains:
+- id: unique identifier (UUID string)
+- x, y: position coordinates (numbers, can be negative)
+- rotation: rotation in degrees (number)
+- createdBy, createdAt: user and timestamp of creation
+- updatedBy, updatedAt: array of users who modified it and last update timestamp
+- comments: Comments array attached to this item
+- votes: Votes array for voting on this item
+- connections: array of item IDs representing directional connections TO this item
+- content: one of Shape, Note, TextBlock, FluidTable, or Group
+
+Content Types:
+- Shape: Geometric shapes (circle, square, triangle, star, rectangle) with color, size, and filled/outline properties
+- Note: Sticky notes with text and background color
+- TextBlock: Rich text with formatting (bold, italic, underline, strikethrough, alignment, card style)
+- FluidTable: Tables with rows and columns containing typed data (string, number, boolean, DateTime, Vote)
+- Group: Container for other items with a name and optional grid layout (items nested in group.content.items)
+
+Here's an example of a canvas with a table and some shapes:
 
 \`\`\`JSON
 {
@@ -18,11 +96,11 @@ Here's an example of a canvas with five shapes on it:
           // Index: 0,
           "id": "d29e1b0d-c331-4d64-a5af-22f5904640c2",
           "text": "This table has a comment, too!",
-          "userId": "dc8ae028-9ae3-485d-9d26-6a32f3106745.72f988bf-86f1-41af-91ab-2d7cd011db47",
-          "username": "Taylor Williams",
-          "votes": {
-            "votes": []
+          "user": {
+            "id": "dc8ae028-9ae3-485d-9d26-6a32f3106745.72f988bf-86f1-41af-91ab-2d7cd011db47",
+            "name": "Taylor Williams"
           },
+          "votes": [],
           "createdAt": {
             "ms": 1758596709793
           }
@@ -171,19 +249,17 @@ Here's an example of a canvas with five shapes on it:
           // Index: 0,
           "id": "335755e9-a318-4bc7-94f4-8aaaab8eb1e7",
           "text": "This shape has a comment!",
-          "userId": "dc8ae028-9ae3-485d-9d26-6a32f3106745.72f988bf-86f1-41af-91ab-2d7cd011db47",
-          "username": "Taylor Williams",
-          "votes": {
-            "votes": []
+          "user": {
+            "id": "dc8ae028-9ae3-485d-9d26-6a32f3106745.72f988bf-86f1-41af-91ab-2d7cd011db47",
+            "name": "Taylor Williams"
           },
+          "votes": [],
           "createdAt": {
             "ms": 1758596699419
           }
         }
       ],
-      "votes": {
-        "votes": []
-      },
+      "votes": [],
       "content": {
         "size": 143,
         "color": "#33FF57",
@@ -205,9 +281,7 @@ Here's an example of a canvas with five shapes on it:
       "y": 169.12686567164178,
       "rotation": 6,
       "comments": [],
-      "votes": {
-        "votes": []
-      },
+      "votes": [],
       "content": {
         "size": 157,
         "color": "#FF0000",
@@ -229,9 +303,7 @@ Here's an example of a canvas with five shapes on it:
       "y": 390,
       "rotation": 356,
       "comments": [],
-      "votes": {
-        "votes": []
-      },
+      "votes": [],
       "content": {
         "size": 158,
         "color": "#FF8C33",
@@ -253,9 +325,7 @@ Here's an example of a canvas with five shapes on it:
       "y": 92,
       "rotation": 346,
       "comments": [],
-      "votes": {
-        "votes": []
-      },
+      "votes": [],
       "content": {
         "size": 150,
         "color": "#3357FF",
@@ -277,9 +347,7 @@ Here's an example of a canvas with five shapes on it:
       "y": 390.5223880597015,
       "rotation": 8,
       "comments": [],
-      "votes": {
-        "votes": []
-      },
+      "votes": [],
       "content": {
         "size": 144,
         "color": "#33FFF5",
@@ -301,13 +369,18 @@ Here's an example of a canvas with five shapes on it:
       "y": 471,
       "rotation": 5,
       "comments": [],
-      "votes": {
-        "votes": []
-      },
+      "votes": [],
       "content": {
-        "id": "b04e432f-3e2c-45cb-add9-6ea0f962f5b1",
         "text": "Some text!",
-        "author": "AI Agent"
+        "color": "#111827",
+        "width": 300,
+        "fontSize": 16,
+        "bold": false,
+        "italic": false,
+        "underline": false,
+        "strikethrough": false,
+        "cardStyle": false,
+        "textAlign": "left"
       },
       "created": {
         "userId": "AI Agent",
@@ -335,45 +408,39 @@ User request:
 
 Snippet written to accomplish the edit:
 
-const { root, create } = context;
+const { root } = context;
+// CRITICAL: Create a NEW AI user for this table (don't reuse User objects!)
+const aiUser = context.create.User({ id: "AI", name: "AI" });
+
 // Create a new table on the canvas
-const tableItem = root.items.createTableItem({ width: 1600, height: 900 }, "AI Agent", "AI Agent");
+const tableItem = root.items.createTableItem({ width: 1600, height: 900 }, aiUser);
 const table = tableItem.content;
 
-// Remove any default rows
-if (table.rows && typeof table.rows.removeRange === 'function') {
-  table.rows.removeRange(0, table.rows.length);
+// Clear default columns - delete all columns first
+while (table.columns.length > 0) {
+  table.deleteColumn(table.columns[0]);
 }
 
-// Remove any default columns using the provided API
-if (table.columns) {
-  // Delete columns from first to last
-  while (table.columns.length > 0) {
-    table.deleteColumn(table.columns[0]);
-  }
-}
+// Clear default rows
+table.rows.removeRange(0, table.rows.length);
 
 // Add the columns we need: Country, Population (millions), GDP (USD, billions)
-table.addColumn("AI Agent");
-let colCountry = table.columns[table.columns.length - 1];
+table.addColumn();
+const colCountry = table.columns[table.columns.length - 1];
 colCountry.props.name = "Country";
 colCountry.props.hint = "string";
 
-table.addColumn("AI Agent");
-let colPopulation = table.columns[table.columns.length - 1];
+table.addColumn();
+const colPopulation = table.columns[table.columns.length - 1];
 colPopulation.props.name = "Population (millions)";
 colPopulation.props.hint = "number";
 
-table.addColumn("AI Agent");
-let colGDP = table.columns[table.columns.length - 1];
+table.addColumn();
+const colGDP = table.columns[table.columns.length - 1];
 colGDP.props.name = "GDP (USD, billions)";
 colGDP.props.hint = "number";
 
-const countryColId = colCountry.id;
-const popColId = colPopulation.id;
-const gdpColId = colGDP.id;
-
-// Data for the ten most populous countries (population in millions, GDP in USD billions; recent estimates)
+// Data for the ten most populous countries (population in millions, GDP in USD billions)
 const data = [
   { country: "India", pop: 1429, gdp: 3940 },
   { country: "China", pop: 1412, gdp: 18530 },
@@ -387,12 +454,13 @@ const data = [
   { country: "Mexico", pop: 129, gdp: 1920 },
 ];
 
+// Add rows with data
 data.forEach(entry => {
-  table.addRow("AI Agent");
+  table.addRow();
   const row = table.rows[table.rows.length - 1];
-  if (countryColId) row.cells[countryColId] = entry.country;
-  if (popColId) row.cells[popColId] = entry.pop;
-  if (gdpColId) row.cells[gdpColId] = entry.gdp;
+  row.setCell(colCountry, entry.country);
+  row.setCell(colPopulation, entry.pop);
+  row.setCell(colGDP, entry.gdp);
 });
 
 2.
@@ -400,15 +468,15 @@ User request: "Add a sticky note that has text that is the average of the colors
 
 Snippet written to accomplish the edit:
 
-const { root, create } = context;
+const { root } = context;
+
 // Collect all shape colors on the canvas
-const shapeTypes = new Set(['circle', 'square', 'triangle', 'star']);
 let rSum = 0, gSum = 0, bSum = 0, count = 0;
 
 root.items.forEach((item) => {
-  const content = item && item.content;
-  if (content && typeof content === 'object' && typeof content.type === 'string' && shapeTypes.has(content.type)) {
-    const color = content.color;
+  // Check if this item's content is a Shape
+  if (item.content && typeof item.content === 'object' && 'type' in item.content && 'color' in item.content) {
+    const color = item.content.color;
     if (typeof color === 'string' && /^#([0-9A-Fa-f]{6})$/.test(color)) {
       const r = parseInt(color.slice(1, 3), 16);
       const g = parseInt(color.slice(3, 5), 16);
@@ -418,7 +486,7 @@ root.items.forEach((item) => {
   }
 });
 
-// Compute the average color (rounded to nearest integer per channel)
+// Compute the average color
 let avgHex = '#000000';
 if (count > 0) {
   const rAvg = Math.round(rSum / count);
@@ -428,13 +496,264 @@ if (count > 0) {
   avgHex = \`#\${toHex(rAvg)}\${toHex(gAvg)}\${toHex(bAvg)}\`;
 }
 
-// Create a new sticky note and set its text to the average color hex string
-const noteItem = root.items.createNoteItem({ width: 1600, height: 900 }, 'AI Agent', 'AI Agent', 'AI Agent');
-if (noteItem && noteItem.content && typeof noteItem.content === 'object') {
-  noteItem.content.text = avgHex;
-}
+// CRITICAL: Create a NEW AI user for this note
+const aiUser = context.create.User({ id: "AI", name: "AI" });
+// Create a new sticky note - automatically inserted into items array
+const noteItem = root.items.createNoteItem({ width: 1600, height: 900 }, aiUser);
+noteItem.content.text = avgHex;
 
-A common mistake in the generated code: data cannot be removed from the tree and then directly re-inserted. Instead, it must be cloned - i.e. create an equivalent new instance of that data - and then the new instance can be inserted.
+3.
+User request: "Create a blue circle"
 
-When responding to the user, YOU MUST NEVER reference technical details like "schema" or "data", "tree" or "pixels" - explain what has happened with high-level user-friendly language.
+Snippet written to accomplish the edit:
+
+const { root } = context;
+// CRITICAL: Create a NEW AI user for this shape
+const aiUser = context.create.User({ id: "AI", name: "AI" });
+
+// Available shape types: 'circle', 'square', 'triangle', 'star', 'rectangle'
+// This method automatically inserts the shape into root.items
+const shapeItem = root.items.createShapeItem(
+  'circle',
+  { width: 1600, height: 900 }, // canvas size for positioning
+  ['#0000FF'], // array of color options - blue
+  true, // filled (true) or outline only (false)
+  aiUser
+);
+
+4.
+User request: "Add a text block that says 'Hello World' in red"
+
+Snippet written to accomplish the edit:
+
+const { root } = context;
+// CRITICAL: Create a NEW AI user for this text block
+const aiUser = context.create.User({ id: "AI", name: "AI" });
+
+// This method automatically inserts the text into root.items
+const textItem = root.items.createTextItem(
+  aiUser,
+  { width: 1600, height: 900 },
+  {
+    text: 'Hello World',
+    color: '#FF0000', // red text
+    fontSize: 24,
+    bold: false,
+    italic: false,
+    underline: false,
+    strikethrough: false,
+    cardStyle: true, // white card background with shadow
+    textAlign: 'center'
+  }
+);
+
+5.
+User request: "Delete all red shapes"
+
+Snippet written to accomplish the edit:
+
+const { root } = context;
+
+// Collect items to delete first (don't modify array while iterating)
+const itemsToDelete = [];
+root.items.forEach((item) => {
+  if (item.content && typeof item.content === 'object' && 'color' in item.content) {
+    if (item.content.color === '#FF0000') {
+      itemsToDelete.push(item);
+    }
+  }
+});
+
+// Now delete them
+itemsToDelete.forEach(item => item.delete());
+
+6.
+User request: "Add three circles: red, green, and blue"
+
+Snippet written to accomplish the edit:
+
+const { root } = context;
+
+// CRITICAL: Create a NEW User for EACH circle (don't reuse!)
+const aiUser1 = context.create.User({ id: "AI", name: "AI" });
+root.items.createShapeItem('circle', { width: 1600, height: 900 }, ['#FF0000'], true, aiUser1);
+
+const aiUser2 = context.create.User({ id: "AI", name: "AI" });
+root.items.createShapeItem('circle', { width: 1600, height: 900 }, ['#00FF00'], true, aiUser2);
+
+const aiUser3 = context.create.User({ id: "AI", name: "AI" });
+root.items.createShapeItem('circle', { width: 1600, height: 900 }, ['#0000FF'], true, aiUser3);
+
+7.
+User request: "Create a group called 'My Ideas'"
+
+Snippet written to accomplish the edit:
+
+const { root } = context;
+// CRITICAL: Create a NEW AI user for this group
+const aiUser = context.create.User({ id: "AI", name: "AI" });
+
+// Create a new group - it starts empty and items can be added to group.content.items
+const groupItem = root.items.createGroupItem('My Ideas', { width: 1600, height: 900 }, aiUser);
+
+8.
+User request: "Add a text block"
+
+Snippet written to accomplish the edit:
+
+const { root } = context;
+// CRITICAL: Create a NEW AI user for this text block
+const aiUser = context.create.User({ id: "AI", name: "AI" });
+
+// Create a text block with default properties (blank text, default color, width, font size)
+const textBlockItem = root.items.createTextBlockItem({ width: 1600, height: 900 }, aiUser);
+// Optionally customize it
+textBlockItem.content.text = 'Enter text here';
+textBlockItem.content.fontSize = 18;
+textBlockItem.content.bold = true;
+
+IMPORTANT API PATTERNS:
+
+Creating Items (these methods automatically add items to root.items array):
+- root.items.createShapeItem(type, canvasSize, colorArray, filled, user) - returns Item, already inserted
+- root.items.createNoteItem(canvasSize, user, color?) - returns Item, already inserted (default color is '#FFEB3B')
+- root.items.createTableItem(canvasSize, user) - returns Item, already inserted
+- root.items.createTextItem(user, canvasSize, props?) - returns Item, already inserted
+- root.items.createTextBlockItem(canvasSize, user) - returns Item with blank TextBlock, already inserted
+- root.items.createGroupItem(name, canvasSize, user) - returns Item with empty Group, already inserted
+
+CRITICAL: All createXxxItem() methods automatically insert the item into the items array. DO NOT call insertAtEnd() or insertAt() after using these methods!
+CRITICAL: Remember to create a NEW User object for each item created (see examples above).
+
+Table Operations:
+- table.addColumn() - adds a column, access via table.columns[table.columns.length - 1]
+- table.deleteColumn(column) - removes a column and all its cells
+- table.addRow() - adds a row, access via table.rows[table.rows.length - 1]
+- row.setCell(column, value) - sets a cell value
+- row.getCell(column) - gets a cell value
+- table.moveColumnLeft(column), table.moveColumnRight(column)
+- table.moveRowUp(row), table.moveRowDown(row)
+
+Item Operations:
+- root.items.duplicateItem(item, user, canvasSize) - duplicates an item (remember: create new User!)
+- root.items.moveItemForward(item), moveItemBackward(item) - adjust z-order
+- root.items.bringItemToFront(item), sendItemToBack(item) - z-order extremes
+- item.delete() - removes the item
+- item.addConnection(fromItemId) - adds a directional connection TO this item
+- item.removeConnection(fromItemId)
+
+Group Operations:
+- groupItem.content.items - the Items array inside a group (nested items)
+- groupItem.content.name - the name of the group
+- groupItem.content.viewAsGrid - boolean for grid layout mode
+- You can use all the same createXxxItem() methods on group.content.items to add items to a group
+- Example: groupItem.content.items.createShapeItem(...) to add a shape to the group
+
+Comments and Votes:
+- item.comments.addComment(text, user) - adds a comment to an item
+- comment.delete() - removes a comment
+- item.votes.addVote(user), removeVote(user), toggleVote(user)
+- root.comments.addComment(text, user) - canvas-level comment
+
+Shape Types and Properties:
+- Shape types: 'circle', 'square', 'triangle', 'star', 'rectangle'
+- Shapes have: color (hex string), type (with size/dimensions), filled (boolean)
+- Circle: { radius: number }
+- Square: { size: number }
+- Triangle: { base: number, height: number }
+- Star: { size: number }
+- Rectangle: { width: number, height: number }
+
+Note Properties:
+- text: string
+- color: hex string (default '#FFEB3B' yellow)
+
+TextBlock Properties:
+- text, color (hex), width (pixels), fontSize (pixels)
+- bold, italic, underline, strikethrough (booleans)
+- cardStyle (boolean - white background card)
+- textAlign ('left', 'center', 'right')
+
+Column Hints (for table columns):
+- 'string', 'number', 'boolean', 'DateTime', 'Vote'
+
+CRITICAL CONSTRAINTS:
+1. ALWAYS create a NEW synthetic AI user for EACH item you create:
+   const aiUser = context.create.User({ id: "AI", name: "AI" });
+   DO NOT reuse User objects - create a fresh one for each createXxxItem() call.
+   Each User can only be inserted once (as createdBy), so if creating multiple items, create multiple Users.
+2. DO NOT use 'await', 'async', or any asynchronous patterns - all operations are synchronous
+3. DO NOT manually insert items after using createXxxItem() methods - they already insert automatically
+4. THE SAME NODE/OBJECT INSTANCE CANNOT BE INSERTED INTO THE TREE MORE THAN ONCE
+   - If you remove an item/node from the tree, you CANNOT re-insert that exact same object
+   - Instead, you must create a NEW instance with the same properties (clone it)
+   - Example: To move an item, use duplicateItem() then delete the original
+   - Example: To reuse data, create new objects with the same values, don't reuse variables
+   - THIS APPLIES TO USER OBJECTS TOO - create a new one for each item
+5. When modifying tables, use row.setCell(column, value) with actual column objects
+6. Coordinates can be negative - the canvas is infinite
+7. DO NOT use Tree.runTransaction() - it's not needed and causes errors with await
+8. Check item.content type before accessing type-specific properties
+9. Once an object is inserted into the tree, it becomes "attached" - you cannot insert it elsewhere
+
+WRONG - Reusing the same User object across multiple items:
+  const { root } = context;
+  const aiUser = context.create.User({ id: "AI", name: "AI" });
+  const item1 = root.items.createNoteItem({ width: 1600, height: 900 }, aiUser);
+  const item2 = root.items.createShapeItem('circle', { width: 1600, height: 900 }, ['#FF0000'], true, aiUser); // ERROR!
+
+CORRECT - Create a NEW User for each item:
+  const { root } = context;
+  const aiUser1 = context.create.User({ id: "AI", name: "AI" });
+  const item1 = root.items.createNoteItem({ width: 1600, height: 900 }, aiUser1);
+  const aiUser2 = context.create.User({ id: "AI", name: "AI" });
+  const item2 = root.items.createShapeItem('circle', { width: 1600, height: 900 }, ['#FF0000'], true, aiUser2);
+
+WRONG - Using context.user directly (will cause schema error):
+  const { root, user } = context;
+  const noteItem = root.items.createNoteItem({ width: 1600, height: 900 }, user);  // ERROR
+
+CORRECT - Create synthetic AI user in current tree context first:
+  const { root } = context;
+  const aiUser = context.create.User({ id: "AI", name: "AI" });
+  const noteItem = root.items.createNoteItem({ width: 1600, height: 900 }, aiUser);
+
+WRONG - Using await (will cause SyntaxError):
+  await tree.runTransaction(async () => { ... });  // ERROR: await not allowed
+
+CORRECT - Direct synchronous operations:
+  const noteItem = root.items.createNoteItem({ width: 1600, height: 900 }, user);
+  noteItem.content.text = 'My note text';
+
+WRONG - Manually inserting after create method:
+  const noteItem = root.items.createNoteItem({ width: 1600, height: 900 }, user);
+  root.items.insertAtEnd(noteItem);  // ERROR: already inserted!
+
+CORRECT - Create methods handle insertion:
+  const noteItem = root.items.createNoteItem({ width: 1600, height: 900 }, user);
+  // Item is already in the tree, just modify its properties
+  noteItem.x = 100;
+  noteItem.y = 200;
+
+WRONG - Trying to reuse the same shape object:
+  const shape = new Shape({ color: '#FF0000', type: new Circle({ radius: 50 }), filled: true });
+  const item1 = new Item({ ..., content: shape }); // shape is now attached
+  const item2 = new Item({ ..., content: shape }); // ERROR: shape already attached!
+
+CORRECT - Create separate instances:
+  const item1 = new Item({ ..., content: new Shape({ color: '#FF0000', type: new Circle({ radius: 50 }), filled: true }) });
+  const item2 = new Item({ ..., content: new Shape({ color: '#FF0000', type: new Circle({ radius: 50 }), filled: true }) });
+
+WRONG - Trying to move by removing and re-inserting:
+  const item = root.items[0];
+  root.items.removeAt(0);
+  root.items.insertAtEnd(item); // ERROR: item was already in tree
+
+CORRECT - Use duplicate then delete, or just modify properties in place:
+  const item = root.items[0];
+  const duplicate = root.items.duplicateItem(item, user, { width: 1600, height: 900 });
+  item.delete();
+  // Or better: just modify the item's x, y properties directly without moving it
+
+When responding to the user, YOU MUST NEVER reference technical details like "schema", "tree", or "data structure" - explain what has happened with high-level user-friendly language. Focus on the user-visible results like "I created a blue circle" not "I added a Shape node with Circle type to the tree".
 `;

@@ -801,8 +801,8 @@ const voteSortingFn: SortingFn<FluidRow> = (
 	} else if (valueB === undefined) {
 		return -1;
 	} else if (Tree.is(valueA, Votes) && Tree.is(valueB, Votes)) {
-		const dateA = valueA.numberOfVotes;
-		const dateB = valueB.numberOfVotes;
+		const dateA = valueA.getNumberOfVotes();
+		const dateB = valueB.getNumberOfVotes();
 		if (dateA < dateB) {
 			return -1;
 		} else if (dateA > dateB) {
