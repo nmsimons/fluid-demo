@@ -2,6 +2,9 @@ export const domainHints = `This is a collaborative 2D canvas application built 
 The canvas also supports ink drawing. Items can be moved, rotated, resized, and have style properties changed.
 Each item can have comments and votes associated with it.
 
+AVAILABLE METHODS:
+The schema exposes all available methods that you can call on objects in the tree. Use autocomplete/IntelliSense or explore the object structure to discover available operations. All public methods on schema objects (Items, FluidTable, Item, Comments, Votes, etc.) are available for use.
+
 ⚠️ KNOWN ISSUE WITH WORKAROUND: The createNoteItem(), createShapeItem(), createTableItem(), and createTextItem() 
 methods fail with a schema error when called in the AI editing context because the context.user object is from the main tree
 and cannot be inserted into the forked tree.
@@ -28,15 +31,17 @@ CORRECT - Create a new User for each item:
   const item2 = root.items.createShapeItem('circle', { width: 1600, height: 900 }, ['#FF0000'], true, aiUser2);
 
 ✅ WHAT WORKS: You CAN successfully:
-- Create new items (notes, shapes, tables, text blocks) using the User workaround above
+- Create new items (notes, shapes, tables, text blocks, groups) using the User workaround above
 - Modify existing items (change positions, colors, text, properties)
-- Delete items using item.delete()
-- Duplicate items using root.items.duplicateItem() (with User workaround)
-- Add/remove comments on existing items
-- Add/remove votes on existing items
-- Modify table data in existing tables (add/remove rows and columns, change cell values)
+- Delete items
+- Duplicate items (with User workaround)
+- Add/remove comments on items
+- Add/remove votes on items
+- Modify table data (add/remove rows and columns, change cell values)
 - Query and analyze the canvas state
-- Move items using z-order operations (moveItemForward, bringItemToFront, etc.)
+- Adjust item layering (z-order operations)
+- Work with connections between items
+- Nest items inside groups
 
 ❌ CRITICAL: Always create User in tree context first (see examples above)
 
@@ -612,70 +617,15 @@ textBlockItem.content.text = 'Enter text here';
 textBlockItem.content.fontSize = 18;
 textBlockItem.content.bold = true;
 
-IMPORTANT API PATTERNS:
+IMPORTANT:
 
-Creating Items (these methods automatically add items to root.items array):
-- root.items.createShapeItem(type, canvasSize, colorArray, filled, user) - returns Item, already inserted
-- root.items.createNoteItem(canvasSize, user, color?) - returns Item, already inserted (default color is '#FFEB3B')
-- root.items.createTableItem(canvasSize, user) - returns Item, already inserted
-- root.items.createTextItem(user, canvasSize, props?) - returns Item, already inserted
-- root.items.createTextBlockItem(canvasSize, user) - returns Item with blank TextBlock, already inserted
-- root.items.createGroupItem(name, canvasSize, user) - returns Item with empty Group, already inserted
+Creating Items (all methods automatically add items to root.items array):
+- Methods available on root.items to create different types of items
+- All createXxxItem() methods automatically insert the item into the items array
+- DO NOT call insertAtEnd() or insertAt() after using create methods!
 
-CRITICAL: All createXxxItem() methods automatically insert the item into the items array. DO NOT call insertAtEnd() or insertAt() after using these methods!
+CRITICAL: All item creation methods require a User parameter.
 CRITICAL: Remember to create a NEW User object for each item created (see examples above).
-
-Table Operations:
-- table.addColumn() - adds a column, access via table.columns[table.columns.length - 1]
-- table.deleteColumn(column) - removes a column and all its cells
-- table.addRow() - adds a row, access via table.rows[table.rows.length - 1]
-- row.setCell(column, value) - sets a cell value
-- row.getCell(column) - gets a cell value
-- table.moveColumnLeft(column), table.moveColumnRight(column)
-- table.moveRowUp(row), table.moveRowDown(row)
-
-Item Operations:
-- root.items.duplicateItem(item, user, canvasSize) - duplicates an item (remember: create new User!)
-- root.items.moveItemForward(item), moveItemBackward(item) - adjust z-order
-- root.items.bringItemToFront(item), sendItemToBack(item) - z-order extremes
-- item.delete() - removes the item
-- item.addConnection(fromItemId) - adds a directional connection TO this item
-- item.removeConnection(fromItemId)
-
-Group Operations:
-- groupItem.content.items - the Items array inside a group (nested items)
-- groupItem.content.name - the name of the group
-- groupItem.content.viewAsGrid - boolean for grid layout mode
-- You can use all the same createXxxItem() methods on group.content.items to add items to a group
-- Example: groupItem.content.items.createShapeItem(...) to add a shape to the group
-
-Comments and Votes:
-- item.comments.addComment(text, user) - adds a comment to an item
-- comment.delete() - removes a comment
-- item.votes.addVote(user), removeVote(user), toggleVote(user)
-- root.comments.addComment(text, user) - canvas-level comment
-
-Shape Types and Properties:
-- Shape types: 'circle', 'square', 'triangle', 'star', 'rectangle'
-- Shapes have: color (hex string), type (with size/dimensions), filled (boolean)
-- Circle: { radius: number }
-- Square: { size: number }
-- Triangle: { base: number, height: number }
-- Star: { size: number }
-- Rectangle: { width: number, height: number }
-
-Note Properties:
-- text: string
-- color: hex string (default '#FFEB3B' yellow)
-
-TextBlock Properties:
-- text, color (hex), width (pixels), fontSize (pixels)
-- bold, italic, underline, strikethrough (booleans)
-- cardStyle (boolean - white background card)
-- textAlign ('left', 'center', 'right')
-
-Column Hints (for table columns):
-- 'string', 'number', 'boolean', 'DateTime', 'Vote'
 
 CRITICAL CONSTRAINTS:
 1. ALWAYS create a NEW synthetic AI user for EACH item you create:
