@@ -1,0 +1,56 @@
+name: Azure Static Web Apps CI/CD
+
+on:
+    push:
+        branches:
+            - ai
+    pull_request:
+        types: [opened, synchronize, reopened, closed]
+        branches:
+            - ai
+
+jobs:
+    build_and_deploy_job:
+        if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action != 'closed')
+        runs-on: ubuntu-latest
+        name: Build and Deploy Job
+        steps:
+            - uses: actions/checkout@v3
+              with:
+                  submodules: true
+                  lfs: false
+            - name: Build And Deploy
+              id: builddeploy
+              uses: Azure/static-web-apps-deploy@v1
+              with:
+                  azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_POLITE_MUSHROOM_039AAC31E }}
+                  repo_token: ${{ secrets.GITHUB_TOKEN }} # Used for Github integrations (i.e. PR comments)
+                  action: "upload"
+                  ###### Repository/Build Configurations - These values can be configured to match your app requirements. ######
+                  # For more information regarding Static Web App workflow configurations, please visit: https://aka.ms/swaworkflowconfig
+                  app_location: "/" # App source code path
+                  api_location: "" # Api source code path - optional
+                  output_location: "dist" # Built app content directory - optional
+              env:
+                  AZURE_TENANT_ID: 12b7e74d-13ee-4b43-a3cb-8f869b324515
+                  AZURE_ORDERER: https://us.fluidrelay.azure.com
+                  AZURE_FUNCTION_TOKEN_PROVIDER_URL: https://afr-token-provider-cqgmabgtancbdwee.westus2-01.azurewebsites.net/api/getafrtoken
+                  FLUID_CLIENT: azure
+                  AZURE_CLIENT_ID: 47b614f0-17b5-47b5-8422-828f595b2a6b
+                  AZURE_REDIRECT_URI: https://polite-mushroom-039aac31e.2.azurestaticapps.net
+                  AUTHORITY: https://login.microsoftonline.com/72f988bf-86f1-41af-91ab-2d7cd011db47
+                  VITE_OPENAI_BASE_URL: https://mts-d6b6edexdtaqapg4.westus2-01.azurewebsites.net
+                  ###### End of Repository/Build Configurations ######
+
+    close_pull_request_job:
+        if: github.event_name == 'pull_request' && github.event.action == 'closed'
+        runs-on: ubuntu-latest
+        name: Close Pull Request Job
+        steps:
+            - name: Close Pull Request
+              id: closepullrequest
+              uses: Azure/static-web-apps-deploy@v1
+              with:
+                  azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN_POLITE_MUSHROOM_039AAC31E }}
+                  action: "close"
+                  app_location: "/"
