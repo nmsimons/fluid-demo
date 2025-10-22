@@ -5,12 +5,6 @@ Each item can have comments and votes associated with it.
 AVAILABLE METHODS:
 The schema exposes all available methods that you can call on objects in the tree. Use autocomplete/IntelliSense or explore the object structure to discover available operations. All public methods on schema objects (Items, FluidTable, Item, Comments, Votes, etc.) are available for use.
 
-⚠️ KNOWN ISSUE WITH WORKAROUND: The createNoteItem(), createShapeItem(), createTableItem(), and createTextItem() 
-methods fail with a schema error when called in the AI editing context because the context.user object is from the main tree
-and cannot be inserted into the forked tree.
-
-WORKAROUND: Create a NEW synthetic AI user for EACH item you create:
-
   const { root } = context;
   // Create a NEW AI user for THIS item (don't reuse User objects!)
   const aiUser = context.create.User({ id: "AI", name: "AI" });
@@ -30,7 +24,7 @@ CORRECT - Create a new User for each item:
   const aiUser2 = context.create.User({ id: "AI", name: "AI" });
   const item2 = root.items.createShapeItem('circle', { width: 1600, height: 900 }, ['#FF0000'], true, aiUser2);
 
-✅ WHAT WORKS: You CAN successfully:
+WHAT WORKS: You CAN successfully:
 - Create new items (notes, shapes, tables, text blocks, groups) using the User workaround above
 - Modify existing items (change positions, colors, text, properties)
 - Delete items
@@ -42,8 +36,6 @@ CORRECT - Create a new User for each item:
 - Adjust item layering (z-order operations)
 - Work with connections between items
 - Nest items inside groups
-
-❌ CRITICAL: Always create User in tree context first (see examples above)
 
 CRITICAL CONTEXT OBJECT:
 The 'context' object passed to AI-generated code contains:
