@@ -175,7 +175,7 @@ export function AIPane(props: {
 							new SharedTreeSemanticAgent(model, localBranch, {
 								logger: { log: (msg: unknown) => console.log(msg) },
 								domainHints,
-								editor: debuggingEditor
+								editor: debuggingEditor,
 							})
 						);
 
@@ -234,7 +234,7 @@ export function AIPane(props: {
 							new SharedTreeSemanticAgent(model, localBranch, {
 								logger: { log: (msg: unknown) => console.log(msg) },
 								domainHints,
-								editor: debuggingEditor
+								editor: debuggingEditor,
 							})
 						);
 
@@ -281,7 +281,7 @@ export function AIPane(props: {
 						new SharedTreeSemanticAgent(model, localBranch, {
 							logger: { log: (msg: unknown) => console.log(msg) },
 							domainHints,
-							editor: debuggingEditor
+							editor: debuggingEditor,
 						})
 					);
 
@@ -341,7 +341,7 @@ export function AIPane(props: {
 	}, [chats]);
 
 	return (
-		<Pane hidden={hidden} setHidden={setHidden} title="AI Task">
+		<Pane hidden={hidden} setHidden={setHidden} title="AI Chat">
 			<ChatLog chats={chats} />
 			<PromptCommitDiscardButtons
 				cancelCallback={() => {
@@ -392,7 +392,7 @@ export function PromptCommitDiscardButtons(props: {
 				}}
 				disabled={props.disabled}
 			>
-				Complete
+				Commit
 			</Button>
 			<Button
 				className="flex-grow shrink-0 "
@@ -478,10 +478,11 @@ export function SpeechBubble(props: { children: ReactNode; isUser: boolean }): J
 	const { children, isUser } = props;
 	return (
 		<div
-			className={`w-full px-4 py-2 rounded-xl ${isUser
-				? "bg-indigo-100 text-black rounded-br-none"
-				: "bg-white text-black rounded-bl-none"
-				}`}
+			className={`w-full px-4 py-2 rounded-xl ${
+				isUser
+					? "bg-indigo-100 text-black rounded-br-none"
+					: "bg-white text-black rounded-bl-none"
+			}`}
 		>
 			{children}
 		</div>
