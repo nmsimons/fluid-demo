@@ -169,6 +169,67 @@ export function getGroupChildAbsolutePosition(options: GroupChildPositionOptions
 	return { x: groupPosition.x + offset.x, y: groupPosition.y + offset.y };
 }
 
+export function getGroupContentBounds(
+	groupItem: Item,
+	layout: Map<string, LayoutRect>,
+	presence?: PresenceValue,
+	visited: Set<string> = new Set()
+): LayoutRect | null {
+	if (!Tree.is(groupItem.content, Group)) {
+		return null;
+	}
+
+	if (visited.has(groupItem.id)) {
+		return null;
+	}
+
+	visited.add(groupItem.id);
+
+	const group = groupItem.content as Group;
+	let minX = Infinity;
+	let minY = Infinity;
+	let maxX = -Infinity;
+	let maxY = -Infinity;
+	let hasAny = false;
+
+	for (const child of group.items) {
+		if (Tree.is(child.content, Group)) {
+			const nested = getGroupContentBounds(child, layout, presence, visited);
+			if (nested) {
+				minX = Math.min(minX, nested.left);
+				minY = Math.min(minY, nested.top);
+				maxX = Math.max(maxX, nested.right);
+				maxY = Math.max(maxY, nested.bottom);
+				hasAny = true;
+			}
+			continue;
+		}
+
+		const { x, y } = getItemAbsolutePosition(child, presence);
+		const bounds = layout.get(child.id);
+		const width = bounds ? Math.max(1, bounds.right - bounds.left) : 100;
+		const height = bounds ? Math.max(1, bounds.bottom - bounds.top) : 100;
+		minX = Math.min(minX, x);
+		minY = Math.min(minY, y);
+		maxX = Math.max(maxX, x + width);
+		maxY = Math.max(maxY, y + height);
+		hasAny = true;
+	}
+
+	visited.delete(groupItem.id);
+
+	if (!hasAny) {
+		return null;
+	}
+
+	return {
+		left: minX,
+		top: minY,
+		right: maxX,
+		bottom: maxY,
+	};
+}
+
 export function resolveItemTransform(options: ResolveItemTransformOptions): ItemTransformResult {
 	const {
 		item,

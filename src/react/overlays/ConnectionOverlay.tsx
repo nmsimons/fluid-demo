@@ -1,6 +1,7 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useMemo, useState } from "react";
 import { Tree } from "@fluidframework/tree";
 import { Item, Group, Note, TextBlock, FluidTable } from "../../schema/appSchema.js";
+import { FlattenedItem } from "../../utils/flattenItems.js";
 import { useTree } from "../hooks/useTree.js";
 import {
 	getConnectionPoint,
@@ -10,6 +11,11 @@ import {
 } from "../../utils/connections.js";
 import { generateWaypoints } from "../../utils/pathfinding.js";
 import { PresenceContext } from "../contexts/PresenceContext.js";
+import {
+	getGroupContentBounds,
+	getItemAbsolutePosition,
+	getParentGroupInfo,
+} from "../utils/presenceGeometry.js";
 import { updateCursorFromEvent } from "../../utils/cursorUtils.js";
 import type { ConnectionDragState } from "../../presence/Interfaces/ConnectionDragManager.js";
 import { getUserColor } from "../../utils/userUtils.js";
@@ -23,8 +29,10 @@ interface LayoutBounds {
 
 type LayoutMap = Map<string, LayoutBounds>;
 
+type PresenceContextType = React.ContextType<typeof PresenceContext>;
+
 interface ConnectionOverlayProps {
-	items: Item[];
+	flattenedItems: FlattenedItem[];
 	layout: LayoutMap;
 	zoom: number;
 	pan: { x: number; y: number };
@@ -75,58 +83,53 @@ const getAttendeeId = (remote: unknown): string | undefined => {
 	return typeof id === "string" ? id : undefined;
 };
 
+const inflateRect = (rect: Rect, padding: number): Rect => ({
+	x: rect.x - padding,
+	y: rect.y - padding,
+	width: rect.width + padding * 2,
+	height: rect.height + padding * 2,
+});
+
 /**
  * Calculate bounds for a group based on its children
  * Uses VISUAL bounds with zoom-dependent padding for connection points
  */
-function calculateGroupVisualBounds(groupItem: Item, layout: LayoutMap): Rect | null {
-	const group = groupItem.content as Group;
-
+function calculateGroupVisualBounds(
+	groupItem: Item,
+	layout: LayoutMap,
+	presence: PresenceContextType
+): Rect | null {
 	const borderStrokeWidth = 5; // Unselected border width (matches GroupOverlay)
 	const titleBarHeight = 34;
 	const titleBarGap = borderStrokeWidth * 0.85;
 	const titleBarTotalHeight = titleBarHeight + titleBarGap;
 
-	if (group.items.length === 0) {
+	const contentBounds = getGroupContentBounds(groupItem, layout, presence);
+
+	if (!contentBounds) {
 		// Empty group has fixed size
 		const padding = 12;
 		const minSize = 100;
+		const { x, y } = getItemAbsolutePosition(groupItem, presence);
 		const titleBarWidth = minSize + borderStrokeWidth;
 		return {
-			x: groupItem.x - padding - borderStrokeWidth / 2,
-			y: groupItem.y - padding - titleBarTotalHeight,
+			x: x - padding - borderStrokeWidth / 2,
+			y: y - padding - titleBarTotalHeight,
 			width: titleBarWidth,
 			height: minSize + titleBarTotalHeight,
 		};
 	}
 
-	let minX = Infinity;
-	let minY = Infinity;
-	let maxX = -Infinity;
-	let maxY = -Infinity;
-
-	for (const childItem of group.items) {
-		const childBounds = layout.get(childItem.id);
-		if (childBounds) {
-			minX = Math.min(minX, childBounds.left);
-			minY = Math.min(minY, childBounds.top);
-			maxX = Math.max(maxX, childBounds.right);
-			maxY = Math.max(maxY, childBounds.bottom);
-		}
-	}
-
-	if (!isFinite(minX) || !isFinite(minY)) {
-		return null;
-	}
-
 	const padding = 32;
-	const width = maxX - minX + padding * 2;
-	const titleBarWidth = width + borderStrokeWidth;
+	const contentWidth = Math.max(1, contentBounds.right - contentBounds.left);
+	const contentHeight = Math.max(1, contentBounds.bottom - contentBounds.top);
+	const paddedWidth = contentWidth + padding * 2;
+	const totalWidth = paddedWidth + borderStrokeWidth;
 	return {
-		x: minX - padding - borderStrokeWidth / 2,
-		y: minY - padding - titleBarTotalHeight,
-		width: titleBarWidth,
-		height: maxY - minY + padding * 2 + titleBarTotalHeight,
+		x: contentBounds.left - padding - borderStrokeWidth / 2,
+		y: contentBounds.top - padding - titleBarTotalHeight,
+		width: totalWidth,
+		height: contentHeight + padding * 2 + titleBarTotalHeight,
 	};
 }
 
@@ -136,58 +139,43 @@ function calculateGroupVisualBounds(groupItem: Item, layout: LayoutMap): Rect | 
  * The obstacle bounds should be LARGER than visual bounds to provide breathing room
  * for connection line routing.
  */
-function calculateGroupBounds(groupItem: Item, layout: LayoutMap): Rect | null {
-	const group = groupItem.content as Group;
-
-	// Use fixed logical coordinates (not zoom-dependent)
+function calculateGroupBounds(
+	groupItem: Item,
+	layout: LayoutMap,
+	presence: PresenceContextType
+): Rect | null {
 	const titleBarHeight = 34; // Match visual bounds
 	const titleBarGap = 5 * 0.85; // Match visual bounds (borderStrokeWidth * 0.85)
 	const titleBarTotalHeight = titleBarHeight + titleBarGap;
 	const routingMargin = 12; // Extra margin around groups for routing breathing room
 
-	if (group.items.length === 0) {
-		// Empty group has fixed size
+	const contentBounds = getGroupContentBounds(groupItem, layout, presence);
+
+	if (!contentBounds) {
 		const padding = 12; // Match visual padding
 		const minSize = 100;
+		const { x, y } = getItemAbsolutePosition(groupItem, presence);
 		return {
-			x: groupItem.x - padding - routingMargin,
-			y: groupItem.y - padding - titleBarTotalHeight - routingMargin,
+			x: x - padding - routingMargin,
+			y: y - padding - titleBarTotalHeight - routingMargin,
 			width: minSize + routingMargin * 2,
 			height: minSize + titleBarTotalHeight + routingMargin * 2,
 		};
 	}
 
-	let minX = Infinity;
-	let minY = Infinity;
-	let maxX = -Infinity;
-	let maxY = -Infinity;
-
-	for (const childItem of group.items) {
-		const childBounds = layout.get(childItem.id);
-		if (childBounds) {
-			minX = Math.min(minX, childBounds.left);
-			minY = Math.min(minY, childBounds.top);
-			maxX = Math.max(maxX, childBounds.right);
-			maxY = Math.max(maxY, childBounds.bottom);
-		}
-	}
-
-	if (!isFinite(minX) || !isFinite(minY)) {
-		return null;
-	}
-
-	// Match visual padding and add routing margin
 	const padding = 32; // Match visual padding
+	const contentWidth = Math.max(1, contentBounds.right - contentBounds.left);
+	const contentHeight = Math.max(1, contentBounds.bottom - contentBounds.top);
 	return {
-		x: minX - padding - routingMargin,
-		y: minY - padding - titleBarTotalHeight - routingMargin,
-		width: maxX - minX + padding * 2 + routingMargin * 2,
-		height: maxY - minY + padding * 2 + titleBarTotalHeight + routingMargin * 2,
+		x: contentBounds.left - padding - routingMargin,
+		y: contentBounds.top - padding - titleBarTotalHeight - routingMargin,
+		width: contentWidth + padding * 2 + routingMargin * 2,
+		height: contentHeight + padding * 2 + titleBarTotalHeight + routingMargin * 2,
 	};
 }
 
 export function ConnectionOverlay(props: ConnectionOverlayProps): JSX.Element {
-	const { items, layout, zoom, pan, svgRef } = props;
+	const { flattenedItems, layout, zoom, pan, svgRef } = props;
 	const [dragState, setDragState] = useState<DragState | null>(null);
 	const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
 	const presence = useContext(PresenceContext);
@@ -195,16 +183,35 @@ export function ConnectionOverlay(props: ConnectionOverlayProps): JSX.Element {
 	const cursorManager = presence.cursor;
 	const [remoteDrags, setRemoteDrags] = useState<RemoteDragState[]>([]);
 
-	// Convert screen coords to logical SVG coordinates
-	const toLogical = (clientX: number, clientY: number): { x: number; y: number } => {
-		const rect = svgRef.current?.getBoundingClientRect();
-		if (!rect) return { x: 0, y: 0 };
-		const sx = clientX - rect.left;
-		const sy = clientY - rect.top;
-		return { x: (sx - pan.x) / zoom, y: (sy - pan.y) / zoom };
-	};
+	const items = useMemo(() => {
+		const unique = new Map<string, Item>();
+		for (const flat of flattenedItems) {
+			if (!unique.has(flat.item.id)) {
+				unique.set(flat.item.id, flat.item);
+			}
+		}
+		return Array.from(unique.values());
+	}, [flattenedItems]);
 
-	// Track cursor position for proximity detection
+	const itemById = useMemo(() => {
+		const map = new Map<string, Item>();
+		for (const item of items) {
+			map.set(item.id, item);
+		}
+		return map;
+	}, [items]);
+
+	const toLogical = React.useCallback(
+		(clientX: number, clientY: number): { x: number; y: number } => {
+			const rect = svgRef.current?.getBoundingClientRect();
+			if (!rect) return { x: 0, y: 0 };
+			const sx = clientX - rect.left;
+			const sy = clientY - rect.top;
+			return { x: (sx - pan.x) / zoom, y: (sy - pan.y) / zoom };
+		},
+		[svgRef, pan.x, pan.y, zoom]
+	);
+
 	React.useEffect(() => {
 		const handlePointerMove = (e: PointerEvent) => {
 			const pos = toLogical(e.clientX, e.clientY);
@@ -224,7 +231,7 @@ export function ConnectionOverlay(props: ConnectionOverlayProps): JSX.Element {
 				svg.removeEventListener("pointerleave", handlePointerLeave);
 			};
 		}
-	}, [zoom, pan]);
+	}, [toLogical, svgRef]);
 
 	React.useEffect(() => {
 		if (!connectionManager?.state?.getRemotes) {
@@ -292,107 +299,113 @@ export function ConnectionOverlay(props: ConnectionOverlayProps): JSX.Element {
 		};
 	}, [connectionManager]);
 
-	/**
-	 * Helper to check if an item should have connection points
-	 * Connection points are shown on: Groups, Notes, and TextBlocks
-	 */
-	const hasConnectionPoints = (item: Item): boolean => {
+	const hasConnectionPoints = React.useCallback((item: Item): boolean => {
 		return (
 			Tree.is(item.content, Group) ||
 			Tree.is(item.content, Note) ||
 			Tree.is(item.content, TextBlock) ||
 			Tree.is(item.content, FluidTable)
 		);
-	};
+	}, []);
 
-	// Filter to items that should have connection points
-	const itemsWithConnections = items.filter(hasConnectionPoints);
+	const itemsWithConnections = useMemo(
+		() => items.filter(hasConnectionPoints),
+		[items, hasConnectionPoints]
+	);
 
-	// Helper to get VISUAL rect for connection points (zoom-dependent)
-	const getVisualRect = (itemId: string): Rect | null => {
-		const item = items.find((i) => i.id === itemId);
-		if (!item) return null;
-
-		// Groups have special visual bounds calculation
-		if (Tree.is(item.content, Group)) {
-			return calculateGroupVisualBounds(item, layout);
-		}
-
-		// Notes, TextBlocks, and FluidTables use layout bounds extended by selection padding
-		// This aligns connection points with the selection overlay border
-		const bounds = layout.get(itemId);
-		if (!bounds) return null;
-
-		const selectionPadding = 10 / zoom; // Matches SelectionOverlay padding
-		return {
-			x: bounds.left - selectionPadding,
-			y: bounds.top - selectionPadding,
-			width: bounds.right - bounds.left + selectionPadding * 2,
-			height: bounds.bottom - bounds.top + selectionPadding * 2,
-		};
-	};
-
-	// Helper to get LOGICAL rect for routing (zoom-independent)
-	const getConnectionRect = (itemId: string): Rect | null => {
-		const item = items.find((i) => i.id === itemId);
-		if (!item) return null;
-
-		if (Tree.is(item.content, Group)) {
-			return calculateGroupBounds(item, layout);
-		}
-
-		const bounds = layout.get(itemId);
-		if (!bounds) return null;
-
-		const fixedPadding = 10;
-		return {
-			x: bounds.left - fixedPadding,
-			y: bounds.top - fixedPadding,
-			width: bounds.right - bounds.left + fixedPadding * 2,
-			height: bounds.bottom - bounds.top + fixedPadding * 2,
-		};
-	};
-
-	// Helper to get LOGICAL rect for obstacles (zoom-independent)
-	const getObstacleRect = (itemId: string): Rect | null => {
-		// Check if this is a group
-		const item = items.find((i) => i.id === itemId);
-		if (item && Tree.is(item.content, Group)) {
-			return calculateGroupBounds(item, layout);
-		}
-
-		// Regular item - get from layout
-		const bounds = layout.get(itemId);
-		if (!bounds) return null;
-		return {
-			x: bounds.left,
-			y: bounds.top,
-			width: bounds.right - bounds.left,
-			height: bounds.bottom - bounds.top,
-		};
-	};
-
-	// Get all obstacles for pathfinding - include ALL items as obstacles
-	const getObstacles = (expandBy: number = 0): Rect[] => {
-		const obstacles: Rect[] = [];
-
-		for (const item of items) {
-			const rect = getObstacleRect(item.id);
-			if (rect) {
-				// Expand rectangle by the buffer
-				obstacles.push({
-					x: rect.x - expandBy,
-					y: rect.y - expandBy,
-					width: rect.width + expandBy * 2,
-					height: rect.height + expandBy * 2,
-				});
+	const getBaseRect = React.useCallback(
+		(item: Item): Rect | null => {
+			if (Tree.is(item.content, Group)) {
+				return null;
 			}
+			const bounds = layout.get(item.id);
+			const { x, y } = getItemAbsolutePosition(item, presence);
+			const width = bounds ? Math.max(1, bounds.right - bounds.left) : 100;
+			const height = bounds ? Math.max(1, bounds.bottom - bounds.top) : 100;
+			return { x, y, width, height };
+		},
+		[layout, presence]
+	);
+
+	const getVisualRect = React.useCallback(
+		(itemId: string): Rect | null => {
+			const item = itemById.get(itemId);
+			if (!item) return null;
+			if (Tree.is(item.content, Group)) {
+				return calculateGroupVisualBounds(item, layout, presence);
+			}
+			const base = getBaseRect(item);
+			if (!base) return null;
+			const selectionPadding = 10 / zoom;
+			return inflateRect(base, selectionPadding);
+		},
+		[itemById, layout, presence, getBaseRect, zoom]
+	);
+
+	const getConnectionRect = React.useCallback(
+		(itemId: string): Rect | null => {
+			const item = itemById.get(itemId);
+			if (!item) return null;
+			if (Tree.is(item.content, Group)) {
+				return calculateGroupBounds(item, layout, presence);
+			}
+			const base = getBaseRect(item);
+			if (!base) return null;
+			const fixedPadding = 10;
+			return inflateRect(base, fixedPadding);
+		},
+		[itemById, layout, presence, getBaseRect]
+	);
+
+	const getObstacleRect = React.useCallback(
+		(itemId: string): Rect | null => {
+			const item = itemById.get(itemId);
+			if (!item) return null;
+			if (Tree.is(item.content, Group)) {
+				return calculateGroupBounds(item, layout, presence);
+			}
+			return getBaseRect(item);
+		},
+		[itemById, layout, presence, getBaseRect]
+	);
+
+	const getObstacles = React.useCallback(
+		(expandBy: number = 0): Rect[] => {
+			const obstacles: Rect[] = [];
+			for (const item of items) {
+				const rect = getObstacleRect(item.id);
+				if (rect) {
+					obstacles.push({
+						x: rect.x - expandBy,
+						y: rect.y - expandBy,
+						width: rect.width + expandBy * 2,
+						height: rect.height + expandBy * 2,
+					});
+				}
+			}
+			return obstacles;
+		},
+		[items, getObstacleRect]
+	);
+
+	const isAncestor = React.useCallback((maybeAncestor: Item, target: Item): boolean => {
+		const visited = new Set<string>();
+		let info = getParentGroupInfo(target);
+		while (info && !visited.has(info.groupItem.id)) {
+			if (info.groupItem.id === maybeAncestor.id) {
+				return true;
+			}
+			visited.add(info.groupItem.id);
+			info = getParentGroupInfo(info.groupItem);
 		}
+		return false;
+	}, []);
 
-		return obstacles;
-	};
+	const isInvalidConnection = React.useCallback(
+		(a: Item, b: Item) => isAncestor(a, b) || isAncestor(b, a),
+		[isAncestor]
+	);
 
-	// Handle connection point drag start
 	const handleConnectionDragStart = (
 		e: React.PointerEvent,
 		itemId: string,
@@ -400,6 +413,11 @@ export function ConnectionOverlay(props: ConnectionOverlayProps): JSX.Element {
 	) => {
 		e.stopPropagation();
 		e.preventDefault();
+
+		const fromItem = itemById.get(itemId);
+		if (!fromItem) {
+			return;
+		}
 
 		const startPos = toLogical(e.clientX, e.clientY);
 		const initialState: DragState = {
@@ -434,15 +452,14 @@ export function ConnectionOverlay(props: ConnectionOverlayProps): JSX.Element {
 			connectionManager?.clearConnectionDrag();
 			updateCursorFromEvent(ev, cursorManager, pan, zoom);
 
-			// Check if we released over another connection point
 			const target = document.elementFromPoint(ev.clientX, ev.clientY);
 			const toItemId = target?.getAttribute("data-connection-item");
 			const toSide = target?.getAttribute("data-connection-side") as ConnectionSide | null;
 
 			if (toItemId && toSide && toItemId !== itemId) {
-				// Create the connection
-				const toItem = items.find((item) => item.id === toItemId);
-				if (toItem) {
+				const toItem = itemById.get(toItemId);
+				const currentFromItem = itemById.get(itemId);
+				if (toItem && currentFromItem && !isInvalidConnection(currentFromItem, toItem)) {
 					Tree.runTransaction(toItem, () => {
 						toItem.addConnection(itemId);
 					});
@@ -459,15 +476,16 @@ export function ConnectionOverlay(props: ConnectionOverlayProps): JSX.Element {
 
 	return (
 		<g className="connection-overlay">
-			{/* Render all existing connections and collect which sides are used */}
 			{(() => {
 				const activeSides = new Map<string, Set<ConnectionSide>>();
-				const allPaths = new Map<string, Point[]>(); // Track all connection paths
+				const allPaths = new Map<string, Point[]>();
 
 				const connectionElements = itemsWithConnections.map((toItem) => {
 					return toItem.getConnections().map((fromItemId) => {
-						const fromItem = items.find((item) => item.id === fromItemId);
-						if (!fromItem) return null;
+						const fromItem = itemById.get(fromItemId);
+						if (!fromItem || isInvalidConnection(fromItem, toItem)) {
+							return null;
+						}
 
 						const connectionKey = `${fromItemId}-${toItem.id}`;
 
@@ -482,9 +500,12 @@ export function ConnectionOverlay(props: ConnectionOverlayProps): JSX.Element {
 								allPaths={allPaths}
 								connectionKey={connectionKey}
 								onSidesCalculated={(fromId, fromSide, toId, toSide) => {
-									if (!activeSides.has(fromId))
+									if (!activeSides.has(fromId)) {
 										activeSides.set(fromId, new Set());
-									if (!activeSides.has(toId)) activeSides.set(toId, new Set());
+									}
+									if (!activeSides.has(toId)) {
+										activeSides.set(toId, new Set());
+									}
 									activeSides.get(fromId)!.add(fromSide);
 									activeSides.get(toId)!.add(toSide);
 								}}
@@ -496,8 +517,6 @@ export function ConnectionOverlay(props: ConnectionOverlayProps): JSX.Element {
 				return (
 					<>
 						{connectionElements}
-
-						{/* Render temporary drag line */}
 						{dragState && (
 							<TempConnectionLine
 								dragState={dragState}
@@ -505,8 +524,6 @@ export function ConnectionOverlay(props: ConnectionOverlayProps): JSX.Element {
 								zoom={zoom}
 							/>
 						)}
-
-						{/* Render remote drag lines for collaborators */}
 						{remoteDrags.map((remote) => (
 							<TempConnectionLine
 								key={`remote-${remote.clientId}-${remote.fromItemId}-${remote.fromSide}`}
@@ -517,8 +534,6 @@ export function ConnectionOverlay(props: ConnectionOverlayProps): JSX.Element {
 								strokeOpacity={0.5}
 							/>
 						))}
-
-						{/* Render connection points on groups, notes, and text */}
 						{itemsWithConnections.map((item) => (
 							<ConnectionPoints
 								key={item.id}

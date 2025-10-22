@@ -3,7 +3,11 @@ import { Tree } from "@fluidframework/tree";
 import { Item, Group, Items } from "../../schema/appSchema.js";
 import { PresenceContext } from "../contexts/PresenceContext.js";
 import { usePresenceManager } from "../hooks/usePresenceManger.js";
-import { getItemAbsolutePosition, getParentGroupInfo } from "../utils/presenceGeometry.js";
+import {
+	getGroupContentBounds,
+	getItemAbsolutePosition,
+	getParentGroupInfo,
+} from "../utils/presenceGeometry.js";
 import { useTree } from "../hooks/useTree.js";
 import { updateCursorFromEvent } from "../../utils/cursorUtils.js";
 import { FlattenedItem } from "../../utils/flattenItems.js";
@@ -39,76 +43,6 @@ function groupHasSelectedDescendant(group: Group, selectedIds: Set<string>): boo
 		}
 	}
 	return false;
-}
-
-interface GroupBounds {
-	minX: number;
-	minY: number;
-	maxX: number;
-	maxY: number;
-}
-
-function computeGroupBounds(
-	groupItem: Item,
-	layout: LayoutMap,
-	presence: PresenceContextType,
-	visited: Set<string> = new Set()
-): GroupBounds | null {
-	if (visited.has(groupItem.id)) {
-		return null;
-	}
-	visited.add(groupItem.id);
-
-	if (!Tree.is(groupItem.content, Group)) {
-		visited.delete(groupItem.id);
-		return null;
-	}
-
-	const group = groupItem.content as Group;
-
-	let minX = Infinity;
-	let minY = Infinity;
-	let maxX = -Infinity;
-	let maxY = -Infinity;
-	let hasAny = false;
-
-	for (const child of group.items) {
-		if (Tree.is(child.content, Group)) {
-			const nested = computeGroupBounds(child, layout, presence, visited);
-			if (nested) {
-				minX = Math.min(minX, nested.minX);
-				minY = Math.min(minY, nested.minY);
-				maxX = Math.max(maxX, nested.maxX);
-				maxY = Math.max(maxY, nested.maxY);
-				hasAny = true;
-			}
-			continue;
-		}
-
-		const { x: left, y: top } = getItemAbsolutePosition(child, presence);
-		const bounds = layout.get(child.id);
-		const width = bounds ? Math.max(1, bounds.right - bounds.left) : 100;
-		const height = bounds ? Math.max(1, bounds.bottom - bounds.top) : 100;
-
-		minX = Math.min(minX, left);
-		minY = Math.min(minY, top);
-		maxX = Math.max(maxX, left + width);
-		maxY = Math.max(maxY, top + height);
-		hasAny = true;
-	}
-
-	visited.delete(groupItem.id);
-
-	if (!hasAny) {
-		return null;
-	}
-
-	return {
-		minX,
-		minY,
-		maxX,
-		maxY,
-	};
 }
 
 /**
@@ -360,7 +294,7 @@ function GroupOverlayItem(props: GroupOverlayItemProps): JSX.Element | null {
 
 	const isGroupSelected = selectedIds.has(groupItem.id);
 	const groupPosition = getItemAbsolutePosition(groupItem, presence);
-	const bounds = computeGroupBounds(groupItem, layout, presence);
+	const contentBounds = getGroupContentBounds(groupItem, layout, presence);
 
 	const handleGroupClick = (e: React.MouseEvent) => {
 		e.stopPropagation();
@@ -376,7 +310,7 @@ function GroupOverlayItem(props: GroupOverlayItemProps): JSX.Element | null {
 		}
 	};
 
-	if (!bounds) {
+	if (!contentBounds) {
 		const padding = 12;
 		const minSize = 100;
 		const borderStrokeWidth = isGroupSelected ? 6 : 5;
@@ -503,10 +437,10 @@ function GroupOverlayItem(props: GroupOverlayItemProps): JSX.Element | null {
 	}
 
 	const padding = 32;
-	const width = Math.max(1, bounds.maxX - bounds.minX + padding * 2);
-	const height = Math.max(1, bounds.maxY - bounds.minY + padding * 2);
-	const x = bounds.minX - padding;
-	const y = bounds.minY - padding;
+	const width = Math.max(1, contentBounds.right - contentBounds.left + padding * 2);
+	const height = Math.max(1, contentBounds.bottom - contentBounds.top + padding * 2);
+	const x = contentBounds.left - padding;
+	const y = contentBounds.top - padding;
 
 	const borderStrokeWidth = isGroupSelected ? 6 : 5;
 	const titleBarHeight = 34;

@@ -805,7 +805,7 @@ export function Canvas(props: {
 					data-layer="connection-overlays"
 				>
 					<ConnectionOverlay
-						items={Array.from(items)}
+						flattenedItems={flattenedItems}
 						layout={layout}
 						zoom={zoom}
 						pan={pan}
