@@ -1,11 +1,13 @@
-import React, { useContext, useState, useRef, useEffect } from "react";
+import React, { useContext, useState, useRef, useEffect, useMemo } from "react";
 import { Tree } from "@fluidframework/tree";
-import { Item, Group } from "../../schema/appSchema.js";
+import { Item, Group, Items } from "../../schema/appSchema.js";
 import { PresenceContext } from "../contexts/PresenceContext.js";
 import { usePresenceManager } from "../hooks/usePresenceManger.js";
-import { getGroupChildOffset } from "../utils/presenceGeometry.js";
+import { getItemAbsolutePosition, getParentGroupInfo } from "../utils/presenceGeometry.js";
 import { useTree } from "../hooks/useTree.js";
 import { updateCursorFromEvent } from "../../utils/cursorUtils.js";
+import { FlattenedItem } from "../../utils/flattenItems.js";
+import { findItemById } from "../../utils/itemsHelpers.js";
 
 interface LayoutBounds {
 	left: number;
@@ -24,6 +26,91 @@ const GROUP_BORDER_OPACITY_UNSELECTED = 0.3;
 const GROUP_BORDER_OPACITY_UNSELECTED_WITH_ITEMS = 0.4;
 const GROUP_TITLE_BAR_OPACITY = 0.7;
 
+function groupHasSelectedDescendant(group: Group, selectedIds: Set<string>): boolean {
+	for (const child of group.items) {
+		if (selectedIds.has(child.id)) {
+			return true;
+		}
+		if (
+			Tree.is(child.content, Group) &&
+			groupHasSelectedDescendant(child.content, selectedIds)
+		) {
+			return true;
+		}
+	}
+	return false;
+}
+
+interface GroupBounds {
+	minX: number;
+	minY: number;
+	maxX: number;
+	maxY: number;
+}
+
+function computeGroupBounds(
+	groupItem: Item,
+	layout: LayoutMap,
+	presence: PresenceContextType,
+	visited: Set<string> = new Set()
+): GroupBounds | null {
+	if (visited.has(groupItem.id)) {
+		return null;
+	}
+	visited.add(groupItem.id);
+
+	if (!Tree.is(groupItem.content, Group)) {
+		visited.delete(groupItem.id);
+		return null;
+	}
+
+	const group = groupItem.content as Group;
+
+	let minX = Infinity;
+	let minY = Infinity;
+	let maxX = -Infinity;
+	let maxY = -Infinity;
+	let hasAny = false;
+
+	for (const child of group.items) {
+		if (Tree.is(child.content, Group)) {
+			const nested = computeGroupBounds(child, layout, presence, visited);
+			if (nested) {
+				minX = Math.min(minX, nested.minX);
+				minY = Math.min(minY, nested.minY);
+				maxX = Math.max(maxX, nested.maxX);
+				maxY = Math.max(maxY, nested.maxY);
+				hasAny = true;
+			}
+			continue;
+		}
+
+		const { x: left, y: top } = getItemAbsolutePosition(child, presence);
+		const bounds = layout.get(child.id);
+		const width = bounds ? Math.max(1, bounds.right - bounds.left) : 100;
+		const height = bounds ? Math.max(1, bounds.bottom - bounds.top) : 100;
+
+		minX = Math.min(minX, left);
+		minY = Math.min(minY, top);
+		maxX = Math.max(maxX, left + width);
+		maxY = Math.max(maxY, top + height);
+		hasAny = true;
+	}
+
+	visited.delete(groupItem.id);
+
+	if (!hasAny) {
+		return null;
+	}
+
+	return {
+		minX,
+		minY,
+		maxX,
+		maxY,
+	};
+}
+
 /**
  * GroupOverlay - Renders visual bounds for group containers on the SVG overlay layer
  *
@@ -31,13 +118,21 @@ const GROUP_TITLE_BAR_OPACITY = 0.7;
  * visual boundary of the group on the main canvas with a drag handle.
  */
 export function GroupOverlay(props: {
-	items: Item[];
+	rootItems: Items;
+	flattenedItems: FlattenedItem[];
 	layout: LayoutMap;
 	zoom: number;
 	pan: { x: number; y: number };
 	showOnlyWhenChildSelected?: boolean;
 }): JSX.Element {
-	const { items, layout, zoom, pan, showOnlyWhenChildSelected = false } = props;
+	const {
+		rootItems,
+		flattenedItems,
+		layout,
+		zoom,
+		pan,
+		showOnlyWhenChildSelected = false,
+	} = props;
 	const presence = useContext(PresenceContext);
 
 	// Track which groups have just been dragged to prevent click-on-release
@@ -59,15 +154,15 @@ export function GroupOverlay(props: {
 		const handleEditGroup = (event: Event) => {
 			const customEvent = event as CustomEvent<{ groupId: string }>;
 			const { groupId } = customEvent.detail;
-			const groupItem = items.find((item) => item.id === groupId);
+			const groupItem = findItemById(rootItems, groupId);
 			if (groupItem && Tree.is(groupItem.content, Group)) {
 				setEditingGroupId(groupId);
-				setEditingValue((groupItem.content as Group).name || "Group");
+				setEditingValue(groupItem.content.name || "Group");
 			}
 		};
 		window.addEventListener("editGroup", handleEditGroup);
 		return () => window.removeEventListener("editGroup", handleEditGroup);
-	}, [items]);
+	}, [rootItems]);
 
 	// Track child item drags/resizes to update group bounds dynamically
 	const [childUpdateTrigger, setChildUpdateTrigger] = useState(0);
@@ -75,14 +170,8 @@ export function GroupOverlay(props: {
 	// Subscribe to drag presence updates to trigger group bound recalculation
 	usePresenceManager(
 		presence.drag,
-		() => {
-			// Remote drag update - trigger re-render
-			setChildUpdateTrigger((n) => n + 1);
-		},
-		() => {
-			// Local drag update - trigger re-render
-			setChildUpdateTrigger((n) => n + 1);
-		}
+		() => setChildUpdateTrigger((n) => n + 1),
+		() => setChildUpdateTrigger((n) => n + 1)
 	);
 
 	// Also subscribe to resize updates to recalculate group bounds
@@ -92,15 +181,13 @@ export function GroupOverlay(props: {
 		() => setChildUpdateTrigger((n) => n + 1)
 	);
 
-	// Handle group drag start
 	const handleGroupDragStart = (e: React.PointerEvent<Element>, groupItem: Item) => {
 		e.stopPropagation();
 		e.preventDefault();
 
 		const startX = e.clientX;
 		const startY = e.clientY;
-		const initialGroupX = groupItem.x;
-		const initialGroupY = groupItem.y;
+		const startPosition = getItemAbsolutePosition(groupItem, presence);
 		let hasMoved = false;
 
 		const DRAG_THRESHOLD = 4;
@@ -111,7 +198,6 @@ export function GroupOverlay(props: {
 			const dx = (ev.clientX - startX) / zoom;
 			const dy = (ev.clientY - startY) / zoom;
 
-			// Check if we've moved enough to start dragging
 			if (!hasMoved && Math.hypot(dx, dy) < DRAG_THRESHOLD) {
 				return;
 			}
@@ -121,15 +207,13 @@ export function GroupOverlay(props: {
 				ev.preventDefault();
 			}
 
-			// Update collaborative cursor position using DRY utility
 			updateCursorFromEvent(ev, presence.cursor, pan, zoom);
 
-			// Use presence API for smooth ephemeral updates during drag
 			presence.drag.setDragging({
 				id: groupItem.id,
-				x: initialGroupX + dx,
-				y: initialGroupY + dy,
-				rotation: 0, // Groups don't rotate
+				x: startPosition.x + dx,
+				y: startPosition.y + dy,
+				rotation: 0,
 				branch: presence.branch,
 			});
 		};
@@ -140,26 +224,35 @@ export function GroupOverlay(props: {
 			document.removeEventListener("pointerup", handleUp);
 
 			if (hasMoved) {
-				// Mark this group as recently dragged to prevent click handler
 				draggedGroupsRef.current.add(groupItem.id);
-				// Clear the flag after a short delay
 				setTimeout(() => {
 					draggedGroupsRef.current.delete(groupItem.id);
 				}, 100);
 
-				// Commit the final position from presence to the tree
 				const dragState = presence.drag.state.local;
 				if (dragState && dragState.id === groupItem.id) {
 					Tree.runTransaction(groupItem, () => {
-						groupItem.x = dragState.x;
-						groupItem.y = dragState.y;
+						const parentInfo = getParentGroupInfo(groupItem);
+						if (!parentInfo) {
+							groupItem.x = dragState.x;
+							groupItem.y = dragState.y;
+						} else {
+							const parentAbsolute = getItemAbsolutePosition(
+								parentInfo.groupItem,
+								presence
+							);
+							groupItem.x = dragState.x - parentAbsolute.x;
+							groupItem.y = dragState.y - parentAbsolute.y;
+						}
 					});
 				}
-				presence.drag.clearDragging(); // Prevent canvas from clearing selection after drag
+				presence.drag.clearDragging();
 				const canvasEl = document.getElementById("canvas") as
 					| (SVGSVGElement & { dataset: DOMStringMap })
 					| null;
-				if (canvasEl) canvasEl.dataset.suppressClearUntil = String(Date.now() + 150);
+				if (canvasEl) {
+					canvasEl.dataset.suppressClearUntil = String(Date.now() + 150);
+				}
 			}
 		};
 
@@ -167,12 +260,28 @@ export function GroupOverlay(props: {
 		document.addEventListener("pointerup", handleUp);
 	};
 
-	// Filter to only group items
-	const groupItems = items.filter((item) => Tree.is(item.content, Group));
+	const groupItems = useMemo(() => {
+		const seen = new Set<Item>();
+		const groups: Item[] = [];
+		for (const flat of flattenedItems) {
+			if (!flat.isGroupContainer) {
+				continue;
+			}
+			if (!Tree.is(flat.item.content, Group)) {
+				continue;
+			}
+			if (seen.has(flat.item)) {
+				continue;
+			}
+			seen.add(flat.item);
+			groups.push(flat.item);
+		}
+		return groups;
+	}, [flattenedItems]);
 
 	// Get selected items from presence
 	const selectedItems = presence.itemSelection.state.local || [];
-	const selectedIds = new Set(selectedItems.map((s) => s.id));
+	const selectedIds = useMemo(() => new Set(selectedItems.map((s) => s.id)), [selectedItems]);
 
 	// Note: childUpdateTrigger state changes force re-renders when any item drag/resize happens
 	// This ensures we read fresh layout bounds even though the Map reference doesn't change
@@ -241,21 +350,17 @@ function GroupOverlayItem(props: GroupOverlayItemProps): JSX.Element | null {
 
 	const group = groupItem.content as Group;
 
-	if (showOnlyWhenChildSelected) {
-		const hasSelectedChild = group.items.some((childItem) => selectedIds.has(childItem.id));
-		if (!hasSelectedChild) {
-			return null;
-		}
+	if (
+		showOnlyWhenChildSelected &&
+		!groupHasSelectedDescendant(group, selectedIds) &&
+		!selectedIds.has(groupItem.id)
+	) {
+		return null;
 	}
 
 	const isGroupSelected = selectedIds.has(groupItem.id);
-
-	// Check if this group is being dragged via presence
-	const localDrag = presence.drag.state.local;
-	const dragState = localDrag && localDrag.id === groupItem.id ? localDrag : null;
-	const groupX = dragState ? dragState.x : groupItem.x;
-	const groupY = dragState ? dragState.y : groupItem.y;
-	const isGroupBeingDragged = !!dragState;
+	const groupPosition = getItemAbsolutePosition(groupItem, presence);
+	const bounds = computeGroupBounds(groupItem, layout, presence);
 
 	const handleGroupClick = (e: React.MouseEvent) => {
 		e.stopPropagation();
@@ -271,21 +376,23 @@ function GroupOverlayItem(props: GroupOverlayItemProps): JSX.Element | null {
 		}
 	};
 
-	if (group.items.length === 0) {
+	if (!bounds) {
 		const padding = 12;
 		const minSize = 100;
-		const titleBarHeight = 32;
 		const borderStrokeWidth = isGroupSelected ? 6 : 5;
+		const titleBarHeight = 32;
 		const titleBarGap = borderStrokeWidth * 0.75;
 		const titleBarWidth = minSize + borderStrokeWidth;
-		const titleBarX = groupX - padding - borderStrokeWidth / 2;
-		const titleBarY = groupY - padding - titleBarHeight - titleBarGap;
+		const rectX = groupPosition.x - padding;
+		const rectY = groupPosition.y - padding;
+		const titleBarX = rectX - borderStrokeWidth / 2;
+		const titleBarY = rectY - titleBarHeight - titleBarGap;
 
 		return (
 			<g>
 				<rect
-					x={groupX - padding}
-					y={groupY - padding}
+					x={rectX}
+					y={rectY}
 					width={minSize}
 					height={minSize}
 					fill="none"
@@ -394,78 +501,12 @@ function GroupOverlayItem(props: GroupOverlayItemProps): JSX.Element | null {
 			</g>
 		);
 	}
-	let minX = Infinity;
-	let minY = Infinity;
-	let maxX = -Infinity;
-	let maxY = -Infinity;
-
-	for (const childItem of group.items) {
-		// Check if this child item is being dragged individually via presence
-		const childDragState = localDrag && localDrag.id === childItem.id ? localDrag : null;
-
-		if (isGroupBeingDragged) {
-			const offset = getGroupChildOffset(group, childItem);
-			const childAbsX = groupX + offset.x;
-			const childAbsY = groupY + offset.y;
-			const childBounds = layout.get(childItem.id);
-			if (childBounds) {
-				const width = childBounds.right - childBounds.left;
-				const height = childBounds.bottom - childBounds.top;
-				minX = Math.min(minX, childAbsX);
-				minY = Math.min(minY, childAbsY);
-				maxX = Math.max(maxX, childAbsX + width);
-				maxY = Math.max(maxY, childAbsY + height);
-			} else {
-				minX = Math.min(minX, childAbsX);
-				minY = Math.min(minY, childAbsY);
-				maxX = Math.max(maxX, childAbsX + 100);
-				maxY = Math.max(maxY, childAbsY + 100);
-			}
-		} else if (childDragState) {
-			// Child item is being dragged - use drag position instead of layout
-			const childBounds = layout.get(childItem.id);
-			if (childBounds) {
-				const width = childBounds.right - childBounds.left;
-				const height = childBounds.bottom - childBounds.top;
-				minX = Math.min(minX, childDragState.x);
-				minY = Math.min(minY, childDragState.y);
-				maxX = Math.max(maxX, childDragState.x + width);
-				maxY = Math.max(maxY, childDragState.y + height);
-			} else {
-				// No layout bounds, use default size
-				minX = Math.min(minX, childDragState.x);
-				minY = Math.min(minY, childDragState.y);
-				maxX = Math.max(maxX, childDragState.x + 100);
-				maxY = Math.max(maxY, childDragState.y + 100);
-			}
-		} else {
-			const childBounds = layout.get(childItem.id);
-			if (childBounds) {
-				minX = Math.min(minX, childBounds.left);
-				minY = Math.min(minY, childBounds.top);
-				maxX = Math.max(maxX, childBounds.right);
-				maxY = Math.max(maxY, childBounds.bottom);
-			} else {
-				const offset = getGroupChildOffset(group, childItem);
-				const childAbsX = groupX + offset.x;
-				const childAbsY = groupY + offset.y;
-				minX = Math.min(minX, childAbsX);
-				minY = Math.min(minY, childAbsY);
-				maxX = Math.max(maxX, childAbsX + 100);
-				maxY = Math.max(maxY, childAbsY + 100);
-			}
-		}
-	}
-
-	if (!isFinite(minX) || !isFinite(minY)) {
-		return null;
-	}
 
 	const padding = 32;
-	const x = minX - padding;
-	const y = minY - padding;
-	const width = maxX - minX + padding * 2;
-	const height = maxY - minY + padding * 2;
+	const width = Math.max(1, bounds.maxX - bounds.minX + padding * 2);
+	const height = Math.max(1, bounds.maxY - bounds.minY + padding * 2);
+	const x = bounds.minX - padding;
+	const y = bounds.minY - padding;
 
 	const borderStrokeWidth = isGroupSelected ? 6 : 5;
 	const titleBarHeight = 34;

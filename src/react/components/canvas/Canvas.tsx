@@ -765,7 +765,13 @@ export function Canvas(props: {
 					style={{ pointerEvents: "none" }}
 					data-layer="group-overlays"
 				>
-					<GroupOverlay items={Array.from(items)} layout={layout} zoom={zoom} pan={pan} />
+					<GroupOverlay
+						rootItems={items}
+						flattenedItems={flattenedItems}
+						layout={layout}
+						zoom={zoom}
+						pan={pan}
+					/>
 				</g>
 				{/* Per-item SVG wrappers (overlay), built from measured layout */}
 				<g

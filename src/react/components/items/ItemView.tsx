@@ -94,6 +94,7 @@ import {
 	getParentGroupInfo,
 	GroupHierarchyInfo,
 	getGroupActivePosition,
+	getNestedGroupDragOffset,
 } from "../../utils/presenceGeometry.js";
 import {
 	getScaledShapeDimensions,
@@ -541,27 +542,22 @@ export function ItemView(props: {
 				return;
 			}
 
-			// Check if this item's parent group is being dragged
-			if (parentGroup) {
-				const groupContainer = Tree.parent(parentGroup);
-				if (groupContainer && Tree.is(groupContainer, Item) && d.id === groupContainer.id) {
-					const newGroupX = d.x;
-					const newGroupY = d.y;
-
-					let itemOffsetX: number;
-					let itemOffsetY: number;
-
-					if (isGroupGridEnabled(parentGroup)) {
-						const offset = getGroupChildOffset(parentGroup, currentItem);
-						itemOffsetX = offset.x;
-						itemOffsetY = offset.y;
-					} else {
-						itemOffsetX = relativeOffsetRef.current.x;
-						itemOffsetY = relativeOffsetRef.current.y;
+			const findAncestorDrag = (): boolean => {
+				let info: GroupHierarchyInfo | null = getParentGroupInfo(currentItem);
+				while (info) {
+					if (info.groupItem.id === d.id) {
+						return true;
 					}
+					info = getParentGroupInfo(info.groupItem);
+				}
+				return false;
+			};
 
-					const newAbsoluteX = newGroupX + itemOffsetX;
-					const newAbsoluteY = newGroupY + itemOffsetY;
+			if (parentGroup || getParentGroupInfo(currentItem)) {
+				if (findAncestorDrag()) {
+					const offset = getNestedGroupDragOffset(currentItem, presence, d);
+					const newAbsoluteX = offset.x;
+					const newAbsoluteY = offset.y;
 
 					const displayRotation = isGroupGridEnabled(parentGroup)
 						? 0

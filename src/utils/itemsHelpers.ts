@@ -173,7 +173,7 @@ export function addToGroup(items: Item[], targetGroup: Item): void {
 }
 
 export function canGroupItems(items: Item[]): boolean {
-	if (items.length === 0) {
+	if (items.length < 2) {
 		return false;
 	}
 	const parent = getParentItems(items[0]);
@@ -182,19 +182,11 @@ export function canGroupItems(items: Item[]): boolean {
 	}
 
 	// Check that all items have the same parent
-	// and that none of the items are a group
 	for (const item of items) {
-		if (getParentItems(item) !== parent || item.content instanceof Group) {
+		if (getParentItems(item) !== parent) {
 			return false;
 		}
 	}
-
-	// Check if any item is already in a group (parent's parent is a Group)
-	const grandParent = Tree.parent(parent);
-	if (grandParent !== undefined && Tree.is(grandParent, Group)) {
-		return false;
-	}
-
 	return true;
 }
 

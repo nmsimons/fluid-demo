@@ -27,7 +27,6 @@ export function flattenItems(items: Items): FlattenedItem[] {
 	const result: FlattenedItem[] = [];
 
 	for (const item of items) {
-		// Skip invalid items
 		if (!item || !item.content) continue;
 		flattenItem(item, 0, 0, undefined, result);
 	}
@@ -37,59 +36,57 @@ export function flattenItems(items: Items): FlattenedItem[] {
 
 function flattenItem(
 	item: Item,
-	parentX: number,
-	parentY: number,
+	parentOriginX: number,
+	parentOriginY: number,
 	parentGroup: Group | undefined,
-	result: FlattenedItem[]
+	result: FlattenedItem[],
+	absoluteOverride?: { x: number; y: number }
 ): void {
 	const content = item.content;
-	// Check if this item is a Group
+	const absoluteX = absoluteOverride ? absoluteOverride.x : parentOriginX + item.x;
+	const absoluteY = absoluteOverride ? absoluteOverride.y : parentOriginY + item.y;
+
 	if (Tree.is(content, Group)) {
 		const group = content;
 
-		// Add the group item itself (marked as container - for overlay rendering only)
-		// Don't set absoluteX/Y - let ItemView use item.x/y directly for reactivity
+		// Add the group container entry (not rendered directly, used for overlays/selection)
 		result.push({
 			item,
-			absoluteX: item.x + parentX,
-			absoluteY: item.y + parentY,
-			parentGroup: parentGroup,
+			absoluteX,
+			absoluteY,
+			parentGroup,
 			isGroupContainer: true,
 		});
 
-		// Check if grid view is enabled
-		const useGridView = isGroupGridEnabled(group);
+		const groupOriginX = absoluteX;
+		const groupOriginY = absoluteY;
 
-		if (useGridView) {
+		if (isGroupGridEnabled(group)) {
 			const config = getGroupGridConfig(group);
 			const adjustment = getGridAlignmentAdjustment(group, config);
 
 			group.items.forEach((childItem, index) => {
 				const offset = getGridPositionByIndex(index, config);
-
-				// Use grid position (with alignment adjustment) instead of item's stored x/y
-				result.push({
-					item: childItem,
-					absoluteX: item.x + offset.x + adjustment.x,
-					absoluteY: item.y + offset.y + adjustment.y,
-					parentGroup: group,
-					isGroupContainer: false,
+				const childAbsoluteX = groupOriginX + offset.x + adjustment.x;
+				const childAbsoluteY = groupOriginY + offset.y + adjustment.y;
+				flattenItem(childItem, groupOriginX, groupOriginY, group, result, {
+					x: childAbsoluteX,
+					y: childAbsoluteY,
 				});
 			});
 		} else {
-			// Normal layout: use item's x/y coordinates
 			for (const childItem of group.items) {
-				flattenItem(childItem, item.x, item.y, group, result);
+				flattenItem(childItem, groupOriginX, groupOriginY, group, result);
 			}
 		}
-	} else {
-		// Regular item (Shape, Note, FluidTable)
-		result.push({
-			item,
-			absoluteX: item.x + parentX,
-			absoluteY: item.y + parentY,
-			parentGroup: parentGroup,
-			isGroupContainer: false,
-		});
+		return;
 	}
+
+	result.push({
+		item,
+		absoluteX,
+		absoluteY,
+		parentGroup,
+		isGroupContainer: false,
+	});
 }

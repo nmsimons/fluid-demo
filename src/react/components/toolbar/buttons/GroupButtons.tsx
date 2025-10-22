@@ -37,9 +37,9 @@ export function GroupButton(props: { selectedItems: Item[] }): JSX.Element {
 		tooltip = "Add selected items to group";
 	} else if (disabled) {
 		if (selectedItems.length <= 1) {
-			tooltip = "You can't nest groups";
+			tooltip = "Select at least two items";
 		} else {
-			tooltip = "Selected items can't already be in a group";
+			tooltip = "Items must share the same container";
 		}
 	}
 

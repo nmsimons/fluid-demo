@@ -46,6 +46,77 @@ export interface GroupChildPositionOptions {
 	presence?: PresenceValue;
 }
 
+export function getItemAbsolutePosition(
+	item: Item,
+	presence?: PresenceValue,
+	visited: Set<string> = new Set()
+): { x: number; y: number } {
+	if (visited.has(item.id)) {
+		return { x: item.x, y: item.y };
+	}
+	visited.add(item.id);
+	const drag = presence ? getActiveDragForItem(presence, item.id) : null;
+	if (drag) {
+		visited.delete(item.id);
+		return { x: drag.x, y: drag.y };
+	}
+	const parentGroupInfo = getParentGroupInfo(item);
+	if (!parentGroupInfo) {
+		visited.delete(item.id);
+		return { x: item.x, y: item.y };
+	}
+	const parentPosition = getItemAbsolutePosition(parentGroupInfo.groupItem, presence, visited);
+	const offset = getGroupChildOffset(parentGroupInfo.group, item);
+	visited.delete(item.id);
+	return {
+		x: parentPosition.x + offset.x,
+		y: parentPosition.y + offset.y,
+	};
+}
+
+export function getNestedGroupDragOffset(
+	item: Item,
+	presence: PresenceValue,
+	groupDrag: { id: string; x: number; y: number; rotation: number }
+): { x: number; y: number } {
+	const visited = new Set<string>();
+	let current: Item | null = item;
+	let accumulatedX = 0;
+	let accumulatedY = 0;
+
+	while (current) {
+		const parentInfo = getParentGroupInfo(current);
+		if (!parentInfo) {
+			break;
+		}
+		if (visited.has(parentInfo.groupItem.id)) {
+			break;
+		}
+		visited.add(parentInfo.groupItem.id);
+
+		const { group, groupItem } = parentInfo;
+		const offset = isGroupGridEnabled(group)
+			? getGroupChildOffset(group, current)
+			: { x: current.x, y: current.y };
+		accumulatedX += offset.x;
+		accumulatedY += offset.y;
+
+		if (groupItem.id === groupDrag.id) {
+			return { x: groupDrag.x + accumulatedX, y: groupDrag.y + accumulatedY };
+		}
+
+		const parentDrag = getActiveDragForItem(presence, groupItem.id);
+		if (parentDrag) {
+			return { x: parentDrag.x + accumulatedX, y: parentDrag.y + accumulatedY };
+		}
+
+		current = groupItem;
+	}
+
+	const absolute = getItemAbsolutePosition(item, presence);
+	return { x: absolute.x, y: absolute.y };
+}
+
 export function getParentGroupInfo(item: Item): GroupHierarchyInfo | null {
 	const parent = Tree.parent(item);
 	if (!parent) {
@@ -67,11 +138,11 @@ export function getGroupActivePosition(
 	presence?: PresenceValue
 ): { x: number; y: number; drag: ReturnType<typeof getActiveDragForItem> } {
 	const drag = presence ? getActiveDragForItem(presence, groupItem.id) : null;
-	return {
-		x: drag ? drag.x : groupItem.x,
-		y: drag ? drag.y : groupItem.y,
-		drag,
-	};
+	if (drag) {
+		return { x: drag.x, y: drag.y, drag };
+	}
+	const absolute = getItemAbsolutePosition(groupItem, presence);
+	return { x: absolute.x, y: absolute.y, drag };
 }
 
 export function getGroupChildOffset(group: Group, child: Item): { x: number; y: number } {
@@ -88,10 +159,14 @@ export function getGroupChildAbsolutePosition(options: GroupChildPositionOptions
 	x: number;
 	y: number;
 } {
+	const drag = options.presence ? getActiveDragForItem(options.presence, options.child.id) : null;
+	if (drag) {
+		return { x: drag.x, y: drag.y };
+	}
 	const { groupItem, group } = options.groupInfo;
-	const { x: groupX, y: groupY } = getGroupActivePosition(groupItem, options.presence);
+	const groupPosition = getItemAbsolutePosition(groupItem, options.presence);
 	const offset = getGroupChildOffset(group, options.child);
-	return { x: groupX + offset.x, y: groupY + offset.y };
+	return { x: groupPosition.x + offset.x, y: groupPosition.y + offset.y };
 }
 
 export function resolveItemTransform(options: ResolveItemTransformOptions): ItemTransformResult {
