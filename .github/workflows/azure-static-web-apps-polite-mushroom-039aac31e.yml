@@ -3,11 +3,11 @@ name: Azure Static Web Apps CI/CD
 on:
     push:
         branches:
-            - fhl-9-2025
+            - ai
     pull_request:
         types: [opened, synchronize, reopened, closed]
         branches:
-            - fhl-9-2025
+            - ai
 
 jobs:
     build_and_deploy_job:
