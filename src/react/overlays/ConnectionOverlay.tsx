@@ -1,6 +1,6 @@
 import React, { useContext, useMemo, useState } from "react";
 import { Tree } from "@fluidframework/tree";
-import { Item, Group, Note, TextBlock, FluidTable } from "../../schema/appSchema.js";
+import { Item, Group } from "../../schema/appSchema.js";
 import { FlattenedItem } from "../../utils/flattenItems.js";
 import { useTree } from "../hooks/useTree.js";
 import {
@@ -299,19 +299,7 @@ export function ConnectionOverlay(props: ConnectionOverlayProps): JSX.Element {
 		};
 	}, [connectionManager]);
 
-	const hasConnectionPoints = React.useCallback((item: Item): boolean => {
-		return (
-			Tree.is(item.content, Group) ||
-			Tree.is(item.content, Note) ||
-			Tree.is(item.content, TextBlock) ||
-			Tree.is(item.content, FluidTable)
-		);
-	}, []);
-
-	const itemsWithConnections = useMemo(
-		() => items.filter(hasConnectionPoints),
-		[items, hasConnectionPoints]
-	);
+	const itemsWithConnections = items;
 
 	const getBaseRect = React.useCallback(
 		(item: Item): Rect | null => {

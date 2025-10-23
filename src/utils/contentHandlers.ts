@@ -10,13 +10,30 @@
 // ============================================================================
 
 import { Tree } from "fluid-framework";
-import { Item, Shape, Note, FluidTable, Group, TextBlock } from "../schema/appSchema.js";
+import {
+	Item,
+	Shape,
+	Note,
+	FluidTable,
+	Group,
+	TextBlock,
+	FileReferenceCard,
+	LlmCard,
+} from "../schema/appSchema.js";
 import { getShapeKind, getShapeSize } from "./shapeUtils.js";
 
 /**
  * Content type enumeration for type-safe handling
  */
-export type ContentType = "shape" | "note" | "text" | "table" | "group" | "unknown";
+export type ContentType =
+	| "shape"
+	| "note"
+	| "text"
+	| "table"
+	| "group"
+	| "fileReference"
+	| "llmCard"
+	| "unknown";
 
 /**
  * Common interface for all content handlers
@@ -218,6 +235,66 @@ class UnknownHandler implements ContentHandler {
 	}
 }
 
+class LlmCardHandler implements ContentHandler {
+	readonly type: ContentType = "llmCard";
+
+	// Card content currently uses intrinsic sizing without rotation controls.
+	// Accept the card instance for future extensions even if unused today.
+	constructor(card: LlmCard) {
+		void card;
+	}
+
+	getSize(): number {
+		return 0;
+	}
+
+	getName(): string {
+		return "LLM Card";
+	}
+
+	canResize(): boolean {
+		return false;
+	}
+
+	canRotate(): boolean {
+		return false;
+	}
+
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	getRotationTransform(_rotation: number): string {
+		return "rotate(0)";
+	}
+}
+
+class FileReferenceCardHandler implements ContentHandler {
+	readonly type: ContentType = "fileReference";
+
+	constructor(card: FileReferenceCard) {
+		void card;
+	}
+
+	getSize(): number {
+		return 0;
+	}
+
+	getName(): string {
+		return "File References";
+	}
+
+	canResize(): boolean {
+		return false;
+	}
+
+	canRotate(): boolean {
+		return false;
+	}
+
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	getRotationTransform(_rotation: number): string {
+		return "rotate(0)";
+	}
+}
+
 /**
  * Factory function to create the appropriate content handler
  * This is the single place where Tree.is() type checking occurs
@@ -237,6 +314,12 @@ export function getContentHandler(item: Item, sizeOverride?: number): ContentHan
 	}
 	if (Tree.is(item.content, Group)) {
 		return new GroupHandler();
+	}
+	if (Tree.is(item.content, FileReferenceCard)) {
+		return new FileReferenceCardHandler(item.content);
+	}
+	if (Tree.is(item.content, LlmCard)) {
+		return new LlmCardHandler(item.content);
 	}
 	return new UnknownHandler();
 }
@@ -270,4 +353,12 @@ export function isTable(item: Item): item is Item & { content: FluidTable } {
 
 export function isGroup(item: Item): item is Item & { content: Group } {
 	return Tree.is(item.content, Group);
+}
+
+export function isFileReferenceCard(item: Item): item is Item & { content: FileReferenceCard } {
+	return Tree.is(item.content, FileReferenceCard);
+}
+
+export function isLlmCard(item: Item): item is Item & { content: LlmCard } {
+	return Tree.is(item.content, LlmCard);
 }

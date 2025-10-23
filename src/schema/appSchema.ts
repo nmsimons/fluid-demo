@@ -312,6 +312,117 @@ export class TextBlock extends sf.object("TextBlock", {
 	}),
 }) {}
 
+export class FileReferenceEntry extends sf.object("FileReferenceEntry", {
+	id: sf.required(sf.string, {
+		metadata: {
+			description:
+				"Stable identifier for this reference entry so it can be updated or removed individually",
+		},
+	}),
+	title: sf.required(sf.string, {
+		metadata: {
+			description:
+				"Display title for the referenced resource. Shown on cards that aggregate supporting context.",
+		},
+	}),
+	url: sf.required(sf.string, {
+		metadata: {
+			description:
+				"Direct URL to the external file or resource. Used when the reference is opened or passed to an LLM card.",
+		},
+	}),
+}) {}
+
+export class FileReferenceCard extends sf.object("FileReferenceCard", {
+	references: sf.required(sf.array(FileReferenceEntry), {
+		metadata: {
+			description:
+				"Ordered list of file or resource links that provide supplemental context for LLM interaction cards.",
+		},
+	}),
+}) {
+	addReference(title: string, url: string): FileReferenceEntry {
+		const entry = new FileReferenceEntry({
+			id: crypto.randomUUID(),
+			title,
+			url,
+		});
+		this.references.insertAtEnd(entry);
+		return entry;
+	}
+
+	removeReference(id: string): void {
+		const index = this.references.findIndex((entry) => entry.id === id);
+		if (index === -1) {
+			return;
+		}
+		this.references.removeAt(index);
+	}
+
+	setReferenceTitle(id: string, title: string): void {
+		const entry = this.references.find((candidate) => candidate.id === id);
+		if (!entry) {
+			return;
+		}
+		entry.title = title;
+	}
+
+	setReferenceUrl(id: string, url: string): void {
+		const entry = this.references.find((candidate) => candidate.id === id);
+		if (!entry) {
+			return;
+		}
+		entry.url = url;
+	}
+
+	clearReferences(): void {
+		while (this.references.length > 0) {
+			this.references.removeAt(this.references.length - 1);
+		}
+	}
+
+	public static [exposeMethodsSymbol](methods: ExposedMethods): void {
+		methods.expose(
+			FileReferenceCard,
+			"addReference",
+			buildFunc(
+				{ returns: methods.instanceOf(FileReferenceEntry) },
+				["title", z.string()],
+				["url", z.string()]
+			)
+		);
+		methods.expose(
+			FileReferenceCard,
+			"removeReference",
+			buildFunc({ returns: z.void() }, ["id", z.string()])
+		);
+		methods.expose(
+			FileReferenceCard,
+			"setReferenceTitle",
+			buildFunc({ returns: z.void() }, ["id", z.string()], ["title", z.string()])
+		);
+		methods.expose(
+			FileReferenceCard,
+			"setReferenceUrl",
+			buildFunc({ returns: z.void() }, ["id", z.string()], ["url", z.string()])
+		);
+		methods.expose(FileReferenceCard, "clearReferences", buildFunc({ returns: z.void() }));
+	}
+}
+
+export class LlmCard extends sf.object("LlmCard", {
+	prompt: sf.required(sf.string, {
+		metadata: {
+			description: "The natural language prompt or question that was sent to the LLM",
+		},
+	}),
+	response: sf.required(sf.string, {
+		metadata: {
+			description: "The LLM response text captured for this interaction",
+		},
+	}),
+}) {}
+
 export type typeDefinition = TreeNodeFromImplicitAllowedTypes<typeof schemaTypes>;
 const schemaTypes = [sf.string, sf.number, sf.boolean, DateTime, Votes] as const;
 
@@ -574,7 +685,7 @@ export class Item extends sf.objectRecursive("Item", {
 	comments: Comments,
 	votes: Votes,
 	connections: sf.array(sf.string),
-	content: [Shape, Note, TextBlock, FluidTable, Group],
+	content: [Shape, Note, TextBlock, FluidTable, Group, FileReferenceCard, LlmCard],
 }) {
 	delete(): void {
 		const parent = Tree.parent(this);
@@ -847,6 +958,73 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 		return item;
 	}
 
+	createLlmCardItem(
+		canvasSize: { width: number; height: number },
+		user: User,
+		initialValues?: { prompt?: string; response?: string }
+	): Item {
+		const card = new LlmCard({
+			prompt: initialValues?.prompt ?? "",
+			response: initialValues?.response ?? "",
+		});
+
+		const defaultWidth = 320;
+		const defaultHeight = 200;
+		const item = new Item({
+			id: crypto.randomUUID(),
+			createdBy: user,
+			createdAt: new DateTime({ ms: Date.now() }),
+			updatedBy: [],
+			updatedAt: new DateTime({ ms: Date.now() }),
+			x: this.getRandomNumber(0, Math.max(0, canvasSize.width - defaultWidth)),
+			y: this.getRandomNumber(0, Math.max(0, canvasSize.height - defaultHeight)),
+			comments: [],
+			votes: [],
+			connections: [],
+			content: card,
+			rotation: 0,
+		});
+
+		this.insertAtEnd(item);
+		return item;
+	}
+
+	createFileReferenceCardItem(
+		canvasSize: { width: number; height: number },
+		user: User,
+		initialReferences: Array<{ title: string; url: string }> = []
+	): Item {
+		const references = initialReferences.map(
+			(reference) =>
+				new FileReferenceEntry({
+					id: crypto.randomUUID(),
+					title: reference.title,
+					url: reference.url,
+				})
+		);
+
+		const card = new FileReferenceCard({ references });
+		const defaultWidth = 320;
+		const defaultHeight = 160;
+		const item = new Item({
+			id: crypto.randomUUID(),
+			createdBy: user,
+			createdAt: new DateTime({ ms: Date.now() }),
+			updatedBy: [],
+			updatedAt: new DateTime({ ms: Date.now() }),
+			x: this.getRandomNumber(0, Math.max(0, canvasSize.width - defaultWidth)),
+			y: this.getRandomNumber(0, Math.max(0, canvasSize.height - defaultHeight)),
+			comments: [],
+			votes: [],
+			connections: [],
+			content: card,
+			rotation: 0,
+		});
+
+		this.insertAtEnd(item);
+		return item;
+	}
+
 	/**
 	 * Create a default table with basic columns
 	 */
@@ -993,6 +1171,22 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 			duplicatedContent = new FluidTable({
 				rows: newRows,
 				columns: newColumns,
+			});
+		} else if (Tree.is(item.content, FileReferenceCard)) {
+			duplicatedContent = new FileReferenceCard({
+				references: item.content.references.map(
+					(entry) =>
+						new FileReferenceEntry({
+							id: crypto.randomUUID(),
+							title: entry.title,
+							url: entry.url,
+						})
+				),
+			});
+		} else if (Tree.is(item.content, LlmCard)) {
+			duplicatedContent = new LlmCard({
+				prompt: item.content.prompt,
+				response: item.content.response,
 			});
 		} else {
 			throw new Error("Unknown content type, cannot duplicate");
@@ -1181,6 +1375,21 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 		);
 		methods.expose(
 			Items,
+			"createFileReferenceCardItem",
+			buildFunc(
+				{ returns: methods.instanceOf(Item) },
+				["canvasSize", z.object({ width: z.number(), height: z.number() })],
+				["user", methods.instanceOf(User)],
+				[
+					"initialReferences",
+					z
+						.array(z.object({ title: z.string(), url: z.string() }))
+						.optional(),
+				]
+			)
+		);
+		methods.expose(
+			Items,
 			"createGroupItem",
 			buildFunc(
 				{ returns: methods.instanceOf(Item) },
@@ -1196,6 +1405,24 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 				{ returns: methods.instanceOf(Item) },
 				["canvasSize", z.object({ width: z.number(), height: z.number() })],
 				["user", methods.instanceOf(User)]
+			)
+		);
+		methods.expose(
+			Items,
+			"createLlmCardItem",
+			buildFunc(
+				{ returns: methods.instanceOf(Item) },
+				["canvasSize", z.object({ width: z.number(), height: z.number() })],
+				["user", methods.instanceOf(User)],
+				[
+					"initialValues",
+					z
+						.object({
+							prompt: z.string().optional(),
+							response: z.string().optional(),
+						})
+						.optional(),
+				]
 			)
 		);
 		methods.expose(

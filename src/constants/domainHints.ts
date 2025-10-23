@@ -609,6 +609,31 @@ textBlockItem.content.text = 'Enter text here';
 textBlockItem.content.fontSize = 18;
 textBlockItem.content.bold = true;
 
+9.
+User request: "Collect the supporting files I want to send to the AI"
+
+Snippet written to accomplish the edit:
+
+const { root } = context;
+// CRITICAL: Create a NEW AI user for this reference card
+const aiUser = context.create.User({ id: "AI", name: "AI" });
+
+// Create a file reference card with initial links (only the titles render on the canvas)
+const referenceItem = root.items.createFileReferenceCardItem(
+  { width: 1600, height: 900 },
+  aiUser,
+  [
+    { title: "Design Spec", url: "https://contoso.sharepoint.com/design.pdf" },
+    { title: "Metrics Dashboard", url: "https://contoso.powerbi.com/reports/123" },
+  ]
+);
+
+// Add another link later if needed
+referenceItem.content.addReference(
+  "Customer interview notes",
+  "https://contoso.sharepoint.com/interviews.docx"
+);
+
 IMPORTANT:
 
 Creating Items (all methods automatically add items to root.items array):

@@ -74,6 +74,8 @@ import { ShapeView } from "./ShapeView.js";
 import { NoteView } from "./NoteView.js";
 import { TableView } from "./TableView.js";
 import { TextView } from "./TextView.js";
+import { FileReferenceCardView } from "./FileReferenceCardView.js";
+import { LlmCardView } from "./LlmCardView.js";
 import { usePresenceManager } from "../../hooks/usePresenceManger.js";
 import { PresenceManager } from "../../../presence/Interfaces/PresenceManager.js";
 import { DragAndRotatePackage, DragSelectionEntry } from "../../../presence/drag.js";
@@ -85,6 +87,8 @@ import {
 	getContentHandler,
 	getContentType,
 	isGroup,
+	isFileReferenceCard,
+	isLlmCard,
 	isShape,
 } from "../../../utils/contentHandlers.js";
 import { scheduleLayoutInvalidation } from "../../utils/layoutInvalidation.js";
@@ -214,6 +218,14 @@ export function ContentElement({
 	}
 	if (handler.type === "group" && isGroup(item)) {
 		return <GroupView key={objectIdNumber(item.content)} item={item} />;
+	}
+	if (handler.type === "fileReference" && isFileReferenceCard(item)) {
+		return (
+			<FileReferenceCardView key={objectIdNumber(item.content)} card={item.content} />
+		);
+	}
+	if (handler.type === "llmCard" && isLlmCard(item)) {
+		return <LlmCardView key={objectIdNumber(item.content)} card={item.content} />;
 	}
 	return <></>;
 }
