@@ -174,14 +174,15 @@ export function FileReferenceCardView(props: FileReferenceCardViewProps): JSX.El
 					Reference Files
 				</span>
 				<p className="text-xs text-slate-500">
-					Attach links that provide extra context for nearby LLM cards. Only the titles are shown on the
-					canvas; clicking opens the source in a new tab.
+					Attach links that provide extra context for nearby LLM cards. Only the titles
+					are shown on the canvas; clicking opens the source in a new tab.
 				</p>
 			</div>
 			<ul className="flex flex-col gap-3">
 				{references.length === 0 ? (
 					<li className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-4 text-xs text-slate-500">
-						No references yet. Add links to share background files or documents with your LLM prompts.
+						No references yet. Add links to share background files or documents with
+						your LLM prompts.
 					</li>
 				) : (
 					references.map((entry) => (

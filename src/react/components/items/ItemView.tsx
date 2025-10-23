@@ -220,9 +220,7 @@ export function ContentElement({
 		return <GroupView key={objectIdNumber(item.content)} item={item} />;
 	}
 	if (handler.type === "fileReference" && isFileReferenceCard(item)) {
-		return (
-			<FileReferenceCardView key={objectIdNumber(item.content)} card={item.content} />
-		);
+		return <FileReferenceCardView key={objectIdNumber(item.content)} card={item.content} />;
 	}
 	if (handler.type === "llmCard" && isLlmCard(item)) {
 		return <LlmCardView key={objectIdNumber(item.content)} card={item.content} />;

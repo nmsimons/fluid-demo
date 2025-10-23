@@ -1382,9 +1382,7 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 				["user", methods.instanceOf(User)],
 				[
 					"initialReferences",
-					z
-						.array(z.object({ title: z.string(), url: z.string() }))
-						.optional(),
+					z.array(z.object({ title: z.string(), url: z.string() })).optional(),
 				]
 			)
 		);
