@@ -1,4 +1,5 @@
 import React from "react";
+import ReactMarkdown from "react-markdown";
 import { LlmCard } from "../../../schema/appSchema.js";
 import { useTree } from "../../hooks/useTree.js";
 
@@ -33,25 +34,12 @@ export function LlmCardView(props: LlmCardViewProps): JSX.Element {
 		resizePrompt(event.target);
 	};
 
-	const handleResponseChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-		card.response = event.target.value;
-		resizeResponse(event.target);
-	};
-
 	const promptRef = React.useCallback(
 		(node: HTMLTextAreaElement | null) => {
 			promptElementRef.current = node;
 			resizePrompt(node);
 		},
 		[resizePrompt]
-	);
-
-	const responseRef = React.useCallback(
-		(node: HTMLTextAreaElement | null) => {
-			responseElementRef.current = node;
-			resizeResponse(node);
-		},
-		[resizeResponse]
 	);
 
 	React.useLayoutEffect(() => {
@@ -90,16 +78,25 @@ export function LlmCardView(props: LlmCardViewProps): JSX.Element {
 				<span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
 					Response
 				</span>
-				<textarea
-					ref={responseRef}
-					className="w-full resize-none rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-					placeholder="What did the model return?"
-					value={card.response}
-					onChange={handleResponseChange}
-					rows={4}
-					autoComplete="off"
-					data-item-editable
-				/>
+				<div className="flex flex-col gap-3">
+					<div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-800">
+						<ReactMarkdown
+							className="space-y-2 text-sm leading-relaxed text-slate-800 break-words"
+							components={{
+								a: ({ ...props }) => (
+									<a
+										{...props}
+										target="_blank"
+										rel="noopener noreferrer"
+										className="text-blue-600 underline hover:text-blue-700"
+									/>
+								),
+							}}
+						>
+							{card.response || "_LLM output will appear here in markdown form._"}
+						</ReactMarkdown>
+					</div>
+				</div>
 			</section>
 		</div>
 	);
