@@ -18,7 +18,7 @@ export async function getZumoAuthToken(msalInstance: PublicClientApplication): P
 
 	// Get token with the specific scope for the service
 	const tokenRequest = {
-		scopes: ["api://56bbaaea-f34d-4aee-9565-b37be2d84fa8/user_impersonation"],
+		scopes: ["api://d0f61b31-26f8-48a6-9605-0fe304cf7f22/user_impersonation"],
 		account: accounts[0],
 	};
 
