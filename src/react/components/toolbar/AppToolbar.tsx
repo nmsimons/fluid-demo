@@ -11,7 +11,7 @@ import { isShape, isTable, isText, isGroup, isNote } from "../../../utils/conten
 import { findItemsByIds } from "../../../utils/itemsHelpers.js";
 import { TypedSelection } from "../../../presence/selection.js";
 import { getParentGroupInfo } from "../../utils/presenceGeometry.js";
-import { ShapeMenu, NewNoteButton, NewTableButton } from "./buttons/CreationButtons.js";
+import { ShapeMenu, NewNoteButton } from "./buttons/CreationButtons.js";
 import type { ShapeType } from "./buttons/CreationButtons.js";
 import { NewTextButton, TextFormattingMenu } from "./buttons/TextButtons.js";
 import { VoteButton, DeleteButton, DuplicateButton, CommentButton } from "./buttons/EditButtons.js";
@@ -31,8 +31,8 @@ import {
 	SendItemToBackButton,
 } from "./buttons/ZOrderButtons.js";
 import { InkColorPicker, InkToggleButton, EraserToggleButton } from "./buttons/InkButtons.js";
-import { UndoButton, RedoButton, ClearAllButton } from "./buttons/ActionButtons.js";
-import { CommentsPaneToggleButton, AiPaneToggleButton } from "./buttons/PaneButtons.js";
+import { UndoButton, RedoButton } from "./buttons/ActionButtons.js";
+import { AiPaneToggleButton } from "./buttons/PaneButtons.js";
 import { ZoomMenu } from "./buttons/ViewButtons.js";
 import { DeleteSelectedRowsButton } from "./buttons/TableButtons.js";
 import {
@@ -111,8 +111,8 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 		selectedItemIds,
 		selectedColumnId,
 		selectedRowId,
-		commentPaneHidden,
-		setCommentPaneHidden,
+		// commentPaneHidden,
+		// setCommentPaneHidden,
 		aiPaneHidden,
 		setAiPaneHidden,
 		undoRedo,
@@ -285,7 +285,7 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 					selectedNotes={selectedNotes}
 				/>
 			</ToolbarGroup>
-			<ToolbarDivider />
+			{/* <ToolbarDivider />
 			<ToolbarGroup>
 				<NewTableButton
 					items={view.root.items}
@@ -293,7 +293,7 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 					pan={pan}
 					zoom={zoom}
 				/>
-			</ToolbarGroup>
+			</ToolbarGroup> */}
 			{(() => {
 				const hasSelectedItems = selectedItems.length > 0;
 				const singleSelectedItem = selectedItems.length === 1 ? selectedItems[0] : null;
@@ -449,7 +449,7 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 					</>
 				);
 			})()}
-			<ToolbarDivider />
+			{/* <ToolbarDivider />
 			<ToolbarGroup>
 				<ClearAllButton
 					onClear={() => {
@@ -460,13 +460,13 @@ export function AppToolbar(props: AppToolbarProps): JSX.Element {
 					}}
 					disabled={view.root.items.length === 0 && view.root.inks.length === 0}
 				/>
-			</ToolbarGroup>
+			</ToolbarGroup> */}
 			<ToolbarDivider />
 			<ToolbarGroup>
-				<CommentsPaneToggleButton
+				{/* <CommentsPaneToggleButton				
 					paneHidden={commentPaneHidden}
 					onToggle={(h) => setCommentPaneHidden(h)}
-				/>
+				/> */}
 				<AiPaneToggleButton
 					paneHidden={aiPaneHidden}
 					onToggle={(h) => setAiPaneHidden(h)}
