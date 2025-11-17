@@ -560,8 +560,8 @@ function ConnectionPoints(props: ConnectionPointsProps): JSX.Element | null {
 
 	const sides: ConnectionSide[] = ["top", "right", "bottom", "left"];
 
-	// Proximity threshold in logical units
-	const proximityThreshold = 100;
+	// Proximity threshold in logical units (lower values delay appearance until cursor is very close)
+	const proximityThreshold = 35;
 
 	// Connection point visual size (constant regardless of zoom)
 	const visualRadius = 6;
