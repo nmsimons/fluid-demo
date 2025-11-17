@@ -5,7 +5,6 @@
 
 import React, { JSX, useContext, useEffect, useState, useRef } from "react";
 import { App } from "../../../schema/appSchema.js";
-import "../../../output.css";
 import "../../../styles/ios-minimal.css";
 // import "../../../styles/ios-fixes.css";
 // import "../../../styles/ios-safari-fixes.css";

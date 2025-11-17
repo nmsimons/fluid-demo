@@ -401,10 +401,10 @@ The application uses Tailwind CSS for styling alongside Fluent UI components:
 - **iOS Support**: Special CSS fixes in `src/styles/ios-minimal.css` for iOS Safari
 - **Build Integration**: Tailwind is integrated with Vite build process
 
-To update styles during development, Tailwind CSS is automatically compiled by Vite. For manual compilation:
+Tailwind CSS is compiled automatically by Vite whenever `src/index.css` changes. If you need to debug the generated CSS directly, you can optionally emit it with:
 
 ```bash
-npx tailwindcss -i ./src/index.css -o ./src/output.css --watch
+npx tailwindcss -i ./src/index.css -o ./tailwind-preview.css --watch
 ```
 
 ## Devtools

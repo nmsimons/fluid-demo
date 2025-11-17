@@ -6,6 +6,7 @@
 // Import polyfills for iOS compatibility
 import "./polyfills/crypto.js";
 import "./polyfills/ios.js";
+import "./index.css";
 
 // Enable mobile debugging in development
 if (process.env.NODE_ENV === "development") {
