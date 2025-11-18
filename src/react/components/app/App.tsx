@@ -61,9 +61,12 @@ import type { ShapeType } from "../toolbar/buttons/CreationButtons.js";
 import { InkPresenceManager } from "../../../presence/Interfaces/InkManager.js";
 import { TEXT_DEFAULT_COLOR, TEXT_DEFAULT_FONT_SIZE } from "../../../constants/text.js";
 import { DEFAULT_NOTE_COLOR, type NoteColor } from "../../../constants/note.js";
-import { findItemById } from "../../../utils/itemsHelpers.js";
-import { isShape, isText, isNote } from "../../../utils/contentHandlers.js";
 import { useContainerConnectionState } from "../../hooks/useContainerConnectionState.js";
+import {
+	useShapeSelectionSummary,
+	useTextSelectionSummary,
+	useNoteSelectionSummary,
+} from "../../hooks/useSelectionSummaries.js";
 // Removed circle ink creation; ink tool toggles freehand drawing.
 
 // Context for comment pane actions
@@ -134,197 +137,59 @@ export function ReactApp(props: {
 	const commentPaneRef = useRef<CommentPaneRef>(null);
 	const [aiPaneHidden, setAiPaneHidden] = useState(true);
 	const [showAiBranchMessage, setShowAiBranchMessage] = useState(false);
-	const shapeSelectionAnalysis = (() => {
-		let firstColor: string | null = null;
-		let firstFilled: boolean | null = null;
-		const signatureParts: string[] = [];
 
-		for (const id of selectedItemIds) {
-			const item = findItemById(view.root.items, id);
-			if (!item) {
-				signatureParts.push(id);
-				continue;
-			}
-			if (isShape(item)) {
-				const shape = item.content;
-				const filled = shape.filled !== false;
-				signatureParts.push(`${id}:${shape.color}:${filled ? "1" : "0"}`);
-				if (firstColor === null) {
-					firstColor = shape.color;
-					firstFilled = filled;
-				}
-			} else {
-				signatureParts.push(id);
-			}
-		}
+	useTree(tree.root);
+	const itemsVersion = useTree(view.root.items, true);
+	useTree(view.root.comments);
+	// Subscribe to ink strokes so toolbar actions inserting ink trigger re-render
+	useTree(view.root.inks);
 
-		return {
-			color: firstColor,
-			filled: firstFilled,
-			signature: signatureParts.join("|") || "",
-		};
-	})();
-	const {
-		color: firstSelectedShapeColor,
-		filled: firstSelectedShapeFilled,
-		signature: selectedShapesSignature,
-	} = shapeSelectionAnalysis;
-	const textSelectionAnalysis = (() => {
-		let firstColor: string | null = null;
-		let firstFontSize: number | null = null;
-		let firstBold: boolean | null = null;
-		let firstItalic: boolean | null = null;
-		let firstUnderline: boolean | null = null;
-		let firstStrikethrough: boolean | null = null;
-		let firstCardStyle: boolean | null = null;
-		let firstTextAlign: string | null = null;
-		const signatureParts: string[] = [];
-
-		for (const id of selectedItemIds) {
-			const item = findItemById(view.root.items, id);
-			if (!item) {
-				signatureParts.push(id);
-				continue;
-			}
-			if (isText(item)) {
-				const text = item.content;
-				const color = text.color ?? TEXT_DEFAULT_COLOR;
-				const fontSize = text.fontSize ?? TEXT_DEFAULT_FONT_SIZE;
-				const bold = text.bold === true;
-				const italic = text.italic === true;
-				const underline = text.underline === true;
-				const strikethrough = text.strikethrough === true;
-				const cardStyle = text.cardStyle === true;
-				const textAlignVal = text.textAlign ?? "left";
-				signatureParts.push(
-					`${id}:${color}:${fontSize}:${bold ? 1 : 0}:${italic ? 1 : 0}:${underline ? 1 : 0}:${strikethrough ? 1 : 0}:${cardStyle ? 1 : 0}:${textAlignVal}`
-				);
-				if (firstColor === null) {
-					firstColor = color;
-					firstFontSize = fontSize;
-					firstBold = bold;
-					firstItalic = italic;
-					firstUnderline = underline;
-					firstStrikethrough = strikethrough;
-					firstCardStyle = cardStyle;
-					firstTextAlign = textAlignVal;
-				}
-			} else {
-				signatureParts.push(id);
-			}
-		}
-
-		return {
-			color: firstColor,
-			fontSize: firstFontSize,
-			bold: firstBold,
-			italic: firstItalic,
-			underline: firstUnderline,
-			strikethrough: firstStrikethrough,
-			cardStyle: firstCardStyle,
-			textAlign: firstTextAlign,
-			signature: signatureParts.join("|") || "",
-		};
-	})();
-	const {
-		color: firstSelectedTextColor,
-		fontSize: firstSelectedTextFontSize,
-		bold: firstSelectedTextBold,
-		italic: firstSelectedTextItalic,
-		underline: firstSelectedTextUnderline,
-		strikethrough: firstSelectedTextStrikethrough,
-		cardStyle: firstSelectedTextCardStyle,
-		textAlign: firstSelectedTextAlign,
-		signature: selectedTextsSignature,
-	} = textSelectionAnalysis;
+	const shapeSummary = useShapeSelectionSummary(view, selectedItemIds, itemsVersion);
+	const textSummary = useTextSelectionSummary(view, selectedItemIds, itemsVersion);
+	const noteSummary = useNoteSelectionSummary(view, selectedItemIds, itemsVersion);
 
 	useEffect(() => {
-		if (firstSelectedShapeColor !== null && firstSelectedShapeColor !== shapeColor) {
-			setShapeColor(firstSelectedShapeColor);
+		if (shapeSummary.color !== null && shapeSummary.color !== shapeColor) {
+			setShapeColor(shapeSummary.color);
 		}
-		if (firstSelectedShapeFilled !== null && firstSelectedShapeFilled !== shapeFilled) {
-			setShapeFilled(firstSelectedShapeFilled);
+		if (shapeSummary.filled !== null && shapeSummary.filled !== shapeFilled) {
+			setShapeFilled(shapeSummary.filled);
+		}
+	}, [shapeSummary, shapeColor, shapeFilled]);
+
+	useEffect(() => {
+		if (noteSummary.color !== null && noteSummary.color !== noteColor) {
+			setNoteColor(noteSummary.color);
+		}
+	}, [noteSummary, noteColor]);
+
+	useEffect(() => {
+		if (textSummary.color !== null && textSummary.color !== textColor) {
+			setTextColor(textSummary.color);
+		}
+		if (textSummary.fontSize !== null && textSummary.fontSize !== textFontSize) {
+			setTextFontSize(textSummary.fontSize);
+		}
+		if (textSummary.bold !== null && textSummary.bold !== textBold) {
+			setTextBold(textSummary.bold);
+		}
+		if (textSummary.italic !== null && textSummary.italic !== textItalic) {
+			setTextItalic(textSummary.italic);
+		}
+		if (textSummary.underline !== null && textSummary.underline !== textUnderline) {
+			setTextUnderline(textSummary.underline);
+		}
+		if (textSummary.strikethrough !== null && textSummary.strikethrough !== textStrikethrough) {
+			setTextStrikethrough(textSummary.strikethrough);
+		}
+		if (textSummary.cardStyle !== null && textSummary.cardStyle !== textCardStyle) {
+			setTextCardStyle(textSummary.cardStyle);
+		}
+		if (textSummary.textAlign !== null && textSummary.textAlign !== textAlign) {
+			setTextAlign(textSummary.textAlign);
 		}
 	}, [
-		selectedShapesSignature,
-		firstSelectedShapeColor,
-		firstSelectedShapeFilled,
-		shapeColor,
-		shapeFilled,
-	]);
-	const noteSelectionAnalysis = (() => {
-		let firstColor: NoteColor | null = null;
-		const signatureParts: string[] = [];
-
-		for (const id of selectedItemIds) {
-			const item = findItemById(view.root.items, id);
-			if (!item) {
-				signatureParts.push(id);
-				continue;
-			}
-			if (isNote(item)) {
-				const color = (item.content.color ?? DEFAULT_NOTE_COLOR) as NoteColor;
-				signatureParts.push(`${id}:${color}`);
-				if (firstColor === null) {
-					firstColor = color;
-				}
-			} else {
-				signatureParts.push(id);
-			}
-		}
-
-		return {
-			color: firstColor,
-			signature: signatureParts.join("|") || "",
-		};
-	})();
-	const { color: firstSelectedNoteColor, signature: selectedNotesSignature } =
-		noteSelectionAnalysis;
-
-	useEffect(() => {
-		if (firstSelectedNoteColor !== null && firstSelectedNoteColor !== noteColor) {
-			setNoteColor(firstSelectedNoteColor);
-		}
-	}, [selectedNotesSignature, firstSelectedNoteColor, noteColor]);
-
-	useEffect(() => {
-		if (firstSelectedTextColor !== null && firstSelectedTextColor !== textColor) {
-			setTextColor(firstSelectedTextColor);
-		}
-		if (firstSelectedTextFontSize !== null && firstSelectedTextFontSize !== textFontSize) {
-			setTextFontSize(firstSelectedTextFontSize);
-		}
-		if (firstSelectedTextBold !== null && firstSelectedTextBold !== textBold) {
-			setTextBold(firstSelectedTextBold);
-		}
-		if (firstSelectedTextItalic !== null && firstSelectedTextItalic !== textItalic) {
-			setTextItalic(firstSelectedTextItalic);
-		}
-		if (firstSelectedTextUnderline !== null && firstSelectedTextUnderline !== textUnderline) {
-			setTextUnderline(firstSelectedTextUnderline);
-		}
-		if (
-			firstSelectedTextStrikethrough !== null &&
-			firstSelectedTextStrikethrough !== textStrikethrough
-		) {
-			setTextStrikethrough(firstSelectedTextStrikethrough);
-		}
-		if (firstSelectedTextCardStyle !== null && firstSelectedTextCardStyle !== textCardStyle) {
-			setTextCardStyle(firstSelectedTextCardStyle);
-		}
-		if (firstSelectedTextAlign !== null && firstSelectedTextAlign !== textAlign) {
-			setTextAlign(firstSelectedTextAlign);
-		}
-	}, [
-		selectedTextsSignature,
-		firstSelectedTextColor,
-		firstSelectedTextFontSize,
-		firstSelectedTextBold,
-		firstSelectedTextItalic,
-		firstSelectedTextUnderline,
-		firstSelectedTextStrikethrough,
-		firstSelectedTextCardStyle,
-		firstSelectedTextAlign,
+		textSummary,
 		textColor,
 		textFontSize,
 		textBold,
@@ -344,12 +209,6 @@ export function ReactApp(props: {
 			commentPaneRef.current?.focusInput();
 		}, 0);
 	};
-
-	useTree(tree.root);
-	useTree(view.root.items);
-	useTree(view.root.comments);
-	// Subscribe to ink strokes so toolbar actions inserting ink trigger re-render
-	useTree(view.root.inks);
 
 	/** Unsubscribe to undo-redo events when the component unmounts */
 	useEffect(() => {
