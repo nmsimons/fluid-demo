@@ -1,4 +1,4 @@
-import React, { useContext, useMemo, useState } from "react";
+import React, { useCallback, useContext, useMemo, useRef, useState } from "react";
 import { Tree } from "@fluidframework/tree";
 import { Item, Group } from "../../schema/appSchema.js";
 import { FlattenedItem } from "../../utils/flattenItems.js";
@@ -51,6 +51,7 @@ interface RemoteDragState extends DragState {
 }
 
 const connectionSides: readonly ConnectionSide[] = ["top", "right", "bottom", "left"];
+const cursorBucketSize = 4; // Logical units per bucket to avoid redundant renders
 const isRecord = (value: unknown): value is Record<string, unknown> =>
 	typeof value === "object" && value !== null;
 const isConnectionSideValue = (value: unknown): value is ConnectionSide =>
@@ -178,6 +179,9 @@ export function ConnectionOverlay(props: ConnectionOverlayProps): JSX.Element {
 	const { flattenedItems, layout, zoom, pan, svgRef } = props;
 	const [dragState, setDragState] = useState<DragState | null>(null);
 	const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
+	const cursorPosRef = useRef<{ x: number; y: number } | null>(null);
+	const cursorBucketRef = useRef<string>("none");
+	const rafIdRef = useRef<number | null>(null);
 	const presence = useContext(PresenceContext);
 	const connectionManager = presence.connectionDrag;
 	const cursorManager = presence.cursor;
@@ -212,14 +216,42 @@ export function ConnectionOverlay(props: ConnectionOverlayProps): JSX.Element {
 		[svgRef, pan.x, pan.y, zoom]
 	);
 
+	const quantizeCursor = useCallback((pos: { x: number; y: number } | null): string => {
+		if (!pos) {
+			return "none";
+		}
+		return `${Math.round(pos.x / cursorBucketSize)}:${Math.round(pos.y / cursorBucketSize)}`;
+	}, []);
+
+	const scheduleCursorUpdate = useCallback(() => {
+		if (typeof window === "undefined") {
+			setCursorPos(cursorPosRef.current);
+			return;
+		}
+		if (rafIdRef.current !== null) {
+			return;
+		}
+		rafIdRef.current = window.requestAnimationFrame(() => {
+			rafIdRef.current = null;
+			const current = cursorPosRef.current;
+			const bucket = quantizeCursor(current);
+			if (bucket !== cursorBucketRef.current) {
+				cursorBucketRef.current = bucket;
+				setCursorPos(current);
+			}
+		});
+	}, [quantizeCursor]);
+
 	React.useEffect(() => {
 		const handlePointerMove = (e: PointerEvent) => {
 			const pos = toLogical(e.clientX, e.clientY);
-			setCursorPos(pos);
+			cursorPosRef.current = pos;
+			scheduleCursorUpdate();
 		};
 
 		const handlePointerLeave = () => {
-			setCursorPos(null);
+			cursorPosRef.current = null;
+			scheduleCursorUpdate();
 		};
 
 		const svg = svgRef.current;
@@ -229,9 +261,19 @@ export function ConnectionOverlay(props: ConnectionOverlayProps): JSX.Element {
 			return () => {
 				svg.removeEventListener("pointermove", handlePointerMove);
 				svg.removeEventListener("pointerleave", handlePointerLeave);
+				if (rafIdRef.current !== null && typeof window !== "undefined") {
+					window.cancelAnimationFrame(rafIdRef.current);
+					rafIdRef.current = null;
+				}
 			};
 		}
-	}, [toLogical, svgRef]);
+		return () => {
+			if (rafIdRef.current !== null && typeof window !== "undefined") {
+				window.cancelAnimationFrame(rafIdRef.current);
+				rafIdRef.current = null;
+			}
+		};
+	}, [toLogical, svgRef, scheduleCursorUpdate]);
 
 	React.useEffect(() => {
 		if (!connectionManager?.state?.getRemotes) {
