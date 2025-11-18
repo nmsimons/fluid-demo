@@ -9,7 +9,7 @@ import "../../../styles/ios-minimal.css";
 // import "../../../styles/ios-fixes.css";
 // import "../../../styles/ios-safari-fixes.css";
 // import { fixIOSZIndexIssues } from "../../../utils/iosZIndexFix.js";
-import { ConnectionState, IFluidContainer, TreeView } from "fluid-framework";
+import { IFluidContainer, TreeView } from "fluid-framework";
 import { asAlpha } from "@fluidframework/tree/alpha";
 import { Canvas } from "../canvas/Canvas.js";
 import type { SelectionManager } from "../../../presence/Interfaces/SelectionManager.js";
@@ -63,6 +63,7 @@ import { TEXT_DEFAULT_COLOR, TEXT_DEFAULT_FONT_SIZE } from "../../../constants/t
 import { DEFAULT_NOTE_COLOR, type NoteColor } from "../../../constants/note.js";
 import { findItemById } from "../../../utils/itemsHelpers.js";
 import { isShape, isText, isNote } from "../../../utils/contentHandlers.js";
+import { useContainerConnectionState } from "../../hooks/useContainerConnectionState.js";
 // Removed circle ink creation; ink tool toggles freehand drawing.
 
 // Context for comment pane actions
@@ -96,8 +97,7 @@ export function ReactApp(props: {
 		ink,
 		connectionDrag,
 	} = props;
-	const [connectionState, setConnectionState] = useState("");
-	const [saved, setSaved] = useState(false);
+	const { connectionState, saved } = useContainerConnectionState(container);
 	const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
 	const [commentPaneHidden, setCommentPaneHidden] = useState(true);
 	const [zoom, setZoom] = useState(1);
@@ -350,27 +350,6 @@ export function ReactApp(props: {
 	useTree(view.root.comments);
 	// Subscribe to ink strokes so toolbar actions inserting ink trigger re-render
 	useTree(view.root.inks);
-
-	useEffect(() => {
-		const updateConnectionState = () => {
-			if (container.connectionState === ConnectionState.Connected) {
-				setConnectionState("connected");
-			} else if (container.connectionState === ConnectionState.Disconnected) {
-				setConnectionState("disconnected");
-			} else if (container.connectionState === ConnectionState.EstablishingConnection) {
-				setConnectionState("connecting");
-			} else if (container.connectionState === ConnectionState.CatchingUp) {
-				setConnectionState("catching up");
-			}
-		};
-		updateConnectionState();
-		setSaved(!container.isDirty);
-		container.on("connected", updateConnectionState);
-		container.on("disconnected", updateConnectionState);
-		container.on("dirty", () => setSaved(false));
-		container.on("saved", () => setSaved(true));
-		container.on("disposed", updateConnectionState);
-	}, [container]);
 
 	/** Unsubscribe to undo-redo events when the component unmounts */
 	useEffect(() => {
