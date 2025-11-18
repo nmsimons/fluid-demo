@@ -22,6 +22,7 @@
 		"start:server": "azure-local-service",
 		"pretest": "playwright install --with-deps",
 		"test": "playwright test",
+		"test:unit": "vitest run",
 		"webpack": "vite build"
 	},
 	"engines": {
@@ -92,6 +93,7 @@
 		"rollup-plugin-visualizer": "^6.0.3",
 		"tailwindcss": "^4.0.9",
 		"ts-loader": "^9.5.2",
-		"typescript": "~5.4"
+		"typescript": "~5.4",
+		"vitest": "^2.1.8"
 	}
 }
