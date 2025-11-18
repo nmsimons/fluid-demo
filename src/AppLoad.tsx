@@ -1,6 +1,6 @@
 import { AzureClient } from "@fluidframework/azure-client";
 import React, { Suspense, lazy } from "react";
-import { createRoot } from "react-dom/client";
+import { createRoot, type Root } from "react-dom/client";
 import { App, appTreeConfiguration, Items } from "./schema/appSchema.js";
 import { createUndoRedoStacks } from "./undo/undo.js";
 import { containerSchema } from "./schema/containerSchema.js";
@@ -51,6 +51,19 @@ import { createResizeManager } from "./presence/resize.js";
 import { createInkPresenceManager } from "./presence/ink.js";
 import { createCursorManager } from "./presence/cursor.js";
 import { createConnectionDragManager } from "./presence/connectionDrag.js";
+
+let reactRoot: Root | null = null;
+
+function getReactRoot(): Root {
+	const host = document.getElementById("root");
+	if (!host) {
+		throw new Error("Root element '#root' not found");
+	}
+	if (!reactRoot) {
+		reactRoot = createRoot(host);
+	}
+	return reactRoot;
+}
 
 export async function loadApp(props: {
 	client: AzureClient;
@@ -128,11 +141,7 @@ export async function loadApp(props: {
 			workspace,
 		});
 
-		// create the root element for React
-		const app = document.createElement("div");
-		app.id = "app";
-		document.body.appendChild(app);
-		const root = createRoot(app);
+		const root = getReactRoot();
 
 		// Create undo/redo stacks for the app
 		const undoRedo = createUndoRedoStacks(appTree.events);
