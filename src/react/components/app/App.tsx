@@ -3,29 +3,16 @@
  * Licensed under the MIT License.
  */
 
-import React, { JSX, useContext, useEffect, useState, useRef } from "react";
+import React, { JSX, useState, useEffect } from "react";
 import { App } from "../../../schema/appSchema.js";
 import "../../../styles/ios-minimal.css";
-// import "../../../styles/ios-fixes.css";
-// import "../../../styles/ios-safari-fixes.css";
-// import { fixIOSZIndexIssues } from "../../../utils/iosZIndexFix.js";
 import { IFluidContainer, TreeView } from "fluid-framework";
 import { asAlpha } from "@fluidframework/tree/alpha";
 import { Canvas } from "../canvas/Canvas.js";
 import type { SelectionManager } from "../../../presence/Interfaces/SelectionManager.js";
 import { undoRedo } from "../../../undo/undo.js";
-import { useSelectionSync, useMultiTypeSelectionSync } from "../../../utils/eventSubscriptions.js";
 import { DragAndRotatePackage } from "../../../presence/drag.js";
 import { TypedSelection } from "../../../presence/selection.js";
-import {
-	Avatar,
-	AvatarGroup,
-	AvatarGroupItem,
-	AvatarGroupPopover,
-	AvatarGroupProps,
-	partitionAvatarGroupItems,
-} from "@fluentui/react-avatar";
-import { Text } from "@fluentui/react-text";
 import {
 	MessageBar,
 	MessageBarBody,
@@ -34,14 +21,8 @@ import {
 } from "@fluentui/react-message-bar";
 import { Button } from "@fluentui/react-components";
 import { DismissRegular } from "@fluentui/react-icons";
-import { ToolbarDivider } from "@fluentui/react-toolbar";
-import { Tooltip } from "@fluentui/react-tooltip";
-import { Menu, MenuTrigger, MenuPopover, MenuList, MenuItem } from "@fluentui/react-menu";
-import { SignOut20Regular, PersonSwap20Regular } from "@fluentui/react-icons";
-import { User, UsersManager } from "../../../presence/Interfaces/UsersManager.js";
+import { UsersManager } from "../../../presence/Interfaces/UsersManager.js";
 import { PresenceContext } from "../../contexts/PresenceContext.js";
-import { AuthContext } from "../../contexts/AuthContext.js";
-import { signOutHelper, switchAccountHelper } from "../../../infra/auth.js";
 import { DragManager } from "../../../presence/Interfaces/DragManager.js";
 import { ResizeManager } from "../../../presence/Interfaces/ResizeManager.js";
 import { ResizePackage } from "../../../presence/Interfaces/ResizeManager.js";
@@ -50,31 +31,35 @@ import {
 	ConnectionDragManager,
 	ConnectionDragState,
 } from "../../../presence/Interfaces/ConnectionDragManager.js";
-import { CommentPane, CommentPaneRef } from "../panels/CommentPane.js";
+import { CommentPane } from "../panels/CommentPane.js";
 import { AIPane } from "../panels/AIPane.js";
 import { useTree } from "../../hooks/useTree.js";
 import { useKeyboardShortcuts } from "../../hooks/useKeyboardShortcuts.js";
 import { useAppKeyboardShortcuts } from "../../hooks/useAppKeyboardShortcuts.js";
 import { PaneContext } from "../../contexts/PaneContext.js";
 import { AppToolbar } from "../toolbar/AppToolbar.js";
-import type { ShapeType } from "../toolbar/buttons/CreationButtons.js";
 import { InkPresenceManager } from "../../../presence/Interfaces/InkManager.js";
-import { TEXT_DEFAULT_COLOR, TEXT_DEFAULT_FONT_SIZE } from "../../../constants/text.js";
-import { DEFAULT_NOTE_COLOR, type NoteColor } from "../../../constants/note.js";
 import { useContainerConnectionState } from "../../hooks/useContainerConnectionState.js";
 import {
 	useShapeSelectionSummary,
 	useTextSelectionSummary,
 	useNoteSelectionSummary,
 } from "../../hooks/useSelectionSummaries.js";
-// Removed circle ink creation; ink tool toggles freehand drawing.
+import { Header } from "./Header.js";
+import { useToolbarState } from "../../hooks/useToolbarState.js";
+import { useSelectionState } from "../../hooks/useSelectionState.js";
+import { useAiBranchState } from "../../hooks/useAiBranchState.js";
+import { useCommentPane } from "../../hooks/useCommentPane.js";
 
 // Context for comment pane actions
 export const CommentPaneContext = React.createContext<{
 	openCommentPaneAndFocus: (itemId: string) => void;
 } | null>(null);
 
-export function ReactApp(props: {
+/**
+ * Props for the ReactApp component.
+ */
+export interface ReactAppProps {
 	tree: TreeView<typeof App>;
 	itemSelection: SelectionManager<TypedSelection>;
 	tableSelection: SelectionManager<TypedSelection>;
@@ -86,7 +71,18 @@ export function ReactApp(props: {
 	cursor: CursorManager;
 	ink?: InkPresenceManager;
 	connectionDrag: ConnectionDragManager<ConnectionDragState | null>;
-}): JSX.Element {
+}
+
+/**
+ * Main React application component.
+ *
+ * This component orchestrates the entire application by:
+ * - Managing presence context for collaborative features
+ * - Coordinating tree subscriptions for reactive updates
+ * - Delegating state management to specialized hooks
+ * - Rendering the main layout (header, toolbar, canvas, side panes)
+ */
+export function ReactApp(props: ReactAppProps): JSX.Element {
 	const {
 		tree,
 		itemSelection,
@@ -100,164 +96,76 @@ export function ReactApp(props: {
 		ink,
 		connectionDrag,
 	} = props;
+
+	// Connection state
 	const { connectionState, saved } = useContainerConnectionState(container);
+
+	// AI branch state (view, AI pane visibility, branch message)
+	const { state: aiBranchState, actions: aiBranchActions } = useAiBranchState(tree);
+	const { view, aiPaneHidden, showAiBranchMessage, isBranch } = aiBranchState;
+	const { setView, setAiPaneHidden, setShowAiBranchMessage } = aiBranchActions;
+
+	// Selection state (items and table elements)
+	const selection = useSelectionState(itemSelection, tableSelection, view);
+	const { selectedItemId, selectedItemIds, selectedColumnId, selectedRowId, setSelectedItemId } =
+		selection;
+
+	// Comment pane state
+	const {
+		state: commentPaneState,
+		actions: commentPaneActions,
+		commentPaneRef,
+	} = useCommentPane(setSelectedItemId);
+	const { commentPaneHidden } = commentPaneState;
+	const { setCommentPaneHidden, openCommentPaneAndFocus } = commentPaneActions;
+
+	// Tree subscriptions
+	useTree(tree.root);
+	const itemsVersion = useTree(view.root.items, true);
+	useTree(view.root.comments);
+	useTree(view.root.inks);
+
+	// Selection summaries (derived from current selection)
+	const shapeSummary = useShapeSelectionSummary(view, selectedItemIds, itemsVersion);
+	const textSummary = useTextSelectionSummary(view, selectedItemIds, itemsVersion);
+	const noteSummary = useNoteSelectionSummary(view, selectedItemIds, itemsVersion);
+
+	// Toolbar state (ink, shape, note, text tools)
+	const { state: toolbarState, actions: toolbarActions } = useToolbarState({
+		shapeSummary,
+		textSummary,
+		noteSummary,
+	});
+
+	// Canvas state
 	const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
-	const [commentPaneHidden, setCommentPaneHidden] = useState(true);
 	const [zoom, setZoom] = useState(1);
 	const [pan, setPan] = useState({ x: 0, y: 0 });
-	// Start with ink mode enabled by default so users can draw immediately.
-	const [inkActive, setInkActive] = useState(false);
-	const [eraserActive, setEraserActive] = useState(false);
-	const [inkColor, setInkColor] = useState<string>("#2563eb");
-	const [inkWidth, setInkWidth] = useState<number>(4);
-	const [shapeColor, setShapeColor] = useState<string>("#FF0000"); // Default to red
-	const [shapeFilled, setShapeFilled] = useState<boolean>(true);
-	const [noteColor, setNoteColor] = useState<NoteColor>(DEFAULT_NOTE_COLOR);
-	const [currentShapeType, setCurrentShapeType] = useState<ShapeType>("circle");
-	const [textColor, setTextColor] = useState<string>(TEXT_DEFAULT_COLOR);
-	const [textFontSize, setTextFontSize] = useState<number>(TEXT_DEFAULT_FONT_SIZE);
-	const [textBold, setTextBold] = useState<boolean>(false);
-	const [textItalic, setTextItalic] = useState<boolean>(false);
-	const [textUnderline, setTextUnderline] = useState<boolean>(false);
-	const [textStrikethrough, setTextStrikethrough] = useState<boolean>(false);
-	const [textCardStyle, setTextCardStyle] = useState<boolean>(true);
-	const [textAlign, setTextAlign] = useState<string>("center");
+
+	// Undo/redo state
+	const [canUndo, setCanUndo] = useState(false);
+	const [canRedo, setCanRedo] = useState(false);
 
 	// Keep linter satisfied until pan is surfaced elsewhere
 	useEffect(() => {
 		void pan;
 	}, [pan]);
-	const [selectedItemId, setSelectedItemId] = useState<string>("");
-	const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
-	const [selectedColumnId, setSelectedColumnId] = useState<string>("");
-	const [selectedRowId, setSelectedRowId] = useState<string>("");
-	const [view, setView] = useState<TreeView<typeof App>>(tree);
-	const [canUndo, setCanUndo] = useState(false);
-	const [canRedo, setCanRedo] = useState(false);
-	const commentPaneRef = useRef<CommentPaneRef>(null);
-	const [aiPaneHidden, setAiPaneHidden] = useState(true);
-	const [showAiBranchMessage, setShowAiBranchMessage] = useState(false);
 
-	useTree(tree.root);
-	const itemsVersion = useTree(view.root.items, true);
-	useTree(view.root.comments);
-	// Subscribe to ink strokes so toolbar actions inserting ink trigger re-render
-	useTree(view.root.inks);
-
-	const shapeSummary = useShapeSelectionSummary(view, selectedItemIds, itemsVersion);
-	const textSummary = useTextSelectionSummary(view, selectedItemIds, itemsVersion);
-	const noteSummary = useNoteSelectionSummary(view, selectedItemIds, itemsVersion);
-
+	// Undo/redo event subscription
 	useEffect(() => {
-		if (shapeSummary.color !== null && shapeSummary.color !== shapeColor) {
-			setShapeColor(shapeSummary.color);
-		}
-		if (shapeSummary.filled !== null && shapeSummary.filled !== shapeFilled) {
-			setShapeFilled(shapeSummary.filled);
-		}
-	}, [shapeSummary, shapeColor, shapeFilled]);
-
-	useEffect(() => {
-		if (noteSummary.color !== null && noteSummary.color !== noteColor) {
-			setNoteColor(noteSummary.color);
-		}
-	}, [noteSummary, noteColor]);
-
-	useEffect(() => {
-		if (textSummary.color !== null && textSummary.color !== textColor) {
-			setTextColor(textSummary.color);
-		}
-		if (textSummary.fontSize !== null && textSummary.fontSize !== textFontSize) {
-			setTextFontSize(textSummary.fontSize);
-		}
-		if (textSummary.bold !== null && textSummary.bold !== textBold) {
-			setTextBold(textSummary.bold);
-		}
-		if (textSummary.italic !== null && textSummary.italic !== textItalic) {
-			setTextItalic(textSummary.italic);
-		}
-		if (textSummary.underline !== null && textSummary.underline !== textUnderline) {
-			setTextUnderline(textSummary.underline);
-		}
-		if (textSummary.strikethrough !== null && textSummary.strikethrough !== textStrikethrough) {
-			setTextStrikethrough(textSummary.strikethrough);
-		}
-		if (textSummary.cardStyle !== null && textSummary.cardStyle !== textCardStyle) {
-			setTextCardStyle(textSummary.cardStyle);
-		}
-		if (textSummary.textAlign !== null && textSummary.textAlign !== textAlign) {
-			setTextAlign(textSummary.textAlign);
-		}
-	}, [
-		textSummary,
-		textColor,
-		textFontSize,
-		textBold,
-		textItalic,
-		textUnderline,
-		textStrikethrough,
-		textCardStyle,
-		textAlign,
-	]);
-
-	// Function to open comment pane and focus input
-	const openCommentPaneAndFocus = (itemId: string) => {
-		setSelectedItemId(itemId);
-		setCommentPaneHidden(false);
-		// Use setTimeout to ensure the pane is rendered before focusing
-		setTimeout(() => {
-			commentPaneRef.current?.focusInput();
-		}, 0);
-	};
-
-	/** Unsubscribe to undo-redo events when the component unmounts */
-	useEffect(() => {
-		// Update undo/redo state whenever commits occur
 		const updateUndoRedoState = () => {
 			setCanUndo(undoRedo.canUndo());
 			setCanRedo(undoRedo.canRedo());
 		};
 
-		// Initial update
 		updateUndoRedoState();
-
-		// Listen for commits to update undo/redo state
 		const unsubscribe = tree.events.on("commitApplied", updateUndoRedoState);
 
-		// Cleanup function
 		return () => {
 			unsubscribe();
 			undoRedo.dispose();
 		};
 	}, [tree.events, undoRedo]);
-
-	useEffect(() => {
-		// View changed
-	}, [view]);
-
-	// Initialize iOS Safari z-index fixes
-	useEffect(() => {
-		// Temporarily disabled to debug toolbar visibility
-		// fixIOSZIndexIssues();
-	}, []);
-
-	// Use unified selection sync for item selection state management
-	useSelectionSync(
-		itemSelection,
-		(selections) => {
-			const selectedIds = selections.map((sel) => sel.id);
-			// Update both states for backwards compatibility
-			setSelectedItemIds(selectedIds);
-			setSelectedItemId(selectedIds.length > 0 ? selectedIds[0] : "");
-		},
-		[view]
-	);
-
-	// Use multi-type selection sync for table selection state management
-	useMultiTypeSelectionSync(tableSelection, {
-		column: (selections) => setSelectedColumnId(selections[0]?.id ?? ""),
-		row: (selections) => setSelectedRowId(selections[0]?.id ?? ""),
-	});
 
 	// Keyboard shortcuts
 	const shortcuts = useAppKeyboardShortcuts({
@@ -265,15 +173,15 @@ export function ReactApp(props: {
 		canvasSize,
 		pan,
 		zoom,
-		shapeColor,
-		shapeFilled,
-		noteColor,
-		textColor,
-		textFontSize,
-		textBold,
-		textItalic,
-		textUnderline,
-		textStrikethrough,
+		shapeColor: toolbarState.shapeColor,
+		shapeFilled: toolbarState.shapeFilled,
+		noteColor: toolbarState.noteColor,
+		textColor: toolbarState.textColor,
+		textFontSize: toolbarState.textFontSize,
+		textBold: toolbarState.textBold,
+		textItalic: toolbarState.textItalic,
+		textUnderline: toolbarState.textUnderline,
+		textStrikethrough: toolbarState.textStrikethrough,
 		selectedItemId,
 		selectedItemIds,
 		selectedColumnId,
@@ -288,30 +196,19 @@ export function ReactApp(props: {
 		selectionManager: itemSelection,
 	});
 
-	useKeyboardShortcuts({
-		shortcuts,
-	});
-
-	// Monitor AI pane and show/hide branch message
-	useEffect(() => {
-		if (!aiPaneHidden) {
-			setShowAiBranchMessage(true);
-		} else {
-			setShowAiBranchMessage(false);
-		}
-	}, [aiPaneHidden]);
+	useKeyboardShortcuts({ shortcuts });
 
 	return (
 		<PresenceContext.Provider
 			value={{
-				users: users,
-				itemSelection: itemSelection,
-				tableSelection: tableSelection,
-				drag: drag,
-				resize: resize,
-				cursor: cursor,
-				branch: view !== tree,
-				ink: ink,
+				users,
+				itemSelection,
+				tableSelection,
+				drag,
+				resize,
+				cursor,
+				branch: isBranch,
+				ink,
 				connectionDrag,
 			}}
 		>
@@ -321,7 +218,6 @@ export function ReactApp(props: {
 					className="flex flex-col bg-transparent h-screen w-full overflow-hidden overscroll-none"
 				>
 					<Header saved={saved} connectionState={connectionState} />
-					{/* <div style={{ position: "relative", zIndex: 9999, isolation: "isolate" }}> */}
 					<AppToolbar
 						view={view}
 						tree={tree}
@@ -341,40 +237,39 @@ export function ReactApp(props: {
 						zoom={zoom}
 						onZoomChange={setZoom}
 						pan={pan}
-						inkActive={inkActive}
-						onToggleInk={() => setInkActive((a) => !a)}
-						eraserActive={eraserActive}
-						onToggleEraser={() => setEraserActive((a) => !a)}
-						inkColor={inkColor}
-						onInkColorChange={setInkColor}
-						inkWidth={inkWidth}
-						onInkWidthChange={setInkWidth}
-						shapeColor={shapeColor}
-						onShapeColorChange={setShapeColor}
-						shapeFilled={shapeFilled}
-						onShapeFilledChange={setShapeFilled}
-						noteColor={noteColor}
-						onNoteColorChange={setNoteColor}
-						currentShapeType={currentShapeType}
-						onShapeTypeChange={setCurrentShapeType}
-						textColor={textColor}
-						onTextColorChange={setTextColor}
-						textFontSize={textFontSize}
-						onTextFontSizeChange={setTextFontSize}
-						textBold={textBold}
-						onTextBoldChange={setTextBold}
-						textItalic={textItalic}
-						onTextItalicChange={setTextItalic}
-						textUnderline={textUnderline}
-						onTextUnderlineChange={setTextUnderline}
-						textStrikethrough={textStrikethrough}
-						onTextStrikethroughChange={setTextStrikethrough}
-						textCardStyle={textCardStyle}
-						onTextCardStyleChange={setTextCardStyle}
-						textAlign={textAlign}
-						onTextAlignChange={setTextAlign}
+						inkActive={toolbarState.inkActive}
+						onToggleInk={toolbarActions.toggleInk}
+						eraserActive={toolbarState.eraserActive}
+						onToggleEraser={toolbarActions.toggleEraser}
+						inkColor={toolbarState.inkColor}
+						onInkColorChange={toolbarActions.setInkColor}
+						inkWidth={toolbarState.inkWidth}
+						onInkWidthChange={toolbarActions.setInkWidth}
+						shapeColor={toolbarState.shapeColor}
+						onShapeColorChange={toolbarActions.setShapeColor}
+						shapeFilled={toolbarState.shapeFilled}
+						onShapeFilledChange={toolbarActions.setShapeFilled}
+						noteColor={toolbarState.noteColor}
+						onNoteColorChange={toolbarActions.setNoteColor}
+						currentShapeType={toolbarState.currentShapeType}
+						onShapeTypeChange={toolbarActions.setCurrentShapeType}
+						textColor={toolbarState.textColor}
+						onTextColorChange={toolbarActions.setTextColor}
+						textFontSize={toolbarState.textFontSize}
+						onTextFontSizeChange={toolbarActions.setTextFontSize}
+						textBold={toolbarState.textBold}
+						onTextBoldChange={toolbarActions.setTextBold}
+						textItalic={toolbarState.textItalic}
+						onTextItalicChange={toolbarActions.setTextItalic}
+						textUnderline={toolbarState.textUnderline}
+						onTextUnderlineChange={toolbarActions.setTextUnderline}
+						textStrikethrough={toolbarState.textStrikethrough}
+						onTextStrikethroughChange={toolbarActions.setTextStrikethrough}
+						textCardStyle={toolbarState.textCardStyle}
+						onTextCardStyleChange={toolbarActions.setTextCardStyle}
+						textAlign={toolbarState.textAlign}
+						onTextAlignChange={toolbarActions.setTextAlign}
 					/>
-					{/* </div> */}
 					<div className="flex flex-row h-[calc(100vh-96px)] w-full">
 						<div className="flex flex-col flex-1 relative">
 							{showAiBranchMessage && (
@@ -409,10 +304,10 @@ export function ReactApp(props: {
 									zoom={zoom}
 									onZoomChange={setZoom}
 									onPanChange={setPan}
-									inkActive={inkActive}
-									eraserActive={eraserActive}
-									inkColor={inkColor}
-									inkWidth={inkWidth}
+									inkActive={toolbarState.inkActive}
+									eraserActive={toolbarState.eraserActive}
+									inkColor={toolbarState.inkColor}
+									inkWidth={toolbarState.inkWidth}
 								/>
 							</PaneContext.Provider>
 						</div>
@@ -427,7 +322,7 @@ export function ReactApp(props: {
 							hidden={aiPaneHidden}
 							setHidden={setAiPaneHidden}
 							main={asAlpha(tree)}
-							branch={view !== tree ? asAlpha(view) : undefined}
+							branch={isBranch ? asAlpha(view) : undefined}
 							setRenderView={(newView) => setView(newView as TreeView<typeof App>)}
 						/>
 					</div>
@@ -436,168 +331,3 @@ export function ReactApp(props: {
 		</PresenceContext.Provider>
 	);
 }
-
-export function Header(props: { saved: boolean; connectionState: string }): JSX.Element {
-	const { saved, connectionState } = props;
-
-	return (
-		<div className="h-[48px] flex shrink-0 flex-row items-center justify-between bg-black text-base text-white z-[9999] w-full text-nowrap">
-			<div className="flex items-center">
-				<div className="flex ml-2 mr-8">
-					<Text weight="bold">Fluid Framework Demo</Text>
-				</div>
-			</div>
-			<div className="flex flex-row items-center m-2">
-				<SaveStatus saved={saved} />
-				<HeaderDivider />
-				<ConnectionStatus connectionState={connectionState} />
-				<HeaderDivider />
-				<UserCorner />
-			</div>
-		</div>
-	);
-}
-
-export function SaveStatus(props: { saved: boolean }): JSX.Element {
-	const { saved } = props;
-	return (
-		<div className="flex items-center">
-			<Text>{saved ? "" : "not"}&nbsp;saved</Text>
-		</div>
-	);
-}
-
-export function ConnectionStatus(props: { connectionState: string }): JSX.Element {
-	const { connectionState } = props;
-	return (
-		<div className="flex items-center">
-			<Text>{connectionState}</Text>
-		</div>
-	);
-}
-
-export function UserCorner(): JSX.Element {
-	return (
-		<div className="flex flex-row items-center gap-4 mr-2">
-			<Facepile />
-			<CurrentUser />
-		</div>
-	);
-}
-
-export const HeaderDivider = (): JSX.Element => {
-	return <ToolbarDivider />;
-};
-
-/**
- * CurrentUser component displays the current user's avatar with a context menu.
- * The context menu includes a sign-out option that uses MSAL to properly
- * log out the user and redirect them to the login page.
- */
-export const CurrentUser = (): JSX.Element => {
-	const users = useContext(PresenceContext).users;
-	const currentUser = users.getMyself().value;
-	const { msalInstance } = useContext(AuthContext);
-
-	// Get the user's email from MSAL account
-	const userEmail = msalInstance?.getActiveAccount()?.username || currentUser.name;
-
-	const handleSignOut = async () => {
-		if (msalInstance) {
-			await signOutHelper(msalInstance);
-		}
-	};
-
-	const handleSwitchAccount = async () => {
-		if (msalInstance) {
-			await switchAccountHelper(msalInstance);
-		}
-	};
-
-	return (
-		<Menu>
-			<MenuTrigger disableButtonEnhancement>
-				<Tooltip
-					content={`${currentUser.name} (${userEmail}) - Click for options`}
-					relationship="label"
-				>
-					<Avatar
-						name={currentUser.name}
-						image={currentUser.image ? { src: currentUser.image } : undefined}
-						size={24}
-						style={{ cursor: "pointer" }}
-					/>
-				</Tooltip>
-			</MenuTrigger>
-			<MenuPopover>
-				<MenuList>
-					<MenuItem icon={<PersonSwap20Regular />} onClick={handleSwitchAccount}>
-						Switch account
-					</MenuItem>
-					<MenuItem icon={<SignOut20Regular />} onClick={handleSignOut}>
-						Sign out
-					</MenuItem>
-				</MenuList>
-			</MenuPopover>
-		</Menu>
-	);
-};
-
-export const Facepile = (props: Partial<AvatarGroupProps>) => {
-	const users = useContext(PresenceContext).users;
-	const [userRoster, setUserRoster] = useState(users.getConnectedUsers());
-
-	useEffect(() => {
-		// Check for changes to the user roster and update the avatar group if necessary
-		const unsubscribe = users.events.on("remoteUpdated", () => {
-			setUserRoster(users.getConnectedUsers());
-		});
-		return unsubscribe;
-	}, []);
-
-	useEffect(() => {
-		// Update the user roster when users disconnect
-		const unsubscribe = users.attendees.events.on("attendeeDisconnected", () => {
-			setUserRoster(users.getConnectedUsers());
-		});
-		return unsubscribe;
-	}, []);
-
-	const { inlineItems, overflowItems } = partitionAvatarGroupItems<User>({
-		items: userRoster,
-		maxInlineItems: 3, // Maximum number of inline avatars before showing overflow
-	});
-
-	if (inlineItems.length === 0) {
-		return null; // No users to display
-	}
-
-	return (
-		<AvatarGroup size={24} {...props}>
-			{inlineItems.map((user) => (
-				<Tooltip
-					key={String(user.client.attendeeId ?? user.value.name)}
-					content={user.value.name}
-					relationship={"label"}
-				>
-					<AvatarGroupItem
-						name={user.value.name}
-						image={user.value.image ? { src: user.value.image } : undefined}
-						key={String(user.client.attendeeId ?? user.value.name)}
-					/>
-				</Tooltip>
-			))}
-			{overflowItems && (
-				<AvatarGroupPopover>
-					{overflowItems.map((user) => (
-						<AvatarGroupItem
-							name={user.value.name}
-							image={user.value.image ? { src: user.value.image } : undefined}
-							key={String(user.client.attendeeId ?? user.value.name)}
-						/>
-					))}
-				</AvatarGroupPopover>
-			)}
-		</AvatarGroup>
-	);
-};
