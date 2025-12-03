@@ -30,7 +30,7 @@ That's it! The Playwright configuration automatically:
 ### ✅ Local Mode Implementation
 
 - **Added** `src/start/local_start.ts` - No-auth startup for local development
-- **Updated** `src/index.tsx` - Switch between local and Azure modes based on `FLUID_CLIENT` env var
+- **Updated** `src/index.tsx` - Switch between local and Azure modes based on `VITE_FLUID_CLIENT` env var
 - **Updated** `playwright.config.ts` - Use `npm run dev:local` for testing
 - **Updated** tests - Wait for buttons to be enabled (container initialization)
 
@@ -176,9 +176,11 @@ For production development with real Azure authentication:
 npm run dev:azure
 
 # Set up .env file with:
-# AZURE_TENANT_ID=your-tenant-id
-# AZURE_CLIENT_ID=your-client-id
-# etc.
+# VITE_AZURE_TENANT_ID=your-tenant-id
+# VITE_AZURE_CLIENT_ID=your-client-id
+# VITE_AZURE_REDIRECT_URI=http://localhost:8080
+# VITE_AZURE_ORDERER=your-orderer-url
+# VITE_AZURE_FUNCTION_TOKEN_PROVIDER_URL=your-token-provider-url
 ```
 
 ## 🎉 Result

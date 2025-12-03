@@ -12,7 +12,7 @@ import type {
 import { InsecureTokenProvider } from "./azureTokenProvider.js";
 import { AzureFunctionTokenProvider, azureUser, user } from "./azureTokenProvider.js";
 
-const client = process.env.FLUID_CLIENT;
+const client = import.meta.env.VITE_FLUID_CLIENT;
 const local = client === undefined || client === "local";
 if (local) {
 	console.warn(`Configured to use local tinylicious.`);
@@ -30,12 +30,12 @@ export function getClientProps(
 ): AzureClientProps {
 	const remoteConnectionConfig: AzureRemoteConnectionConfig = {
 		type: "remote",
-		tenantId: process.env.AZURE_TENANT_ID!,
+		tenantId: import.meta.env.VITE_AZURE_TENANT_ID!,
 		tokenProvider: new AzureFunctionTokenProvider(
-			process.env.AZURE_FUNCTION_TOKEN_PROVIDER_URL!,
+			import.meta.env.VITE_AZURE_FUNCTION_TOKEN_PROVIDER_URL!,
 			user ?? azureUser
 		),
-		endpoint: process.env.AZURE_ORDERER!,
+		endpoint: import.meta.env.VITE_AZURE_ORDERER!,
 	};
 
 	const connectionConfig: AzureRemoteConnectionConfig | AzureLocalConnectionConfig = !local

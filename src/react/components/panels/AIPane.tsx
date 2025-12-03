@@ -28,6 +28,7 @@ export function AIPane(props: {
 	const [chats, setChats] = useState<string[]>([]);
 	const [agent, setAgent] = useState<SharedTreeSemanticAgent<typeof App> | undefined>();
 	const { msalInstance } = useContext(AuthContext);
+	const OPENAI_MODEL = import.meta.env.VITE_OPENAI_MODEL;
 
 	// Dirty tracking state - tracks nodes that have been modified by AI operations
 	// Create operation tracker for dirty node tracking
@@ -162,8 +163,10 @@ export function AIPane(props: {
 								fetch: customFetch,
 							},
 							apiKey: "not-used-due-to-custom-fetch-providing-auth",
-							model: process.env.OPENAI_MODEL || "gpt-5",
+							model: OPENAI_MODEL,
 						});
+
+						console.log(`MODEL: ${chatOpenAI.model}`);
 
 						// Create the semantic agent
 						const model = createLangchainChatModel(chatOpenAI);
@@ -196,22 +199,22 @@ export function AIPane(props: {
 				console.log("Using Azure OpenAI...");
 
 				// Validate Azure configuration
-				const azureInstanceName = process.env.AZURE_OPENAI_API_INSTANCE_NAME;
-				const azureDeploymentName = process.env.AZURE_OPENAI_API_DEPLOYMENT_NAME;
-				const azureApiVersion = process.env.AZURE_OPENAI_API_VERSION;
+				const azureInstanceName = import.meta.env.VITE_AZURE_OPENAI_API_INSTANCE_NAME;
+				const azureDeploymentName = import.meta.env.VITE_AZURE_OPENAI_API_DEPLOYMENT_NAME;
+				const azureApiVersion = import.meta.env.VITE_AZURE_OPENAI_API_VERSION;
 
 				if (!azureInstanceName || !azureDeploymentName || !azureApiVersion) {
 					console.error(
 						"Missing Azure OpenAI configuration. Required environment variables:"
 					);
-					console.error("- AZURE_OPENAI_API_INSTANCE_NAME");
-					console.error("- AZURE_OPENAI_API_DEPLOYMENT_NAME");
-					console.error("- AZURE_OPENAI_API_VERSION");
+					console.error("- VITE_AZURE_OPENAI_API_INSTANCE_NAME");
+					console.error("- VITE_AZURE_OPENAI_API_DEPLOYMENT_NAME");
+					console.error("- VITE_AZURE_OPENAI_API_VERSION");
 					return;
 				}
 
 				// Try manual token first
-				const manualToken = process.env.AZURE_OPENAI_MANUAL_TOKEN;
+				const manualToken = import.meta.env.VITE_AZURE_OPENAI_MANUAL_TOKEN;
 				if (manualToken) {
 					console.log("Using manual token for Azure OpenAI authentication");
 					try {
@@ -222,7 +225,7 @@ export function AIPane(props: {
 
 						const chatOpenAI = new AzureChatOpenAI({
 							azureADTokenProvider: azureADTokenProvider,
-							model: "gpt-5",
+							model: OPENAI_MODEL,
 							azureOpenAIApiInstanceName: azureInstanceName,
 							azureOpenAIApiDeploymentName: azureDeploymentName,
 							azureOpenAIApiVersion: azureApiVersion,
@@ -265,7 +268,7 @@ export function AIPane(props: {
 
 					const chatOpenAI = new AzureChatOpenAI({
 						azureADTokenProvider: azureADTokenProvider,
-						model: "gpt-5",
+						model: OPENAI_MODEL,
 						azureOpenAIApiInstanceName: azureInstanceName,
 						azureOpenAIApiDeploymentName: azureDeploymentName,
 						azureOpenAIApiVersion: azureApiVersion,
@@ -289,8 +292,8 @@ export function AIPane(props: {
 				} catch (error) {
 					console.error("Failed to set up AI agent with ZUMO authentication:", error);
 					console.error("Authentication options:");
-					console.error("1. Set OPENAI_API_KEY for OpenAI");
-					console.error("2. Set AZURE_OPENAI_MANUAL_TOKEN for manual Azure auth");
+					console.error("1. Set VITE_OPENAI_API_KEY for OpenAI");
+					console.error("2. Set VITE_AZURE_OPENAI_MANUAL_TOKEN for manual Azure auth");
 					console.error("3. Ensure user is signed in for ZUMO authentication");
 				}
 			};

@@ -89,11 +89,11 @@ npm run pretest
 To run the full test suite, you need to configure Azure authentication. Create a `.env` file in the project root:
 
 ```bash
-AZURE_TENANT_ID=your-tenant-id
-AZURE_CLIENT_ID=your-client-id
-AZURE_REDIRECT_URI=http://localhost:8080
-AZURE_ORDERER=your-orderer-url
-AZURE_FUNCTION_TOKEN_PROVIDER_URL=your-token-provider-url
+VITE_AZURE_TENANT_ID=your-tenant-id
+VITE_AZURE_CLIENT_ID=your-client-id
+VITE_AZURE_REDIRECT_URI=http://localhost:8080
+VITE_AZURE_ORDERER=your-orderer-url
+VITE_AZURE_FUNCTION_TOKEN_PROVIDER_URL=your-token-provider-url
 ```
 
 **Note**: Without proper authentication setup, tests will automatically skip with a clear message.

@@ -3,21 +3,21 @@ import { PublicClientApplication } from "@azure/msal-browser";
 // Helper function to authenticate the user
 export async function authHelper(): Promise<PublicClientApplication> {
 	// Get the client id (app id) from the environment variables
-	const clientId = process.env.AZURE_CLIENT_ID;
-	const redirectUri = process.env.AZURE_REDIRECT_URI;
-	const fluidClient = process.env.FLUID_CLIENT;
+	const clientId = import.meta.env.VITE_AZURE_CLIENT_ID;
+	const redirectUri = import.meta.env.VITE_AZURE_REDIRECT_URI;
+	const fluidClient = import.meta.env.VITE_FLUID_CLIENT;
 	const authority = import.meta.env.VITE_AUTHORITY || "https://login.microsoftonline.com/common/";
 
 	if (!clientId) {
-		throw new Error("AZURE_CLIENT_ID is not defined");
+		throw new Error("VITE_AZURE_CLIENT_ID is not defined");
 	}
 
 	if (!redirectUri) {
-		throw new Error("AZURE_REDIRECT_URI is not defined");
+		throw new Error("VITE_AZURE_REDIRECT_URI is not defined");
 	}
 
 	if (!fluidClient) {
-		throw new Error("FLUID_CLIENT is not defined");
+		throw new Error("VITE_FLUID_CLIENT is not defined");
 	}
 
 	// Create the MSAL instance

@@ -9,12 +9,12 @@ import "./polyfills/ios.js";
 import "./index.css";
 
 // Enable mobile debugging in development
-if (process.env.NODE_ENV === "development") {
+if (import.meta.env.DEV) {
 	import("eruda").then((eruda) => eruda.default.init());
 }
 
 async function start() {
-	const client = process.env.FLUID_CLIENT;
+	const client = import.meta.env.VITE_FLUID_CLIENT;
 
 	switch (client) {
 		case "local": {
