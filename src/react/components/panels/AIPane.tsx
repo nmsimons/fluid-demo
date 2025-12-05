@@ -32,7 +32,6 @@ export function AIPane(props: {
 
 	// Dirty tracking state - tracks nodes that have been modified by AI operations
 	// Create operation tracker for dirty node tracking
-
 	useEffect(() => {
 		if (hidden) {
 			setRenderView(main);
@@ -53,6 +52,15 @@ export function AIPane(props: {
 			}
 		}
 	}, [main, hidden, localBranch, setRenderView, branch]);
+
+	// Watch for changes in the main branch and update the local branch if it changes
+	useEffect(() => {
+		if (localBranch !== undefined) {
+			return main.events.on("changed", () => {
+				localBranch.rebaseOnto(main);
+			});
+		}
+	}, [main, localBranch]);
 
 	useEffect(() => {
 		if (localBranch !== undefined) {
