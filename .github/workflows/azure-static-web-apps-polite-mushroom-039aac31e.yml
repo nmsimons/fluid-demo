@@ -40,7 +40,7 @@ jobs:
                   VITE_AZURE_REDIRECT_URI: https://polite-mushroom-039aac31e.2.azurestaticapps.net
                   VITE_AUTHORITY: https://login.microsoftonline.com/72f988bf-86f1-41af-91ab-2d7cd011db47
                   VITE_OPENAI_BASE_URL: https://mts-d6b6edexdtaqapg4.westus2-01.azurewebsites.net
-                  VITE_OPENAI_MODEL: gpt-5.1-codex-mini
+                  VITE_OPENAI_MODEL: gpt-5.1-codex-max
                   ###### End of Repository/Build Configurations ######
 
     close_pull_request_job:
