@@ -166,8 +166,6 @@ export function AIPane(props: {
 							model: OPENAI_MODEL,
 						});
 
-						console.log(`MODEL: ${chatOpenAI.model}`);
-
 						// Create the semantic agent
 						const model = createLangchainChatModel(chatOpenAI);
 

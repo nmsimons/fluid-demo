@@ -1483,40 +1483,316 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 }
 
 // ---- Ink (extended vector) schema definitions ----
+/**
+ * A single point in an ink stroke. Points are in canvas coordinate space
+ * (not screen coordinates - they are pan/zoom invariant).
+ */
 export class InkPoint extends sf.object("InkPoint", {
-	x: sf.number,
-	y: sf.number,
-	t: sf.optional(sf.number), // timestamp (ms since epoch or stroke start)
-	p: sf.optional(sf.number), // pressure 0..1
+	x: sf.required(sf.number, {
+		metadata: { description: "X coordinate of the point in canvas space" },
+	}),
+	y: sf.required(sf.number, {
+		metadata: { description: "Y coordinate of the point in canvas space" },
+	}),
+	t: sf.optional(sf.number, {
+		metadata: {
+			description:
+				"Timestamp in milliseconds since stroke start (optional, for replay/animation)",
+		},
+	}),
+	p: sf.optional(sf.number, {
+		metadata: {
+			description: "Pressure value from 0.0 to 1.0 (optional, for stylus/pen input)",
+		},
+	}),
 }) {}
 
+/**
+ * Visual styling properties for an ink stroke.
+ */
 export class InkStyle extends sf.object("InkStyle", {
-	strokeColor: sf.string,
-	strokeWidth: sf.number,
-	opacity: sf.number,
-	lineCap: sf.string, // e.g. round | butt | square
-	lineJoin: sf.string, // e.g. round | miter | bevel
+	strokeColor: sf.required(sf.string, {
+		metadata: {
+			description:
+				'The color of the ink stroke as a hexadecimal RGB string, e.g. "#FF0000" for red',
+		},
+	}),
+	strokeWidth: sf.required(sf.number, {
+		metadata: { description: "The width of the stroke in pixels (typical range: 2-32)" },
+	}),
+	opacity: sf.required(sf.number, {
+		metadata: { description: "Opacity of the stroke from 0.0 (transparent) to 1.0 (opaque)" },
+	}),
+	lineCap: sf.required(sf.string, {
+		metadata: {
+			description:
+				'The shape of the stroke endpoints: "round" (smooth), "butt" (flat), or "square"',
+		},
+	}),
+	lineJoin: sf.required(sf.string, {
+		metadata: {
+			description:
+				'How stroke segments connect: "round" (smooth), "miter" (sharp), or "bevel" (flat)',
+		},
+	}),
 }) {}
 
+/**
+ * Axis-aligned bounding box for an ink stroke, used for hit testing and selection.
+ */
 export class InkBBox extends sf.object("InkBBox", {
-	x: sf.number,
-	y: sf.number,
-	w: sf.number,
-	h: sf.number,
+	x: sf.required(sf.number, {
+		metadata: { description: "X coordinate of the bounding box top-left corner" },
+	}),
+	y: sf.required(sf.number, {
+		metadata: { description: "Y coordinate of the bounding box top-left corner" },
+	}),
+	w: sf.required(sf.number, {
+		metadata: { description: "Width of the bounding box in pixels" },
+	}),
+	h: sf.required(sf.number, {
+		metadata: { description: "Height of the bounding box in pixels" },
+	}),
 }) {}
 
+/**
+ * A complete ink stroke containing points, styling, and bounding box.
+ * Ink strokes are stored in root.inks and are separate from canvas items.
+ */
 export class InkStroke extends sf.object("InkStroke", {
-	id: sf.string,
-	points: sf.array([InkPoint]),
-	style: InkStyle,
-	bbox: InkBBox,
-	simplified: sf.optional(sf.array([InkPoint])),
+	id: sf.required(sf.string, {
+		metadata: { description: "Unique identifier (UUID) for this stroke" },
+	}),
+	points: sf.required(sf.array([InkPoint]), {
+		metadata: {
+			description:
+				"Array of points that define the stroke path. Minimum 2 points for a valid stroke.",
+		},
+	}),
+	style: sf.required(InkStyle, {
+		metadata: { description: "Visual styling properties (color, width, opacity, line caps)" },
+	}),
+	bbox: sf.required(InkBBox, {
+		metadata: {
+			description: "Axis-aligned bounding box computed from the points, used for hit testing",
+		},
+	}),
+	simplified: sf.optional(sf.array([InkPoint]), {
+		metadata: {
+			description:
+				"Optional smoothed/simplified version of points for rendering (reduces jitter)",
+		},
+	}),
 }) {}
+
+/**
+ * Inks array with helper methods for creating common ink primitives.
+ * LLMs should use these helper methods instead of manually constructing InkStroke objects.
+ */
+export class Inks extends sf.array("Inks", [InkStroke]) {
+	/**
+	 * Helper to compute bounding box from points (ensures minimum 1px dimensions)
+	 */
+	private static computeBBox(points: InkPoint[]): InkBBox {
+		const xs = points.map((p) => p.x);
+		const ys = points.map((p) => p.y);
+		const minX = Math.min(...xs);
+		const maxX = Math.max(...xs);
+		const minY = Math.min(...ys);
+		const maxY = Math.max(...ys);
+		return new InkBBox({
+			x: minX,
+			y: minY,
+			w: Math.max(1, maxX - minX), // Ensure at least 1px width
+			h: Math.max(1, maxY - minY), // Ensure at least 1px height
+		});
+	}
+
+	/**
+	 * Create an arrow from (startX, startY) pointing to (endX, endY).
+	 * Use this for connectors between items or to point at things.
+	 * @param startX - Starting X coordinate (tail of arrow)
+	 * @param startY - Starting Y coordinate (tail of arrow)
+	 * @param endX - Ending X coordinate (tip of arrow)
+	 * @param endY - Ending Y coordinate (tip of arrow)
+	 * @param color - Stroke color as hex string (e.g., "#0000FF")
+	 * @param width - Stroke width in pixels (default: 4)
+	 * @param headLength - Length of the arrowhead (default: 20)
+	 * @returns The created InkStroke
+	 */
+	createArrow(
+		startX: number,
+		startY: number,
+		endX: number,
+		endY: number,
+		color: string = "#000000",
+		width: number = 4,
+		headLength: number = 20
+	): InkStroke {
+		// Create line points from start to end
+		const linePoints = [
+			new InkPoint({ x: startX, y: startY }),
+			new InkPoint({ x: (startX + endX) / 2, y: (startY + endY) / 2 }),
+			new InkPoint({ x: endX, y: endY }),
+		];
+
+		// Calculate arrowhead
+		const angle = Math.atan2(endY - startY, endX - startX);
+		const headAngle = Math.PI / 6; // 30 degrees
+
+		// Left wing of arrowhead
+		const leftX = endX - headLength * Math.cos(angle - headAngle);
+		const leftY = endY - headLength * Math.sin(angle - headAngle);
+
+		// Right wing of arrowhead
+		const rightX = endX - headLength * Math.cos(angle + headAngle);
+		const rightY = endY - headLength * Math.sin(angle + headAngle);
+
+		// Combine all points: line + arrowhead wings
+		const allPoints = [
+			...linePoints,
+			new InkPoint({ x: leftX, y: leftY }),
+			new InkPoint({ x: endX, y: endY }),
+			new InkPoint({ x: rightX, y: rightY }),
+		];
+
+		const stroke = new InkStroke({
+			id: crypto.randomUUID(),
+			points: allPoints,
+			style: new InkStyle({
+				strokeColor: color,
+				strokeWidth: width,
+				opacity: 1,
+				lineCap: "round",
+				lineJoin: "round",
+			}),
+			bbox: Inks.computeBBox(allPoints),
+		});
+		this.insertAtEnd(stroke);
+		return stroke;
+	}
+
+	/**
+	 * Create a freeform path from an array of coordinate pairs.
+	 * Use this for custom shapes that aren't lines, circles, or rectangles.
+	 * @param coordinates - Array of {x, y} objects defining the path
+	 * @param color - Stroke color as hex string
+	 * @param width - Stroke width in pixels (default: 4)
+	 * @returns The created InkStroke
+	 */
+	createFreeformPath(
+		coordinates: Array<{ x: number; y: number }>,
+		color: string = "#000000",
+		width: number = 4
+	): InkStroke {
+		if (coordinates.length < 2) {
+			throw new Error("Freeform path requires at least 2 points");
+		}
+		const points = coordinates.map((c) => new InkPoint({ x: c.x, y: c.y }));
+		const stroke = new InkStroke({
+			id: crypto.randomUUID(),
+			points,
+			style: new InkStyle({
+				strokeColor: color,
+				strokeWidth: width,
+				opacity: 1,
+				lineCap: "round",
+				lineJoin: "round",
+			}),
+			bbox: Inks.computeBBox(points),
+		});
+		this.insertAtEnd(stroke);
+		return stroke;
+	}
+
+	/**
+	 * Create a highlight/underline beneath a canvas item.
+	 * Draws a wavy or straight line under the item's bounding area.
+	 * @param itemX - X position of the item
+	 * @param itemY - Y position of the item
+	 * @param itemWidth - Width of the item to highlight
+	 * @param color - Highlight color (default: yellow "#FFFF00")
+	 * @param width - Stroke width (default: 8 for visible highlight)
+	 * @param wavy - If true, creates a wavy underline; if false, straight (default: false)
+	 * @returns The created InkStroke
+	 */
+	createHighlight(
+		itemX: number,
+		itemY: number,
+		itemWidth: number,
+		color: string = "#FFFF00",
+		width: number = 8,
+		wavy: boolean = false
+	): InkStroke {
+		const points: InkPoint[] = [];
+		const y = itemY + 10; // Slightly below the item
+
+		if (wavy) {
+			const waveAmplitude = 3;
+			const waveFrequency = 0.1;
+			const steps = Math.ceil(itemWidth / 5);
+			for (let i = 0; i <= steps; i++) {
+				const x = itemX + (i / steps) * itemWidth;
+				const yOffset = Math.sin(i * waveFrequency * Math.PI * 2) * waveAmplitude;
+				points.push(new InkPoint({ x, y: y + yOffset }));
+			}
+		} else {
+			points.push(new InkPoint({ x: itemX, y }));
+			points.push(new InkPoint({ x: itemX + itemWidth, y }));
+		}
+
+		const stroke = new InkStroke({
+			id: crypto.randomUUID(),
+			points,
+			style: new InkStyle({
+				strokeColor: color,
+				strokeWidth: width,
+				opacity: 0.6, // Semi-transparent for highlight effect
+				lineCap: "round",
+				lineJoin: "round",
+			}),
+			bbox: Inks.computeBBox(points),
+		});
+		this.insertAtEnd(stroke);
+		return stroke;
+	}
+
+	/**
+	 * Delete all ink strokes matching a specific color.
+	 * @param color - The color to match (e.g., "#FF0000")
+	 * @returns Number of strokes deleted
+	 */
+	deleteByColor(color: string): number {
+		const toDelete: InkStroke[] = [];
+		for (const stroke of this) {
+			if (stroke.style.strokeColor === color) {
+				toDelete.push(stroke);
+			}
+		}
+		for (const stroke of toDelete) {
+			const idx = this.indexOf(stroke);
+			if (idx >= 0) {
+				this.removeAt(idx);
+			}
+		}
+		return toDelete.length;
+	}
+
+	/**
+	 * Delete all ink strokes from the canvas.
+	 * @returns Number of strokes deleted
+	 */
+	deleteAll(): number {
+		const count = this.length;
+		this.removeRange(0, count);
+		return count;
+	}
+}
 
 export class App extends sf.object("App", {
 	items: Items,
 	comments: Comments,
-	inks: sf.array([InkStroke]),
+	inks: Inks,
 }) {}
 
 export type FluidRow = InstanceType<typeof FluidRowSchema>;

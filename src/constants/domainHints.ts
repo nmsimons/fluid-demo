@@ -57,7 +57,7 @@ DATA MODEL OVERVIEW:
 The application has a root App object containing:
 - items: An Items array (all canvas items like shapes, notes, tables, text, groups)
 - comments: A Comments array (canvas-level comments)
-- inks: An array of InkStroke objects (freehand drawings)
+- inks: An Inks array (freehand drawings and ink primitives)
 
 Each Item contains:
 - id: unique identifier (UUID string)
@@ -76,6 +76,40 @@ Content Types:
 - TextBlock: Rich text with formatting (bold, italic, underline, strikethrough, alignment, card style)
 - FluidTable: Tables with rows and columns containing typed data (string, number, boolean, DateTime, Vote)
 - Group: Container for other items with a name and optional grid layout (items nested in group.content.items)
+
+INK STROKES (Freehand Drawing):
+Ink strokes are stored in root.inks and are ONLY for freehand, organic, or illustrative drawing.
+
+WHEN TO USE INK (freeform/artistic):
+- Drawing faces, people, animals, or organic shapes
+- Sketching maps, diagrams, or illustrations
+- Creating hand-drawn style annotations or doodles
+- Drawing arrows/connectors between existing items
+- Highlighting or underlining content
+- Any artistic, freehand, or sketch-like content
+
+WHEN TO USE SHAPES (geometric/structured):
+- Circles, squares, triangles, stars, rectangles → Use root.items.createShapeItem()
+- These are formal canvas items with selection, rotation, and styling
+- Prefer shapes for any standard geometric form
+
+RULE: If the user asks for a "circle", "square", "triangle", "star", or "rectangle" - use Shapes, NOT ink.
+RULE: If the user asks to "draw a face", "sketch a map", "illustrate", or anything freehand - use Ink.
+
+The Inks class provides helper methods for freehand drawing:
+
+Available Ink Methods on root.inks:
+- createFreeformPath(coordinates, color, width) - Draw a custom freehand path from [{x,y}, ...]
+- createArrow(startX, startY, endX, endY, color, width, headLength) - Draw an arrow connector
+- createHighlight(itemX, itemY, itemWidth, color, width, wavy) - Create a highlight/underline
+- deleteByColor(color) - Delete all strokes of a specific color
+- deleteAll() - Clear all ink from the canvas
+
+InkStroke structure (for reference):
+- id: Unique identifier (UUID)
+- points: Array of {x, y, t?, p?} coordinates
+- style: {strokeColor, strokeWidth, opacity, lineCap, lineJoin}
+- bbox: {x, y, w, h} bounding box
 
 Here's an example of a canvas with a table and some shapes:
 
@@ -634,15 +668,221 @@ referenceItem.content.addReference(
   "https://contoso.sharepoint.com/interviews.docx"
 );
 
+10.
+User request: "Draw a red arrow from the table to the circle"
+
+Snippet written to accomplish the edit:
+
+const { root } = context;
+
+// Find the table and circle items
+let tableItem = null;
+let circleItem = null;
+
+root.items.forEach((item) => {
+  if (item.content && 'rows' in item.content) {
+    tableItem = item;
+  }
+  if (item.content && 'type' in item.content && item.content.type === 'circle') {
+    circleItem = item;
+  }
+});
+
+if (tableItem && circleItem) {
+  // Draw arrow from table center to circle center
+  const tableX = tableItem.x + 200; // Approximate center
+  const tableY = tableItem.y + 100;
+  const circleX = circleItem.x;
+  const circleY = circleItem.y;
+  
+  root.inks.createArrow(tableX, tableY, circleX, circleY, '#FF0000', 4);
+}
+
+11.
+User request: "Draw a simple smiley face"
+
+Snippet written to accomplish the edit:
+
+const { root } = context;
+
+// Draw a smiley face using freeform ink paths
+const centerX = 400;
+const centerY = 300;
+const faceRadius = 80;
+
+// Draw face outline (circle made of points)
+const facePoints = [];
+for (let i = 0; i <= 32; i++) {
+  const angle = (i / 32) * Math.PI * 2;
+  facePoints.push({ x: centerX + faceRadius * Math.cos(angle), y: centerY + faceRadius * Math.sin(angle) });
+}
+root.inks.createFreeformPath(facePoints, '#FFD700', 4);
+
+// Left eye
+root.inks.createFreeformPath([
+  { x: centerX - 25, y: centerY - 20 },
+  { x: centerX - 25, y: centerY - 10 }
+], '#000000', 6);
+
+// Right eye
+root.inks.createFreeformPath([
+  { x: centerX + 25, y: centerY - 20 },
+  { x: centerX + 25, y: centerY - 10 }
+], '#000000', 6);
+
+// Smile (arc)
+const smilePoints = [];
+for (let i = 0; i <= 16; i++) {
+  const angle = (i / 16) * Math.PI; // Half circle
+  smilePoints.push({ x: centerX + 40 * Math.cos(angle), y: centerY + 20 + 25 * Math.sin(angle) });
+}
+root.inks.createFreeformPath(smilePoints, '#000000', 4);
+
+12.
+User request: "Create a yellow highlight under the first note"
+
+Snippet written to accomplish the edit:
+
+const { root } = context;
+
+// Find the first note item
+let noteItem = null;
+root.items.forEach((item) => {
+  if (!noteItem && item.content && 'text' in item.content && !('fontSize' in item.content)) {
+    noteItem = item;
+  }
+});
+
+if (noteItem) {
+  // Create a yellow highlight under the note (assuming standard note width of ~200px)
+  root.inks.createHighlight(noteItem.x, noteItem.y + 150, 200, '#FFFF00', 8, false);
+}
+
+13.
+User request: "Draw a simple map with a path from A to B"
+
+Snippet written to accomplish the edit:
+
+const { root } = context;
+
+// Draw a simple treasure map style path
+const startX = 100;
+const startY = 200;
+
+// Draw winding path
+root.inks.createFreeformPath([
+  { x: startX, y: startY },
+  { x: startX + 50, y: startY - 30 },
+  { x: startX + 100, y: startY + 20 },
+  { x: startX + 150, y: startY - 10 },
+  { x: startX + 200, y: startY + 40 },
+  { x: startX + 280, y: startY + 30 },
+  { x: startX + 350, y: startY }
+], '#8B4513', 3);
+
+// Draw "A" marker (start)
+root.inks.createFreeformPath([
+  { x: startX - 10, y: startY + 30 },
+  { x: startX, y: startY + 10 },
+  { x: startX + 10, y: startY + 30 }
+], '#FF0000', 4);
+
+// Draw "X" marker (end/treasure)
+const endX = startX + 350;
+root.inks.createFreeformPath([
+  { x: endX - 15, y: startY - 15 },
+  { x: endX + 15, y: startY + 15 }
+], '#FF0000', 4);
+root.inks.createFreeformPath([
+  { x: endX + 15, y: startY - 15 },
+  { x: endX - 15, y: startY + 15 }
+], '#FF0000', 4);
+
+14.
+User request: "Delete all red ink"
+
+Snippet written to accomplish the edit:
+
+const { root } = context;
+
+// Delete all ink strokes with red color
+const deleted = root.inks.deleteByColor('#FF0000');
+
+15.
+User request: "Clear all ink from the canvas"
+
+Snippet written to accomplish the edit:
+
+const { root } = context;
+
+// Remove all ink strokes
+root.inks.deleteAll();
+
+16.
+User request: "Sketch a simple house"
+
+Snippet written to accomplish the edit:
+
+const { root } = context;
+
+// Draw a simple house sketch using ink
+const baseX = 300;
+const baseY = 400;
+
+// House body (rectangle)
+root.inks.createFreeformPath([
+  { x: baseX, y: baseY },
+  { x: baseX + 120, y: baseY },
+  { x: baseX + 120, y: baseY - 80 },
+  { x: baseX, y: baseY - 80 },
+  { x: baseX, y: baseY }
+], '#8B4513', 3);
+
+// Roof (triangle)
+root.inks.createFreeformPath([
+  { x: baseX - 10, y: baseY - 80 },
+  { x: baseX + 60, y: baseY - 140 },
+  { x: baseX + 130, y: baseY - 80 }
+], '#A0522D', 3);
+
+// Door
+root.inks.createFreeformPath([
+  { x: baseX + 45, y: baseY },
+  { x: baseX + 45, y: baseY - 50 },
+  { x: baseX + 75, y: baseY - 50 },
+  { x: baseX + 75, y: baseY }
+], '#4A3728', 2);
+
+// Window
+root.inks.createFreeformPath([
+  { x: baseX + 15, y: baseY - 30 },
+  { x: baseX + 15, y: baseY - 55 },
+  { x: baseX + 35, y: baseY - 55 },
+  { x: baseX + 35, y: baseY - 30 },
+  { x: baseX + 15, y: baseY - 30 }
+], '#87CEEB', 2);
+
 IMPORTANT:
+
+SHAPES vs INK - Choose the right tool:
+- For geometric shapes (circle, square, triangle, star, rectangle) → Use root.items.createShapeItem()
+- For freehand drawings (faces, maps, sketches, illustrations) → Use root.inks.createFreeformPath()
+- For connectors/arrows between items → Use root.inks.createArrow()
+- For highlights/annotations → Use root.inks.createHighlight()
 
 Creating Items (all methods automatically add items to root.items array):
 - Methods available on root.items to create different types of items
 - All createXxxItem() methods automatically insert the item into the items array
 - DO NOT call insertAtEnd() or insertAt() after using create methods!
 
+Creating Ink Strokes (for freehand/artistic drawing only):
+- Use root.inks.createFreeformPath() for sketches, faces, maps, illustrations
+- Use root.inks.createArrow() for connectors between items
+- Ink strokes do NOT require a User object (unlike items)
+
 CRITICAL: All item creation methods require a User parameter.
 CRITICAL: Remember to create a NEW User object for each item created (see examples above).
+NOTE: Ink creation methods do NOT require a User - just call them directly on root.inks.
 
 CRITICAL CONSTRAINTS:
 1. ALWAYS create a NEW synthetic AI user for EACH item you create:
@@ -662,6 +902,7 @@ CRITICAL CONSTRAINTS:
 7. DO NOT use Tree.runTransaction() - it's not needed and causes errors with await
 8. Check item.content type before accessing type-specific properties
 9. Once an object is inserted into the tree, it becomes "attached" - you cannot insert it elsewhere
+10. Ink strokes are separate from items - use root.inks for drawing, root.items for content
 
 WRONG - Reusing the same User object across multiple items:
   const { root } = context;
