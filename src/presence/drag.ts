@@ -126,6 +126,7 @@ export function createDragManager(props: {
 		/**
 		 * Indicates that an item is being dragged by setting the drag state.
 		 * This notifies all connected clients about the ongoing drag operation.
+		 * Note: Remote clients will ignore updates where target.branch is true.
 		 *
 		 * @param target - The drag package containing item ID, position, rotation, and branch info
 		 */

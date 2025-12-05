@@ -74,6 +74,8 @@ export function getActiveDragForItem(
 			if (!connected) continue;
 			const val = getPresenceValue(remote);
 			if (!val) continue;
+			// Skip remote drags that are operating in a branch (AI branch operations)
+			if (val["branch"] === true) continue;
 			const baseId = typeof val["id"] === "string" ? (val["id"] as string) : undefined;
 			const x = typeof val["x"] === "number" ? (val["x"] as number) : undefined;
 			const y = typeof val["y"] === "number" ? (val["y"] as number) : undefined;

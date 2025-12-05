@@ -449,13 +449,13 @@ export function ItemView(props: {
 	};
 	usePresenceManager(
 		presence.drag as PresenceManager<DragAndRotatePackage>,
-		(u) => u && applyDrag(u),
-		(u) => u && applyDrag(u) // Same handler for both local and remote
+		(u) => u && !u.branch && applyDrag(u), // Ignore remote branch operations
+		(u) => u && applyDrag(u) // Always apply local operations
 	);
 	usePresenceManager(
 		presence.resize as PresenceManager<ResizePackage | null>,
-		(u) => applyResize(u),
-		applyResize
+		(u) => !u?.branch && applyResize(u), // Ignore remote branch operations
+		applyResize // Always apply local operations
 	);
 	usePresenceManager(
 		presence.itemSelection,

@@ -60,7 +60,7 @@ export function TextResizeHandles({
 			absX,
 			absY,
 		};
-		presence.resize.setResizing({ id: item.id, x: absX, y: absY, size: text.width });
+		presence.resize.setResizing({ id: item.id, x: absX, y: absY, size: text.width, branch: presence.branch });
 		document.documentElement.dataset.manipulating = "1";
 		const move = (ev: PointerEvent) => {
 			const deltaPx = ev.clientX - startRef.current.pointerX;
@@ -71,6 +71,7 @@ export function TextResizeHandles({
 				x: startRef.current.absX,
 				y: startRef.current.absY,
 				size: width,
+				branch: presence.branch,
 			});
 		};
 		const up = () => {
@@ -442,6 +443,7 @@ export function CornerResizeHandles({
 			size: initSize.current,
 			width: isRectangleShape(shape) ? currentDimensions.width : undefined,
 			height: isRectangleShape(shape) ? currentDimensions.height : undefined,
+			branch: presence.branch,
 		});
 		document.documentElement.dataset.manipulating = "1";
 		centerModel.current = {
@@ -487,6 +489,7 @@ export function CornerResizeHandles({
 					size: newSize,
 					width: newWidth,
 					height: newHeight,
+					branch: presence.branch,
 				});
 				return;
 			}
@@ -501,7 +504,7 @@ export function CornerResizeHandles({
 			const scaledHeight = initDimensions.current.height * scaleFactor;
 			const newX = centerModel.current.x - scaledWidth / 2;
 			const newY = centerModel.current.y - scaledHeight / 2;
-			presence.resize.setResizing({ id: item.id, x: newX, y: newY, size: newSize });
+			presence.resize.setResizing({ id: item.id, x: newX, y: newY, size: newSize, branch: presence.branch });
 		};
 		const up = () => {
 			setResizing(false);

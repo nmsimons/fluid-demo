@@ -69,4 +69,6 @@ export type ResizePackage = {
 	width?: number;
 	/** Optional height for elements that support non-uniform resizing */
 	height?: number;
+	/** Whether this resize is happening in a branch (suppresses presence transmission) */
+	branch?: boolean;
 };

@@ -112,6 +112,7 @@ export function createResizeManager(props: {
 		 * Indicates that an item is being resized by setting the resize state.
 		 * This notifies all connected clients about the ongoing resize operation,
 		 * allowing them to show visual feedback and prevent conflicts.
+		 * Note: Remote clients will ignore updates where target.branch is true.
 		 *
 		 * @param target - The resize package containing item ID, position, and size info
 		 */
