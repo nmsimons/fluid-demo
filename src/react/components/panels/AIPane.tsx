@@ -1,6 +1,15 @@
 // A pane for displaying and interacting with an LLM on the right side of the screen
-import { Button, Textarea } from "@fluentui/react-components";
-import { ArrowLeftFilled, BotRegular } from "@fluentui/react-icons";
+import {
+	Button,
+	Textarea,
+	Menu,
+	MenuTrigger,
+	MenuPopover,
+	MenuList,
+	MenuItemRadio,
+	type MenuProps,
+} from "@fluentui/react-components";
+import { ArrowLeftFilled, BotRegular, ChevronDown16Regular } from "@fluentui/react-icons";
 import React, { ReactNode, useEffect, useState, useRef, useContext } from "react";
 import { Pane } from "./Pane.js";
 import { TreeViewAlpha } from "@fluidframework/tree/alpha";
@@ -28,7 +37,35 @@ export function AIPane(props: {
 	const [chats, setChats] = useState<string[]>([]);
 	const [agent, setAgent] = useState<SharedTreeSemanticAgent<typeof App> | undefined>();
 	const { msalInstance } = useContext(AuthContext);
-	const OPENAI_MODEL = import.meta.env.VITE_OPENAI_MODEL;
+
+	// Model selection - parse available models from env and use localStorage for persistence
+	const availableModels = (import.meta.env.VITE_OPENAI_AVAILABLE_MODELS ?? "")
+		.split(",")
+		.map((m) => m.trim())
+		.filter((m) => m.length > 0);
+	const defaultModel = import.meta.env.VITE_OPENAI_MODEL ?? availableModels[0] ?? "gpt-4o";
+	const [selectedModel, setSelectedModel] = useState<string>(() => {
+		const stored = localStorage.getItem("ai-pane-selected-model");
+		// Only use stored value if it's in the available models list
+		if (stored && availableModels.includes(stored)) {
+			return stored;
+		}
+		return defaultModel;
+	});
+
+	// Persist model selection to localStorage
+	useEffect(() => {
+		localStorage.setItem("ai-pane-selected-model", selectedModel);
+	}, [selectedModel]);
+
+	// Format model name for display (e.g., "gpt-4.1-2025-04-14" -> "GPT-4.1")
+	const formatModelName = (modelId: string): string => {
+		// Remove date suffix if present (e.g., -2025-04-14)
+		let name = modelId.replace(/-\d{4}-\d{2}-\d{2}$/, "");
+		// Capitalize GPT and O prefixes
+		name = name.replace(/^gpt-/i, "GPT-").replace(/^o(\d)/i, "O$1");
+		return name;
+	};
 
 	// Dirty tracking state - tracks nodes that have been modified by AI operations
 	// Create operation tracker for dirty node tracking
@@ -171,7 +208,7 @@ export function AIPane(props: {
 								fetch: customFetch,
 							},
 							apiKey: "not-used-due-to-custom-fetch-providing-auth",
-							model: OPENAI_MODEL,
+							model: selectedModel,
 						});
 
 						// Create the semantic agent
@@ -231,7 +268,7 @@ export function AIPane(props: {
 
 						const chatOpenAI = new AzureChatOpenAI({
 							azureADTokenProvider: azureADTokenProvider,
-							model: OPENAI_MODEL,
+							model: selectedModel,
 							azureOpenAIApiInstanceName: azureInstanceName,
 							azureOpenAIApiDeploymentName: azureDeploymentName,
 							azureOpenAIApiVersion: azureApiVersion,
@@ -274,7 +311,7 @@ export function AIPane(props: {
 
 					const chatOpenAI = new AzureChatOpenAI({
 						azureADTokenProvider: azureADTokenProvider,
-						model: OPENAI_MODEL,
+						model: selectedModel,
 						azureOpenAIApiInstanceName: azureInstanceName,
 						azureOpenAIApiDeploymentName: azureDeploymentName,
 						azureOpenAIApiVersion: azureApiVersion,
@@ -306,7 +343,7 @@ export function AIPane(props: {
 
 			setupAgent().catch(console.error);
 		}
-	}, [localBranch, msalInstance]);
+	}, [localBranch, msalInstance, selectedModel]);
 
 	const handlePromptSubmit = async (prompt: string) => {
 		if (agent !== undefined) {
@@ -380,6 +417,10 @@ export function AIPane(props: {
 					chats[chats.length - 1] === ".." ||
 					chats[chats.length - 1] === "..."
 				}
+				selectedModel={selectedModel}
+				availableModels={availableModels}
+				onModelChange={setSelectedModel}
+				formatModelName={formatModelName}
 			/>
 		</Pane>
 	);
@@ -419,18 +460,24 @@ export function PromptCommitDiscardButtons(props: {
 export function PromptInput(props: {
 	callback: (prompt: string) => void;
 	disabled: boolean;
+	selectedModel?: string;
+	availableModels?: string[];
+	onModelChange?: (model: string) => void;
+	formatModelName?: (model: string) => string;
 }): JSX.Element {
-	const { callback } = props;
+	const { callback, selectedModel, availableModels, onModelChange, formatModelName } = props;
 	const [prompt, setPrompt] = useState("");
+	const showModelSelector = availableModels && availableModels.length > 1 && onModelChange;
+
 	return (
-		<div className="flex flex-col justify-self-end gap-y-2 ">
+		<div className="flex flex-col justify-self-end gap-y-2">
 			<Textarea
 				className="flex"
 				rows={4}
 				value={prompt}
 				onChange={(e) => setPrompt(e.target.value)}
 				onKeyDown={(e) => {
-					if (e.key === "Enter") {
+					if (e.key === "Enter" && !e.shiftKey) {
 						e.preventDefault();
 						callback(prompt);
 						setPrompt("");
@@ -438,16 +485,50 @@ export function PromptInput(props: {
 				}}
 				placeholder="Type your prompt here..."
 			/>
-			<Button
-				appearance="primary"
-				onClick={() => {
-					callback(prompt);
-					setPrompt("");
-				}}
-				disabled={props.disabled}
-			>
-				Submit
-			</Button>
+			<div className="flex items-center gap-2">
+				{showModelSelector && (
+					<Menu
+						checkedValues={{ model: [selectedModel ?? ""] }}
+						onCheckedValueChange={(_e, { checkedItems }) => {
+							if (checkedItems.length > 0) {
+								onModelChange(checkedItems[0]);
+							}
+						}}
+					>
+						<MenuTrigger disableButtonEnhancement>
+							<Button
+								appearance="subtle"
+								size="small"
+								iconPosition="after"
+								icon={<ChevronDown16Regular />}
+								className="text-gray-500"
+							>
+								{formatModelName?.(selectedModel ?? "") ?? selectedModel}
+							</Button>
+						</MenuTrigger>
+						<MenuPopover>
+							<MenuList>
+								{availableModels.map((modelId) => (
+									<MenuItemRadio key={modelId} name="model" value={modelId}>
+										{formatModelName?.(modelId) ?? modelId}
+									</MenuItemRadio>
+								))}
+							</MenuList>
+						</MenuPopover>
+					</Menu>
+				)}
+				<Button
+					appearance="primary"
+					className="flex-grow"
+					onClick={() => {
+						callback(prompt);
+						setPrompt("");
+					}}
+					disabled={props.disabled}
+				>
+					Submit
+				</Button>
+			</div>
 		</div>
 	);
 }

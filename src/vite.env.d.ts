@@ -20,6 +20,7 @@ interface ImportMetaEnv {
 	readonly VITE_AZURE_OPENAI_MANUAL_TOKEN?: string;
 	readonly VITE_AZURE_OPENAI_BASE_PATH?: string;
 	readonly VITE_OPENAI_MODEL?: string;
+	readonly VITE_OPENAI_AVAILABLE_MODELS?: string;
 }
 
 interface ImportMeta {
