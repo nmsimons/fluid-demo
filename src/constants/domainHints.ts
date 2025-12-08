@@ -15,6 +15,11 @@ DATA MODEL (root)
 Item fields: id, x, y, rotation, createdBy/At, updatedBy/At, comments, votes, connections, content.
 Content: Shape (circle|square|triangle|star|rectangle, color(s), size, filled), Note (text, bg color), TextBlock (rich text: color/font/align/card), FluidTable (rows, columns, typed cells), Group (name, optional grid, nested items).
 
+ALLOWED COLORS
+- Notes: #FEFF68, #FFE4A7, #C8F7C5, #FAD4D8, #D7E8FF.
+- Shapes: #000000, #FFFFFF, #FF0000, #33FF57, #3357FF, #FF33A1, #A133FF, #33FFF5, #F5FF33, #FF8C33.
+- Text: #111827, #4B5563, #9CA3AF, #FFFFFF, #EF4444, #F59E0B, #10B981, #3B82F6, #6366F1, #A855F7, #EC4899.
+
 INK VS SHAPES
 - Geometric (circle, square, triangle, star, rectangle) → root.items.createShapeItem.
 - Freehand/artistic (faces, maps, doodles, connectors, highlights) → root.inks helpers.

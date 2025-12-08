@@ -7,7 +7,6 @@ import {
 	MenuPopover,
 	MenuList,
 	MenuItemRadio,
-	type MenuProps,
 } from "@fluentui/react-components";
 import { ArrowLeftFilled, BotRegular, ChevronDown16Regular } from "@fluentui/react-icons";
 import React, { ReactNode, useEffect, useState, useRef, useContext } from "react";
