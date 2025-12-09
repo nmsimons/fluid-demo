@@ -12,6 +12,14 @@ DATA MODEL (root)
 - comments: canvas-level comments
 - inks: ink strokes
 
+ARRAY USAGE
+- Read like arrays: length, forEach, at(), indexing.
+- SharedTree array APIs: insertAt(index, item), insertAtEnd(item), removeAt(index), removeRange(start, count), indexOf(item), findIndex(cb), at(i), forEach(cb), length.
+- Mutate with provided methods, not manual inserts: createXxxItem() adds; item.delete() removes; table.addRow()/deleteRow()/addColumn()/deleteColumn(); rows/columns support removeRange().
+- Never reuse attached objects when re-adding; create fresh instances.
+- Do not reuse attached objects when re-adding (create fresh instead).
+- Moves keep the same item identity: moveToIndex(gap, sourceIndex[, sourceArray]), moveToStart/End, moveRangeToIndex/start/end. Gaps are between items before the move: for [A,B,C], gaps are 0(^A),1(A|B),2(B|C),3(C^). To move A after B: moveToIndex(2, indexOfA). For swaps, moveToIndex(indexOfA, indexOfB).
+
 Item fields: id, x, y, rotation, createdBy/At, updatedBy/At, comments, votes, connections, content.
 Content: Shape (circle|square|triangle|star|rectangle, color(s), size, filled), Note (text, bg color), TextBlock (rich text: color/font/align/card), FluidTable (rows, columns, typed cells), Group (name, optional grid, nested items).
 
