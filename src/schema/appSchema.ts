@@ -23,8 +23,13 @@ import {
 	TreeNodeFromImplicitAllowedTypes,
 	TreeStatus,
 } from "fluid-framework";
-import { ExposedMethods, buildFunc, exposeMethodsSymbol } from "@fluidframework/tree-agent/alpha";
-import { z } from "zod";
+import {
+	ExposedMethods,
+	buildFunc,
+	exposeMethodsSymbol,
+	typeFactory,
+	type TypeFactoryType,
+} from "@fluidframework/tree-agent/alpha";
 
 export type HintValues = (typeof hintValues)[keyof typeof hintValues];
 export const hintValues = {
@@ -41,6 +46,28 @@ export const hintValues = {
 // Include a UUID to guarantee that this schema will be uniquely identifiable.
 // As this schema uses a recursive type, the beta SchemaFactoryRecursive is used instead of just SchemaFactory.
 const sf = new SchemaFactoryAlpha("fc1db2e8-0a00-11ee-be56-0242ac120002");
+
+type CompatType = TypeFactoryType & { optional: () => CompatType };
+
+function compat(type: TypeFactoryType): CompatType {
+	return Object.assign(type, {
+		optional: () => compat(typeFactory.optional(type)),
+	});
+}
+
+const z = {
+	string: () => compat(typeFactory.string()),
+	number: () => compat(typeFactory.number()),
+	boolean: () => compat(typeFactory.boolean()),
+	void: () => compat(typeFactory.void()),
+	array: (element: TypeFactoryType) => compat(typeFactory.array(element)),
+	object: (shape: Record<string, TypeFactoryType>) => compat(typeFactory.object(shape)),
+	enum: (values: readonly string[]) =>
+		compat(typeFactory.union(values.map((value) => typeFactory.literal(value)))),
+};
+
+const instanceOf = <T extends Parameters<typeof typeFactory.instanceOf>[0]>(schema: T): CompatType =>
+	compat(typeFactory.instanceOf(schema));
 
 const NOTE_ROTATION_SPREAD_DEGREES = 8;
 
@@ -187,7 +214,8 @@ export class Votes extends sf.array("Votes", User) {
 		return this.some((entry) => entry.id === user.id);
 	}
 
-	public static [exposeMethodsSymbol](methods: ExposedMethods): void {
+	public static [exposeMethodsSymbol](rawMethods: ExposedMethods): void {
+		const methods = Object.assign(rawMethods, { instanceOf });
 		methods.expose(
 			Votes,
 			"addVote",
@@ -225,7 +253,8 @@ export class Comment extends sf.object("Comment", {
 		}
 	}
 
-	public static [exposeMethodsSymbol](methods: ExposedMethods): void {
+	public static [exposeMethodsSymbol](rawMethods: ExposedMethods): void {
+		const methods = Object.assign(rawMethods, { instanceOf });
 		methods.expose(Comment, "delete", buildFunc({ returns: z.void() }));
 	}
 }
@@ -242,7 +271,8 @@ export class Comments extends sf.array("Comments", [Comment]) {
 		this.insertAtEnd(comment);
 	}
 
-	public static [exposeMethodsSymbol](methods: ExposedMethods): void {
+	public static [exposeMethodsSymbol](rawMethods: ExposedMethods): void {
+		const methods = Object.assign(rawMethods, { instanceOf });
 		methods.expose(
 			Comments,
 			"addComment",
@@ -381,7 +411,8 @@ export class FileReferenceCard extends sf.object("FileReferenceCard", {
 		}
 	}
 
-	public static [exposeMethodsSymbol](methods: ExposedMethods): void {
+	public static [exposeMethodsSymbol](rawMethods: ExposedMethods): void {
+		const methods = Object.assign(rawMethods, { instanceOf });
 		methods.expose(
 			FileReferenceCard,
 			"addReference",
@@ -449,6 +480,22 @@ export class FluidTable extends TableSchema.table({
 	column: FluidColumnSchema,
 	row: FluidRowSchema,
 }) {
+	getCellValue(row: FluidRow, column: FluidColumn) {
+		return this.getCell({ row, column });
+	}
+
+	setCellValue(row: FluidRow, column: FluidColumn, cell: unknown): void {
+		this.setCell({ key: { row, column }, cell: cell as never });
+	}
+
+	removeCellValue(row: FluidRow, column: FluidColumn) {
+		return this.removeCell({ row, column });
+	}
+
+	hasCellsInColumn(column: FluidColumn): boolean {
+		return this.rows.some((row) => this.getCell({ row, column }) !== undefined);
+	}
+
 	/**
 	 * Create a Row before inserting it into the table
 	 * */
@@ -463,15 +510,7 @@ export class FluidTable extends TableSchema.table({
 	deleteColumn(column: FluidColumn): void {
 		if (Tree.status(column) !== TreeStatus.InDocument) return;
 		Tree.runTransaction(this, () => {
-			// Remove all cells for this column from all rows
-			for (const row of this.rows) {
-				row.removeCell(column);
-			}
-			// Remove the column from the table
-			const columnIndex = this.columns.indexOf(column);
-			if (columnIndex !== -1) {
-				this.removeColumns(columnIndex);
-			}
+			this.removeColumns([column]);
 		});
 	}
 
@@ -560,7 +599,7 @@ export class FluidTable extends TableSchema.table({
 	 * Create a row with random values based on column types
 	 */
 	createRowWithValues(): FluidRow {
-		const row = this.createDetachedRow();
+		const cells: Record<string, unknown> = {};
 		// Iterate through all the columns and add a random value for the new row
 		for (const column of this.columns) {
 			const fluidColumn = this.getColumn(column.id);
@@ -570,13 +609,13 @@ export class FluidTable extends TableSchema.table({
 
 			switch (hint) {
 				case hintValues.string:
-					row.setCell(fluidColumn, Math.random().toString(36).substring(7));
+					cells[fluidColumn.id] = Math.random().toString(36).substring(7);
 					break;
 				case hintValues.number:
-					row.setCell(fluidColumn, Math.floor(Math.random() * 1000));
+					cells[fluidColumn.id] = Math.floor(Math.random() * 1000);
 					break;
 				case hintValues.boolean:
-					row.setCell(fluidColumn, Math.random() > 0.5);
+					cells[fluidColumn.id] = Math.random() > 0.5;
 					break;
 				case hintValues.date: {
 					// Add a random date
@@ -584,17 +623,17 @@ export class FluidTable extends TableSchema.table({
 					const endDate = new Date();
 					const date = this.getRandomDate(startDate, endDate);
 					const dateTime = new DateTime({ ms: date.getTime() });
-					row.setCell(fluidColumn, dateTime);
+					cells[fluidColumn.id] = dateTime;
 					break;
 				}
 				case hintValues.vote:
 					break;
 				default: // Add a random string
-					row.setCell(fluidColumn, Math.random().toString(36).substring(7));
+					cells[fluidColumn.id] = Math.random().toString(36).substring(7);
 					break;
 			}
 		}
-		return row;
+		return new FluidRowSchema({ id: crypto.randomUUID(), cells: cells as never });
 	}
 
 	/**
@@ -604,49 +643,51 @@ export class FluidTable extends TableSchema.table({
 		return new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime()));
 	}
 
-	public static [exposeMethodsSymbol](methods: ExposedMethods): void {
+	public static [exposeMethodsSymbol](rawMethods: ExposedMethods): void {
+		const methods = Object.assign(rawMethods, { instanceOf });
+		const fluidTableSchema = FluidTable as unknown as Parameters<typeof methods.expose>[0];
 		methods.expose(
-			FluidTable,
+			fluidTableSchema,
 			"createDetachedRow",
 			buildFunc({ returns: methods.instanceOf(FluidRowSchema) })
 		);
 		methods.expose(
-			FluidTable,
+			fluidTableSchema,
 			"deleteColumn",
 			buildFunc({ returns: z.void() }, ["column", methods.instanceOf(FluidColumnSchema)])
 		);
 		methods.expose(
-			FluidTable,
+			fluidTableSchema,
 			"getColumnByCellId",
 			buildFunc({ returns: methods.instanceOf(FluidColumnSchema).optional() }, [
 				"cellId",
 				z.string(),
 			])
 		);
-		methods.expose(FluidTable, "addColumn", buildFunc({ returns: z.void() }));
-		methods.expose(FluidTable, "addRow", buildFunc({ returns: z.void() }));
+		methods.expose(fluidTableSchema, "addColumn", buildFunc({ returns: z.void() }));
+		methods.expose(fluidTableSchema, "addRow", buildFunc({ returns: z.void() }));
 		methods.expose(
-			FluidTable,
+			fluidTableSchema,
 			"moveColumnLeft",
 			buildFunc({ returns: z.boolean() }, ["column", methods.instanceOf(FluidColumnSchema)])
 		);
 		methods.expose(
-			FluidTable,
+			fluidTableSchema,
 			"moveColumnRight",
 			buildFunc({ returns: z.boolean() }, ["column", methods.instanceOf(FluidColumnSchema)])
 		);
 		methods.expose(
-			FluidTable,
+			fluidTableSchema,
 			"moveRowUp",
 			buildFunc({ returns: z.boolean() }, ["row", methods.instanceOf(FluidRowSchema)])
 		);
 		methods.expose(
-			FluidTable,
+			fluidTableSchema,
 			"moveRowDown",
 			buildFunc({ returns: z.boolean() }, ["row", methods.instanceOf(FluidRowSchema)])
 		);
 		methods.expose(
-			FluidTable,
+			fluidTableSchema,
 			"createRowWithValues",
 			buildFunc({ returns: methods.instanceOf(FluidRowSchema) })
 		);
@@ -732,7 +773,8 @@ export class Item extends sf.objectRecursive("Item", {
 		return Array.from(this.connections);
 	}
 
-	public static [exposeMethodsSymbol](methods: ExposedMethods): void {
+	public static [exposeMethodsSymbol](rawMethods: ExposedMethods): void {
+		const methods = Object.assign(rawMethods, { instanceOf });
 		methods.expose(Item, "delete", buildFunc({ returns: z.void() }));
 		methods.expose(
 			Item,
@@ -1057,9 +1099,9 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 			}),
 		];
 
-		return new FluidTable({
-			rows: rows,
-			columns: columns,
+		return FluidTable.create({
+			rows,
+			columns,
 		});
 	}
 
@@ -1147,28 +1189,25 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 
 			// Create new rows with copied cell data
 			const newRows = item.content.rows.map((row) => {
-				const newRow = new FluidRowSchema({
-					id: crypto.randomUUID(),
-					cells: {},
-				});
+				const cells: Record<string, unknown> = {};
 
 				// Copy cells to the new row
 				const table = item.content as FluidTable;
 				for (const column of table.columns) {
-					const cell = row.getCell(column);
+					const cell = table.getCellValue(row, column);
 					if (cell !== undefined) {
 						const newColumnId = columnIdMapping[column.id];
 						const newColumn = newColumns.find((c) => c.id === newColumnId);
 						if (newColumn) {
-							newRow.setCell(newColumn, cell);
+							cells[newColumn.id] = cell;
 						}
 					}
 				}
 
-				return newRow;
+				return new FluidRowSchema({ id: crypto.randomUUID(), cells: cells as never });
 			});
 
-			duplicatedContent = new FluidTable({
+			duplicatedContent = FluidTable.create({
 				rows: newRows,
 				columns: newColumns,
 			});
@@ -1338,7 +1377,8 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 		return true;
 	}
 
-	public static [exposeMethodsSymbol](methods: ExposedMethods): void {
+	public static [exposeMethodsSymbol](rawMethods: ExposedMethods): void {
+		const methods = Object.assign(rawMethods, { instanceOf });
 		methods.expose(
 			Items,
 			"createShapeItem",

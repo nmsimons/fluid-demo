@@ -42,6 +42,7 @@ import {
 import { ToolbarButton } from "@fluentui/react-toolbar";
 import { Tooltip } from "@fluentui/react-tooltip";
 import { useTree } from "../../../hooks/useTree.js";
+import { useTable } from "../../../contexts/TableContext.js";
 
 /**
  * Ensure that all selected rows are still in the document.
@@ -444,6 +445,7 @@ export function DeleteSelectedRowsButton(props: {
 // The user can change the column type to a string, number, boolean, or date
 export function ColumnTypeDropdown(props: { column: FluidColumn }): JSX.Element {
 	const { column } = props;
+	const table = useTable();
 
 	useTree(column);
 
@@ -457,8 +459,7 @@ export function ColumnTypeDropdown(props: { column: FluidColumn }): JSX.Element 
 		setCheckedValues((s) => ({ ...s, [name]: checkedItems }));
 	};
 
-	// Note: The old column.cells.size check is no longer available, so we skip it for now
-	if (column.getCells().length !== 0) return <></>;
+	if (table.hasCellsInColumn(column)) return <></>;
 
 	return (
 		<Menu

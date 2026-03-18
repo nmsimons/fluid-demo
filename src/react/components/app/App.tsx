@@ -6,8 +6,8 @@
 import React, { JSX, useState, useEffect } from "react";
 import { App } from "../../../schema/appSchema.js";
 import "../../../styles/ios-minimal.css";
-import { IFluidContainer, TreeView } from "fluid-framework";
-import { asAlpha } from "@fluidframework/tree/alpha";
+import { IFluidContainer } from "fluid-framework";
+import { asAlpha, type TreeViewAlpha } from "@fluidframework/tree/alpha";
 import { Canvas } from "../canvas/Canvas.js";
 import type { SelectionManager } from "../../../presence/Interfaces/SelectionManager.js";
 import { undoRedo } from "../../../undo/undo.js";
@@ -60,7 +60,7 @@ export const CommentPaneContext = React.createContext<{
  * Props for the ReactApp component.
  */
 export interface ReactAppProps {
-	tree: TreeView<typeof App>;
+	tree: TreeViewAlpha<typeof App>;
 	itemSelection: SelectionManager<TypedSelection>;
 	tableSelection: SelectionManager<TypedSelection>;
 	users: UsersManager;
@@ -323,7 +323,7 @@ export function ReactApp(props: ReactAppProps): JSX.Element {
 							setHidden={setAiPaneHidden}
 							main={asAlpha(tree)}
 							branch={isBranch ? asAlpha(view) : undefined}
-							setRenderView={(newView) => setView(newView as TreeView<typeof App>)}
+							setRenderView={(newView) => setView(newView as TreeViewAlpha<typeof App>)}
 						/>
 					</div>
 				</div>

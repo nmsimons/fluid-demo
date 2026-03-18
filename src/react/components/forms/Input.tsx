@@ -5,6 +5,7 @@ import { ThumbLikeFilled, ThumbLikeRegular } from "@fluentui/react-icons";
 import { ToolbarButton } from "@fluentui/react-toolbar";
 import { objectIdNumber, useTree } from "../../hooks/useTree.js";
 import { createSchemaUser } from "../../../utils/userUtils.js";
+import { useTable } from "../../contexts/TableContext.js";
 
 export function ColumnInput(props: { column: FluidColumn }): JSX.Element {
 	const { column } = props;
@@ -29,6 +30,7 @@ export function CellInputBoolean(props: {
 	cellId: string;
 }): JSX.Element {
 	const { value, row, column, cellId } = props;
+	const table = useTable();
 
 	useTree(row, true);
 	useTree(column);
@@ -37,7 +39,7 @@ export function CellInputBoolean(props: {
 
 	// handle a change event in the cell
 	const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-		row.setCell(column, e.target.checked);
+		table.setCellValue(row, column, e.target.checked);
 	};
 
 	return (
@@ -62,13 +64,14 @@ export function CellInputString(props: {
 	cellId: string;
 }): JSX.Element {
 	const { value, row, column, cellId } = props;
+	const table = useTable();
 
 	useTree(row, true);
 	useTree(column);
 
 	// handle a change event in the cell
 	const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-		row.setCell(column, e.target.value);
+		table.setCellValue(row, column, e.target.value);
 	};
 
 	return (
@@ -92,6 +95,7 @@ export function CellInputNumber(props: {
 	cellId: string;
 }): JSX.Element {
 	const { value, row, column, cellId } = props;
+	const table = useTable();
 
 	useTree(row, true);
 	useTree(column);
@@ -101,7 +105,7 @@ export function CellInputNumber(props: {
 		// convert the value to a number
 		const num = parseFloat(e.target.value);
 		if (!isNaN(num)) {
-			row.setCell(column, num);
+			table.setCellValue(row, column, num);
 		}
 	};
 
@@ -124,6 +128,7 @@ export function CellInputDate(props: {
 	cellId: string;
 }): JSX.Element {
 	const { value, row, column, cellId } = props;
+	const table = useTable();
 
 	useTree(row, true);
 	useTree(column);
@@ -132,12 +137,12 @@ export function CellInputDate(props: {
 
 	// handle a change event in the cell
 	const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-		const fluidCell = row.getCell(column);
+		const fluidCell = table.getCellValue(row, column);
 		// Test if the target value is a valid date
 		if (isNaN(Date.parse(e.target.value))) {
 			if (fluidCell !== undefined) {
 				if (Tree.is(fluidCell, DateTime)) {
-					row.removeCell(column);
+					table.removeCellValue(row, column);
 					return;
 				}
 			}
@@ -147,7 +152,7 @@ export function CellInputDate(props: {
 		// Generate a new Date from the target value
 		const d: Date = new Date(e.target.value);
 		if (fluidCell === undefined) {
-			row.setCell(column, new DateTime({ ms: d.getTime() }));
+			table.setCellValue(row, column, new DateTime({ ms: d.getTime() }));
 		} else {
 			if (Tree.is(fluidCell, DateTime)) {
 				fluidCell.value = d;
@@ -174,6 +179,7 @@ export function CellInputVote(props: {
 	user: { id: string; name: string };
 }): JSX.Element {
 	const { value, row, column, user } = props;
+	const table = useTable();
 
 	useTree(row, true);
 	useTree(column);
@@ -188,7 +194,7 @@ export function CellInputVote(props: {
 		// Check if the vote object is in the table and that there are votes in it
 		if (Tree.status(vote) !== TreeStatus.InDocument && vote.getNumberOfVotes() > 0) {
 			// If not, add it to the table
-			row.setCell(column, vote);
+			table.setCellValue(row, column, vote);
 		}
 	};
 

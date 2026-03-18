@@ -3,7 +3,8 @@
  * (Clean header restored; adds viewport centering for new items.)
  */
 
-import { TreeView, Tree } from "fluid-framework";
+import { Tree } from "fluid-framework";
+import type { TreeViewAlpha } from "@fluidframework/tree/alpha";
 import { App, FluidTable } from "../../schema/appSchema.js";
 import { KeyboardShortcut } from "./useKeyboardShortcuts.js";
 import { undoRedo } from "../../undo/undo.js";
@@ -30,7 +31,7 @@ import { DEFAULT_NOTE_COLOR, type NoteColor } from "../../constants/note.js";
  * Contains all the dependencies needed for keyboard shortcut operations.
  */
 export interface UseAppKeyboardShortcutsProps {
-	view: TreeView<typeof App>;
+	view: TreeViewAlpha<typeof App>;
 	canvasSize: { width: number; height: number };
 	pan?: { x: number; y: number };
 	zoom?: number;

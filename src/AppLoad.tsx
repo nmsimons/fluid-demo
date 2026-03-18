@@ -1,6 +1,7 @@
 import { AzureClient } from "@fluidframework/azure-client";
 import React, { Suspense, lazy } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import type { TreeViewAlpha } from "@fluidframework/tree/alpha";
 import { App, appTreeConfiguration, Items } from "./schema/appSchema.js";
 import { createUndoRedoStacks } from "./undo/undo.js";
 import { containerSchema } from "./schema/containerSchema.js";
@@ -154,7 +155,7 @@ export async function loadApp(props: {
 				<AuthContext.Provider value={{ msalInstance }}>
 					<Suspense fallback={<AppLoadingSpinner />}>
 						<ReactApp
-							tree={appTree}
+							tree={appTree as unknown as TreeViewAlpha<typeof App>}
 							itemSelection={itemSelection}
 							tableSelection={tableSelection}
 							drag={drag}

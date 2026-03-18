@@ -40,6 +40,7 @@ const ResizeStateSchema: z.ZodType<ResizePackage | null> = z.union([
 			size: z.number().finite(),
 			width: z.number().finite().optional(),
 			height: z.number().finite().optional(),
+			branch: z.boolean().optional(),
 		})
 		.strict(),
 ]);

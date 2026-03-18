@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { TreeView } from "fluid-framework";
+import type { TreeViewAlpha } from "@fluidframework/tree/alpha";
 import { App, type Item } from "../../schema/appSchema.js";
 import { findItemById } from "../../utils/itemsHelpers.js";
 import { isShape, isText, isNote } from "../../utils/contentHandlers.js";
@@ -161,7 +161,7 @@ export function buildNoteSelectionSummary(
 }
 
 export function useShapeSelectionSummary(
-	view: TreeView<typeof App>,
+	view: TreeViewAlpha<typeof App>,
 	selectedItemIds: string[],
 	itemsVersion: number | symbol
 ): ShapeSelectionSummary {
@@ -172,7 +172,7 @@ export function useShapeSelectionSummary(
 }
 
 export function useTextSelectionSummary(
-	view: TreeView<typeof App>,
+	view: TreeViewAlpha<typeof App>,
 	selectedItemIds: string[],
 	itemsVersion: number | symbol
 ): TextSelectionSummary {
@@ -183,7 +183,7 @@ export function useTextSelectionSummary(
 }
 
 export function useNoteSelectionSummary(
-	view: TreeView<typeof App>,
+	view: TreeViewAlpha<typeof App>,
 	selectedItemIds: string[],
 	itemsVersion: number | symbol
 ): NoteSelectionSummary {

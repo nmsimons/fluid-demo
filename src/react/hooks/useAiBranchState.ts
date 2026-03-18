@@ -12,7 +12,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
-import { TreeView } from "fluid-framework";
+import type { TreeViewAlpha } from "@fluidframework/tree/alpha";
 import { App } from "../../schema/appSchema.js";
 
 /**
@@ -20,7 +20,7 @@ import { App } from "../../schema/appSchema.js";
  */
 export interface AiBranchState {
 	/** The current tree view being rendered (may be main tree or AI branch) */
-	view: TreeView<typeof App>;
+	view: TreeViewAlpha<typeof App>;
 	/** Whether the AI pane is hidden */
 	aiPaneHidden: boolean;
 	/** Whether to show the AI branch message banner */
@@ -34,7 +34,7 @@ export interface AiBranchState {
  */
 export interface AiBranchActions {
 	/** Set the current view to render */
-	setView: (view: TreeView<typeof App>) => void;
+	setView: (view: TreeViewAlpha<typeof App>) => void;
 	/** Set AI pane visibility */
 	setAiPaneHidden: (hidden: boolean) => void;
 	/** Set branch message visibility */
@@ -61,8 +61,8 @@ export interface UseAiBranchStateReturn {
  * @param tree - The main tree view (used to determine if viewing a branch)
  * @returns Object containing state and actions
  */
-export function useAiBranchState(tree: TreeView<typeof App>): UseAiBranchStateReturn {
-	const [view, setView] = useState<TreeView<typeof App>>(tree);
+export function useAiBranchState(tree: TreeViewAlpha<typeof App>): UseAiBranchStateReturn {
+	const [view, setView] = useState<TreeViewAlpha<typeof App>>(tree);
 	const [aiPaneHidden, setAiPaneHidden] = useState(true);
 	const [showAiBranchMessage, setShowAiBranchMessage] = useState(false);
 
@@ -79,7 +79,7 @@ export function useAiBranchState(tree: TreeView<typeof App>): UseAiBranchStateRe
 	const isBranch = view !== tree;
 
 	// Wrap setView to accept the correct type
-	const handleSetView = useCallback((newView: TreeView<typeof App>) => {
+	const handleSetView = useCallback((newView: TreeViewAlpha<typeof App>) => {
 		setView(newView);
 	}, []);
 

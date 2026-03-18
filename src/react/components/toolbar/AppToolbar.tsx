@@ -4,7 +4,8 @@
  */
 
 import React, { JSX, useContext } from "react";
-import { TreeView, Tree } from "fluid-framework";
+import { Tree } from "fluid-framework";
+import type { TreeViewAlpha } from "@fluidframework/tree/alpha";
 import { App, Shape, TextBlock } from "../../../schema/appSchema.js";
 import { undoRedo } from "../../../undo/undo.js";
 import { isShape, isTable, isText, isGroup, isNote } from "../../../utils/contentHandlers.js";
@@ -50,8 +51,8 @@ import { NoteColorPicker } from "./buttons/NoteButtons.js";
 import type { NoteColor } from "../../../constants/note.js";
 
 export interface AppToolbarProps {
-	view: TreeView<typeof App>;
-	tree: TreeView<typeof App>;
+	view: TreeViewAlpha<typeof App>;
+	tree: TreeViewAlpha<typeof App>;
 	canvasSize: { width: number; height: number };
 	pan?: { x: number; y: number };
 	selectedItemId: string;

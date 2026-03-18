@@ -4,10 +4,11 @@
  */
 
 import { AzureMember, ITokenProvider, ITokenResponse, IUser } from "@fluidframework/azure-client";
-import { ScopeType } from "@fluidframework/protocol-definitions";
 import axios from "axios";
 import { KJUR as jsrsasign } from "jsrsasign";
 import { v4 as uuid } from "uuid";
+
+type ScopeType = string;
 
 /**
  * Token Provider implementation for connecting to an Azure Function endpoint for

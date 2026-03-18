@@ -12,8 +12,11 @@ import { ArrowLeftFilled, BotRegular, ChevronDown16Regular } from "@fluentui/rea
 import React, { ReactNode, useEffect, useState, useRef, useContext } from "react";
 import { Pane } from "./Pane.js";
 import { TreeViewAlpha } from "@fluidframework/tree/alpha";
-// import the function, not the type
-import { defaultEditor, SharedTreeSemanticAgent } from "@fluidframework/tree-agent/alpha";
+import {
+	createContext,
+	SharedTreeSemanticAgent,
+	type AsynchronousEditor,
+} from "@fluidframework/tree-agent/alpha";
 import { createLangchainChatModel } from "@fluidframework/tree-agent-langchain/alpha";
 import { App } from "../../../schema/appSchema.js";
 import { AzureChatOpenAI, ChatOpenAI } from "@langchain/openai";
@@ -624,11 +627,17 @@ export function CancelResponseButton(props: { callback: () => void }): JSX.Eleme
 	);
 }
 
-function debuggingEditor(context: Record<string, unknown>, code: string): void {
+const defaultTreeAgentEditor: AsynchronousEditor<typeof App> = async (tree, code) => {
+	const context = createContext(tree);
+	const fn = new Function("context", code);
+	await fn(context);
+};
+
+const debuggingEditor: AsynchronousEditor<typeof App> = async (tree, code) => {
 	if (!debugLLMCode) {
-		defaultEditor(context, code);
+		await defaultTreeAgentEditor(tree, code);
 		return;
 	}
 	const debugCode = `//# sourceURL=debugLLMCode.ts\n\ndebugger;\n${code}`;
-	defaultEditor(context, debugCode);
-}
+	await defaultTreeAgentEditor(tree, debugCode);
+};

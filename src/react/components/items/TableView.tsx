@@ -110,7 +110,10 @@ export function TableView(props: { fluidTable: FluidTable }): JSX.Element {
 	 * re-computations unless the table structure actually changes.
 	 */
 	const data = useMemo(() => Array.from(fluidTable.rows), [invalTable]);
-	const columns = useMemo(() => updateColumnData(Array.from(fluidTable.columns)), [invalTable]);
+	const columns = useMemo(
+		() => updateColumnData(fluidTable, Array.from(fluidTable.columns)),
+		[fluidTable, invalTable]
+	);
 
 	/**
 	 * Table Container Reference
@@ -555,7 +558,7 @@ export function TableCellViewContent(props: { cell: Cell<FluidRow, cellValue> })
 		return <div className="text-red-500 text-xs p-1">Cell Error</div>;
 	}
 
-	const value = fluidRow.getCell(fluidColumn);
+	const value = fluidTable.getCellValue(fluidRow, fluidColumn);
 	useTree(fluidRow, true);
 	useTree(fluidColumn);
 	const users = useContext(PresenceContext).users;
@@ -714,7 +717,7 @@ export type cellValue = typeDefinition; // Define the allowed cell value types
  * @param columnsArray - Array of FluidColumn objects from the table schema
  * @returns Array of ColumnDef objects for TanStack Table
  */
-const updateColumnData = (columnsArray: FluidColumn[]) => {
+const updateColumnData = (fluidTable: FluidTable, columnsArray: FluidColumn[]) => {
 	// Create a column helper for type-safe column definition creation
 	const columnHelper = createColumnHelper<FluidRow>();
 
@@ -741,7 +744,7 @@ const updateColumnData = (columnsArray: FluidColumn[]) => {
 	columnsArray.forEach((column) => {
 		const sortingConfig = getSortingConfig(column);
 		headerArray.push(
-			columnHelper.accessor((row) => row.getCell(column), {
+			columnHelper.accessor((row) => fluidTable.getCellValue(row, column), {
 				id: column.id, // Stable identifier for React keys and column management
 				header: column.props.name, // Display name shown in header
 				sortingFn: sortingConfig.fn, // Custom sorting based on column type

@@ -12,7 +12,7 @@
  */
 
 import { useState } from "react";
-import { TreeView } from "fluid-framework";
+import type { TreeViewAlpha } from "@fluidframework/tree/alpha";
 import { App } from "../../schema/appSchema.js";
 import type { SelectionManager } from "../../presence/Interfaces/SelectionManager.js";
 import { TypedSelection } from "../../presence/selection.js";
@@ -70,7 +70,7 @@ export interface UseSelectionStateReturn extends SelectionState {
 export function useSelectionState(
 	itemSelection: SelectionManager<TypedSelection>,
 	tableSelection: SelectionManager<TypedSelection>,
-	view: TreeView<typeof App>
+	view: TreeViewAlpha<typeof App>
 ): UseSelectionStateReturn {
 	// Item selection state
 	const [selectedItemId, setSelectedItemId] = useState<string>("");
