@@ -66,8 +66,9 @@ const z = {
 		compat(typeFactory.union(values.map((value) => typeFactory.literal(value)))),
 };
 
-const instanceOf = <T extends Parameters<typeof typeFactory.instanceOf>[0]>(schema: T): CompatType =>
-	compat(typeFactory.instanceOf(schema));
+const instanceOf = <T extends Parameters<typeof typeFactory.instanceOf>[0]>(
+	schema: T
+): CompatType => compat(typeFactory.instanceOf(schema));
 
 const NOTE_ROTATION_SPREAD_DEGREES = 8;
 

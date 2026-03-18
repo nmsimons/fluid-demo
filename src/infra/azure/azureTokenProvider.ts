@@ -94,13 +94,7 @@ export class InsecureTokenProvider implements ITokenProvider {
 	public async fetchOrdererToken(tenantId: string, documentId?: string): Promise<ITokenResponse> {
 		return {
 			fromCache: true,
-			jwt: generateToken(
-				tenantId,
-				this.tenantKey,
-				documentScopes,
-				documentId,
-				this.user
-			),
+			jwt: generateToken(tenantId, this.tenantKey, documentScopes, documentId, this.user),
 		};
 	}
 
@@ -110,13 +104,7 @@ export class InsecureTokenProvider implements ITokenProvider {
 	public async fetchStorageToken(tenantId: string, documentId: string): Promise<ITokenResponse> {
 		return {
 			fromCache: true,
-			jwt: generateToken(
-				tenantId,
-				this.tenantKey,
-				documentScopes,
-				documentId,
-				this.user
-			),
+			jwt: generateToken(tenantId, this.tenantKey, documentScopes, documentId, this.user),
 		};
 	}
 }

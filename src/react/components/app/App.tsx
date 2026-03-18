@@ -323,7 +323,9 @@ export function ReactApp(props: ReactAppProps): JSX.Element {
 							setHidden={setAiPaneHidden}
 							main={asAlpha(tree)}
 							branch={isBranch ? asAlpha(view) : undefined}
-							setRenderView={(newView) => setView(newView as TreeViewAlpha<typeof App>)}
+							setRenderView={(newView) =>
+								setView(newView as TreeViewAlpha<typeof App>)
+							}
 						/>
 					</div>
 				</div>
