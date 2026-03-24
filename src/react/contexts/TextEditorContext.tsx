@@ -34,10 +34,12 @@ export interface TextEditorContextValue {
 	 */
 	lastTree: FormattedTextAsTree.Tree | null;
 	lastQuill: Quill | null;
+	/** Last known Quill selection range — survives blur for toolbar restore. */
+	lastSelection: { index: number; length: number } | null;
 	/** Character-level format at the current cursor / selection. */
 	selectionFormat: SelectionFormat;
 	/** Register focus: called by HeadlessQuillEditor on Quill selection-change. */
-	setActive: (tree: FormattedTextAsTree.Tree, quill: Quill, format: SelectionFormat) => void;
+	setActive: (tree: FormattedTextAsTree.Tree, quill: Quill, format: SelectionFormat, range?: { index: number; length: number }) => void;
 	/** Clear focus: called on blur. */
 	clearActive: () => void;
 }
@@ -49,6 +51,7 @@ const TextEditorContext = createContext<TextEditorContextValue>({
 	activeQuill: null,
 	lastTree: null,
 	lastQuill: null,
+	lastSelection: null,
 	selectionFormat: emptyFormat,
 	setActive: () => {},
 	clearActive: () => {},
@@ -65,12 +68,15 @@ export function TextEditorProvider({ children }: { children: React.ReactNode }):
 	const lastTreeRef = useRef<FormattedTextAsTree.Tree | null>(null);
 	const lastQuillRef = useRef<Quill | null>(null);
 
-	const setActive = useCallback((tree: FormattedTextAsTree.Tree, quill: Quill, format: SelectionFormat) => {
+	const lastSelectionRef = useRef<{ index: number; length: number } | null>(null);
+
+	const setActive = useCallback((tree: FormattedTextAsTree.Tree, quill: Quill, format: SelectionFormat, range?: { index: number; length: number }) => {
 		setActiveTree(tree);
 		setSelectionFormat(format);
 		quillRef.current = quill;
 		lastTreeRef.current = tree;
 		lastQuillRef.current = quill;
+		if (range) lastSelectionRef.current = range;
 	}, []);
 
 	const clearActive = useCallback(() => {
@@ -84,6 +90,7 @@ export function TextEditorProvider({ children }: { children: React.ReactNode }):
 		activeQuill: quillRef.current,
 		lastTree: lastTreeRef.current,
 		lastQuill: lastQuillRef.current,
+		lastSelection: lastSelectionRef.current,
 		selectionFormat,
 		setActive,
 		clearActive,

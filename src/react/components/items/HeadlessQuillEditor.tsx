@@ -287,7 +287,7 @@ export function HeadlessQuillEditor({ textContent, fontSize, textAlign, color }:
 					italic: fmt.italic === true,
 					underline: fmt.underline === true,
 					size: fmt.size ? parseSize(fmt.size) : undefined,
-				});
+				}, range);
 			} else {
 				clearActive();
 			}
@@ -304,7 +304,7 @@ export function HeadlessQuillEditor({ textContent, fontSize, textAlign, color }:
 					italic: fmt.italic === true,
 					underline: fmt.underline === true,
 					size: fmt.size ? parseSize(fmt.size) : undefined,
-				});
+				}, range);
 			}
 		});
 

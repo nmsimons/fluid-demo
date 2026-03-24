@@ -148,7 +148,7 @@ export function TextFormattingMenu(props: {
 
 	const minFontSize = React.useMemo(() => Math.min(...TEXT_FONT_SIZES), []);
 	const maxFontSize = React.useMemo(() => Math.max(...TEXT_FONT_SIZES), []);
-	const { activeTree, activeQuill, lastTree, lastQuill, selectionFormat } = useTextEditorContext();
+	const { activeTree, activeQuill, lastTree, lastQuill, lastSelection, selectionFormat } = useTextEditorContext();
 
 	// Use active editor if focused, otherwise fall back to the last focused
 	// editor (clicking toolbar may blur the editor before handler fires).
@@ -169,7 +169,8 @@ export function TextFormattingMenu(props: {
 	 */
 	const getQuillSelectionCp = (): { start: number; end: number } | null => {
 		if (!effectiveQuill || !effectiveTree) return null;
-		const sel = effectiveQuill.getSelection(true);
+		// Try live selection first, fall back to last known selection from context
+		const sel = effectiveQuill.getSelection() ?? lastSelection;
 		if (!sel || sel.length === 0) return null;
 		// Quill uses UTF-16 offsets; convert to codepoints for the tree API.
 		const fullText = effectiveTree.fullString();
@@ -181,7 +182,8 @@ export function TextFormattingMenu(props: {
 	// user's highlight isn't lost when the toolbar steals focus.
 	const restoreQuillSelection = () => {
 		if (!effectiveQuill) return;
-		const sel = effectiveQuill.getSelection(true);
+		// Use live selection or fall back to last saved selection from context
+		const sel = effectiveQuill.getSelection() ?? lastSelection;
 		requestAnimationFrame(() => {
 			effectiveQuill?.focus();
 			if (sel) effectiveQuill?.setSelection(sel.index, sel.length, "silent");
