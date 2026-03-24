@@ -43,25 +43,30 @@ export function TextView(props: { text: TextBlock; widthOverride?: number }): JS
 		[isEditing, focusEditor],
 	);
 
+	const exitEditing = useCallback(() => {
+		setIsEditing(false);
+		// Clear any text selection inside the Quill editor
+		const editor = wrapperRef.current?.querySelector(".ql-editor");
+		if (editor instanceof HTMLElement) {
+			editor.blur();
+		}
+		window.getSelection()?.removeAllRanges();
+	}, []);
+
 	const handleWrapperBlur = useCallback(
 		(e: React.FocusEvent<HTMLDivElement>) => {
-			// Exit editing only when focus leaves the wrapper entirely and
-			// doesn't go to a toolbar/control that will return focus.
-			// relatedTarget is null when ItemView programmatically blurs on
-			// deselect, or when clicking the bare canvas.
 			if (!e.relatedTarget) {
-				setIsEditing(false);
+				exitEditing();
 			}
 		},
-		[],
+		[exitEditing],
 	);
 
 	const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
 		if (e.key === "Escape") {
-			setIsEditing(false);
-			(e.currentTarget as HTMLElement).blur();
+			exitEditing();
 		}
-	}, []);
+	}, [exitEditing]);
 
 	const textDecoration = [
 		text.underline ? "underline" : "",
