@@ -161,7 +161,7 @@ export function TextFormattingMenu(props: {
 	const displayItalic = selectionFormat.italic ?? italic;
 	const displayUnderline = selectionFormat.underline ?? underline;
 	const displayFontSize = selectionFormat.size ?? fontSize;
-	const displayColor = selectionFormat.color ?? color;
+	const displayColor = color;
 
 	/**
 	 * Get the codepoint-based selection range from the active Quill editor.
@@ -224,10 +224,7 @@ export function TextFormattingMenu(props: {
 
 	const handleColorChange = (next: string) => {
 		onColorChange(next);
-		applyCharFormat(
-			{ color: next },
-			(text) => { text.color = next; },
-		);
+		applyToSelection((text) => { text.color = next; });
 	};
 
 	const handleFontSizeChange = (next: number) => {

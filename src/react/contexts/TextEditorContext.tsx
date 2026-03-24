@@ -13,7 +13,6 @@ export interface SelectionFormat {
 	italic?: boolean;
 	underline?: boolean;
 	size?: number;
-	color?: string;
 }
 
 /**

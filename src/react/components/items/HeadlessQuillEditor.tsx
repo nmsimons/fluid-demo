@@ -32,20 +32,11 @@ const SizeStyle = new Parchment.StyleAttributor("size", "font-size", {
 });
 Quill.register(SizeStyle, true);
 
-// Custom Color StyleAttributor — uses inline style="color: …" for
-// character-level color, persisted in the tree's CharacterFormat.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const ColorStyle = new Parchment.StyleAttributor("color", "color", {
-	scope: Parchment.Scope.INLINE,
-});
-Quill.register(ColorStyle, true);
-
 /* ------------------------------------------------------------------ */
 /*  Size helpers — always use numeric px values                       */
 /* ------------------------------------------------------------------ */
 const defaultSize = 12;
 const defaultFont = "Arial";
-const defaultColor = "#000000";
 
 function parseSize(size: unknown): number {
 	if (typeof size === "number") return size;
@@ -67,7 +58,6 @@ function quillAttributesToFormat(attributes?: Record<string, any>) {
 		underline: attributes?.underline === true,
 		size: parseSize(attributes?.size),
 		font: typeof attributes?.font === "string" ? attributes.font : defaultFont,
-		color: typeof attributes?.color === "string" ? attributes.color : defaultColor,
 	};
 }
 
@@ -80,7 +70,6 @@ function quillAttributesToPartial(attributes?: Record<string, any>): Partial<For
 	if ("underline" in attributes) format.underline = attributes.underline === true;
 	if ("size" in attributes) format.size = parseSize(attributes.size);
 	if ("font" in attributes) format.font = typeof attributes.font === "string" ? attributes.font : defaultFont;
-	if ("color" in attributes) format.color = typeof attributes.color === "string" ? attributes.color : defaultColor;
 	return format as Partial<FormattedTextAsTree.CharacterFormat>;
 }
 
@@ -93,7 +82,6 @@ function formatToQuillAttributes(format: FormattedTextAsTree.CharacterFormat): R
 		attributes.size = `${format.size}px`;
 	}
 	if (format.font !== defaultFont) attributes.font = format.font;
-	if (format.color !== defaultColor) attributes.color = format.color;
 	return attributes;
 }
 
@@ -299,7 +287,6 @@ export function HeadlessQuillEditor({ textContent, fontSize, textAlign, color }:
 					italic: fmt.italic === true,
 					underline: fmt.underline === true,
 					size: fmt.size ? parseSize(fmt.size) : undefined,
-					color: typeof fmt.color === "string" ? fmt.color : undefined,
 				});
 			} else {
 				clearActive();
@@ -317,7 +304,6 @@ export function HeadlessQuillEditor({ textContent, fontSize, textAlign, color }:
 					italic: fmt.italic === true,
 					underline: fmt.underline === true,
 					size: fmt.size ? parseSize(fmt.size) : undefined,
-					color: typeof fmt.color === "string" ? fmt.color : undefined,
 				});
 			}
 		});
