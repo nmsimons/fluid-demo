@@ -177,6 +177,17 @@ export function TextFormattingMenu(props: {
 		return { start: cpOf(sel.index), end: cpOf(sel.index + sel.length) };
 	};
 
+	// Re-focus Quill and restore the selection after a toolbar action so the
+	// user's highlight isn't lost when the toolbar steals focus.
+	const restoreQuillSelection = () => {
+		if (!effectiveQuill) return;
+		const sel = effectiveQuill.getSelection(true);
+		requestAnimationFrame(() => {
+			effectiveQuill?.focus();
+			if (sel) effectiveQuill?.setSelection(sel.index, sel.length, "silent");
+		});
+	};
+
 	const applyToSelection = (updater: (text: TextBlock) => void) => {
 		if (selectedTexts.length > 0) {
 			Tree.runTransaction(selectedTexts[0], () => {
@@ -220,11 +231,13 @@ export function TextFormattingMenu(props: {
 			// No editor → block-level fallback
 			applyToSelection(blockFallback);
 		}
+		restoreQuillSelection();
 	};
 
 	const handleColorChange = (next: string) => {
 		onColorChange(next);
 		applyToSelection((text) => { text.color = next; });
+		restoreQuillSelection();
 	};
 
 	const handleFontSizeChange = (next: number) => {
@@ -250,6 +263,7 @@ export function TextFormattingMenu(props: {
 			);
 		} else {
 			applyToSelection((text) => updater(text, next));
+			restoreQuillSelection();
 		}
 	};
 
