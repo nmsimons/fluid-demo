@@ -3,7 +3,9 @@
  * Licensed under the MIT License.
  */
 
-import { TableSchema, SchemaFactoryAlpha } from "@fluidframework/tree/alpha";
+import { TableSchema, SchemaFactoryAlpha, TextAsTree } from "@fluidframework/tree/alpha";
+// eslint-disable-next-line import/no-internal-modules
+import { FormattedTextAsTree } from "@fluidframework/tree/internal";
 import {
 	SHAPE_MIN_SIZE,
 	SHAPE_MAX_SIZE,
@@ -69,6 +71,43 @@ const z = {
 const instanceOf = <T extends Parameters<typeof typeFactory.instanceOf>[0]>(
 	schema: T
 ): CompatType => compat(typeFactory.instanceOf(schema));
+
+function updateCollaborativeText(textNode: TextAsTree.Tree | FormattedTextAsTree.Tree, value: string): void {
+	const nextCharacters = Array.from(value);
+	const currentCharacters = textNode.charactersCopy();
+	let prefixLength = 0;
+
+	while (
+		prefixLength < currentCharacters.length &&
+		prefixLength < nextCharacters.length &&
+		currentCharacters[prefixLength] === nextCharacters[prefixLength]
+	) {
+		prefixLength++;
+	}
+
+	let suffixLength = 0;
+	while (
+		suffixLength < currentCharacters.length - prefixLength &&
+		suffixLength < nextCharacters.length - prefixLength &&
+		currentCharacters[currentCharacters.length - 1 - suffixLength] ===
+			nextCharacters[nextCharacters.length - 1 - suffixLength]
+	) {
+		suffixLength++;
+	}
+
+	const currentEnd = currentCharacters.length - suffixLength;
+	const nextMiddle = nextCharacters
+		.slice(prefixLength, nextCharacters.length - suffixLength)
+		.join("");
+
+	if (currentEnd > prefixLength) {
+		textNode.removeRange(prefixLength, currentEnd);
+	}
+
+	if (nextMiddle.length > 0) {
+		textNode.insertAt(prefixLength, nextMiddle);
+	}
+}
 
 const NOTE_ROTATION_SPREAD_DEGREES = 8;
 
@@ -291,16 +330,30 @@ export class Note extends sf.object(
 	// Fields for Notes which SharedTree will store and synchronize across clients.
 	// These fields are exposed as members of instances of the Note class.
 	{
-		text: sf.string,
+		textContent: sf.required(TextAsTree.Tree, {
+			metadata: { description: "The textual content displayed within the sticky note" },
+		}),
 		color: sf.required(sf.string, {
 			metadata: { description: "Hex color used to render the sticky note background" },
 		}),
 	}
-) {}
+) {
+	get text(): string {
+		return this.textContent.fullString();
+	}
+
+	set text(value: string) {
+		this.setText(value);
+	}
+
+	setText(value: string): void {
+		updateCollaborativeText(this.textContent, value);
+	}
+}
 
 export class TextBlock extends sf.object("TextBlock", {
-	text: sf.required(sf.string, {
-		metadata: { description: "The textual content displayed within the text item" },
+	textContent: sf.required(FormattedTextAsTree.Tree, {
+		metadata: { description: "The rich/formatted textual content displayed within the text item" },
 	}),
 	color: sf.required(sf.string, {
 		metadata: {
@@ -341,7 +394,19 @@ export class TextBlock extends sf.object("TextBlock", {
 				"The horizontal alignment of the text within the container: 'left', 'center', or 'right'",
 		},
 	}),
-}) {}
+}) {
+	get text(): string {
+		return this.textContent.fullString();
+	}
+
+	set text(value: string) {
+		this.setText(value);
+	}
+
+	setText(value: string): void {
+		updateCollaborativeText(this.textContent, value);
+	}
+}
 
 export class FileReferenceEntry extends sf.object("FileReferenceEntry", {
 	id: sf.required(sf.string, {
@@ -892,7 +957,7 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 		color: NoteColor = DEFAULT_NOTE_COLOR
 	): Item {
 		const note = new Note({
-			text: "",
+			textContent: TextAsTree.Tree.fromString(""),
 			color,
 		});
 
@@ -977,7 +1042,7 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 	 */
 	createTextBlockItem(canvasSize: { width: number; height: number }, user: User): Item {
 		const textBlock = new TextBlock({
-			text: "",
+			textContent: FormattedTextAsTree.Tree.fromString(""),
 			color: TEXT_DEFAULT_COLOR,
 			width: TEXT_DEFAULT_WIDTH,
 			fontSize: TEXT_DEFAULT_FONT_SIZE,
@@ -1159,12 +1224,12 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 			});
 		} else if (Tree.is(item.content, Note)) {
 			duplicatedContent = new Note({
-				text: item.content.text,
+				textContent: TextAsTree.Tree.fromString(item.content.text),
 				color: item.content.color ?? DEFAULT_NOTE_COLOR,
 			});
 		} else if (Tree.is(item.content, TextBlock)) {
 			duplicatedContent = new TextBlock({
-				text: item.content.text,
+				textContent: FormattedTextAsTree.Tree.fromString(item.content.text),
 				color: item.content.color,
 				width: clampTextWidth(item.content.width),
 				fontSize: item.content.fontSize,
@@ -1296,7 +1361,7 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 	): Item {
 		const width = clampTextWidth(props?.width ?? TEXT_DEFAULT_WIDTH);
 		const textBlock = new TextBlock({
-			text: props?.text ?? "New text",
+			textContent: FormattedTextAsTree.Tree.fromString(props?.text ?? "New text"),
 			color: props?.color ?? TEXT_DEFAULT_COLOR,
 			width,
 			fontSize: props?.fontSize ?? TEXT_DEFAULT_FONT_SIZE,

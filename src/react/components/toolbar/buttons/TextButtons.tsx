@@ -37,6 +37,7 @@ import { Tree } from "@fluidframework/tree";
 import { ColorPicker } from "./ShapeButtons.js";
 import { PresenceContext } from "../../../contexts/PresenceContext.js";
 import { createSchemaUser } from "../../../../utils/userUtils.js";
+import { useTextEditorContext } from "../../../contexts/TextEditorContext.js";
 
 const TEXT_COLOR_SWATCH_ITEMS = TEXT_COLOR_SWATCHES.map((value) => ({
 	value,
@@ -147,45 +148,121 @@ export function TextFormattingMenu(props: {
 
 	const minFontSize = React.useMemo(() => Math.min(...TEXT_FONT_SIZES), []);
 	const maxFontSize = React.useMemo(() => Math.max(...TEXT_FONT_SIZES), []);
+	const { activeTree, activeQuill, lastTree, lastQuill, selectionFormat } = useTextEditorContext();
+
+	// Use active editor if focused, otherwise fall back to the last focused
+	// editor (clicking toolbar may blur the editor before handler fires).
+	const effectiveTree = activeTree ?? lastTree;
+	const effectiveQuill = activeQuill ?? lastQuill;
+
+	// When a Quill editor is active, override toolbar display values with
+	// the character-level format at the cursor/selection.
+	const displayBold = selectionFormat.bold ?? bold;
+	const displayItalic = selectionFormat.italic ?? italic;
+	const displayUnderline = selectionFormat.underline ?? underline;
+	const displayFontSize = selectionFormat.size ?? fontSize;
+	const displayColor = selectionFormat.color ?? color;
+
+	/**
+	 * Get the codepoint-based selection range from the active Quill editor.
+	 * Returns { start, end } in codepoint indices, or null if nothing is selected.
+	 */
+	const getQuillSelectionCp = (): { start: number; end: number } | null => {
+		if (!effectiveQuill || !effectiveTree) return null;
+		const sel = effectiveQuill.getSelection(true);
+		if (!sel || sel.length === 0) return null;
+		// Quill uses UTF-16 offsets; convert to codepoints for the tree API.
+		const fullText = effectiveTree.fullString();
+		const cpOf = (utf16: number) => [...fullText.slice(0, utf16)].length;
+		return { start: cpOf(sel.index), end: cpOf(sel.index + sel.length) };
+	};
 
 	const applyToSelection = (updater: (text: TextBlock) => void) => {
-		if (selectedTexts.length === 0) return;
-		Tree.runTransaction(selectedTexts[0], () => {
-			selectedTexts.forEach((text) => updater(text));
-		});
+		if (selectedTexts.length > 0) {
+			Tree.runTransaction(selectedTexts[0], () => {
+				selectedTexts.forEach((text) => updater(text));
+			});
+			return;
+		}
+		// Fallback: the item may not be canvas-selected (e.g. stopPropagation on
+		// the Quill wrapper prevents ItemView from selecting it).  Walk up the
+		// tree from the active editor to find the owning TextBlock.
+		const tree = effectiveTree;
+		if (tree) {
+			const parent = Tree.parent(tree);
+			if (parent instanceof TextBlock) {
+				Tree.runTransaction(parent, () => updater(parent));
+			}
+		}
+	};
+
+	/**
+	 * Apply a character-level format via the tree's formatRange API.
+	 * If text is selected in the active Quill editor, format only that range.
+	 * Otherwise fall back to applying to the entire text block contents.
+	 */
+	const applyCharFormat = (
+		format: Record<string, unknown>,
+		blockFallback: (text: TextBlock) => void,
+	) => {
+		const sel = getQuillSelectionCp();
+		if (sel && effectiveTree) {
+			// Apply to selection only
+			effectiveTree.formatRange(sel.start, sel.end, format);
+		} else if (effectiveTree && effectiveQuill) {
+			// No selection but editor exists → format entire content
+			const fullText = effectiveTree.fullString();
+			const cpLen = [...fullText].length;
+			if (cpLen > 0) {
+				effectiveTree.formatRange(0, cpLen, format);
+			}
+		} else {
+			// No editor → block-level fallback
+			applyToSelection(blockFallback);
+		}
 	};
 
 	const handleColorChange = (next: string) => {
 		onColorChange(next);
-		applyToSelection((text) => {
-			text.color = next;
-		});
+		applyCharFormat(
+			{ color: next },
+			(text) => { text.color = next; },
+		);
 	};
 
 	const handleFontSizeChange = (next: number) => {
 		const clamped = Math.min(maxFontSize, Math.max(minFontSize, Math.round(next)));
 		onFontSizeChange(clamped);
-		applyToSelection((text) => {
-			text.fontSize = clamped;
-		});
+		applyCharFormat(
+			{ size: clamped },
+			(text) => { text.fontSize = clamped; },
+		);
 	};
 
 	const handleBooleanChange = (
 		next: boolean,
 		onChange: (value: boolean) => void,
-		updater: (text: TextBlock, value: boolean) => void
+		updater: (text: TextBlock, value: boolean) => void,
+		charFormatKey?: string,
 	) => {
 		onChange(next);
-		applyToSelection((text) => updater(text, next));
+		if (charFormatKey) {
+			applyCharFormat(
+				{ [charFormatKey]: next },
+				(text) => updater(text, next),
+			);
+		} else {
+			applyToSelection((text) => updater(text, next));
+		}
 	};
 
 	const previewStyles: React.CSSProperties = {
-		color,
+		color: displayColor,
 		fontSize: "14px",
-		fontWeight: bold ? 700 : 500,
-		fontStyle: italic ? "italic" : "normal",
+		fontWeight: displayBold ? 700 : 500,
+		fontStyle: displayItalic ? "italic" : "normal",
 		textDecoration:
-			[underline ? "underline" : "", strikethrough ? "line-through" : ""]
+			[displayUnderline ? "underline" : "", strikethrough ? "line-through" : ""]
 				.filter(Boolean)
 				.join(" ")
 				.trim() || undefined,
@@ -243,7 +320,7 @@ export function TextFormattingMenu(props: {
 					<div style={{ display: "grid", gap: 4 }}>
 						<Label id={fontSizeLabelId}>Font size</Label>
 						<SpinButton
-							value={fontSize}
+							value={displayFontSize}
 							min={minFontSize}
 							max={maxFontSize}
 							step={1}
@@ -268,36 +345,37 @@ export function TextFormattingMenu(props: {
 								appearance="subtle"
 								aria-label="Toggle bold"
 								icon={<TextBoldRegular />}
-								checked={bold}
+								checked={displayBold}
 								onClick={() => {
-									handleBooleanChange(!bold, onBoldChange, (text, value) => {
+									handleBooleanChange(!displayBold, onBoldChange, (text, value) => {
 										text.bold = value;
-									});
+									}, "bold");
 								}}
 							/>
 							<ToggleButton
 								appearance="subtle"
 								aria-label="Toggle italic"
 								icon={<TextItalicRegular />}
-								checked={italic}
+								checked={displayItalic}
 								onClick={() => {
-									handleBooleanChange(!italic, onItalicChange, (text, value) => {
+									handleBooleanChange(!displayItalic, onItalicChange, (text, value) => {
 										text.italic = value;
-									});
+									}, "italic");
 								}}
 							/>
 							<ToggleButton
 								appearance="subtle"
 								aria-label="Toggle underline"
 								icon={<TextUnderlineRegular />}
-								checked={underline}
+								checked={displayUnderline}
 								onClick={() => {
 									handleBooleanChange(
-										!underline,
+										!displayUnderline,
 										onUnderlineChange,
 										(text, value) => {
 											text.underline = value;
-										}
+										},
+										"underline",
 									);
 								}}
 							/>

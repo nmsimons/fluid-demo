@@ -1,40 +1,26 @@
-import React, { useCallback, useEffect, useRef } from "react";
+import React, { JSX, useEffect, useRef } from "react";
 import { TextBlock } from "../../../schema/appSchema.js";
 import { useTree } from "../../hooks/useTree.js";
+import { HeadlessQuillEditor } from "./HeadlessQuillEditor.js";
 
 export function TextView(props: { text: TextBlock; widthOverride?: number }): JSX.Element {
 	const { text, widthOverride } = props;
 	useTree(text);
-	const textareaRef = useRef<HTMLTextAreaElement>(null);
 	const width = widthOverride ?? text.width;
+	const containerRef = useRef<HTMLDivElement>(null);
 
-	const updateHeight = useCallback(() => {
-		const el = textareaRef.current;
+	// Auto-resize: observe the Quill editor content height so the
+	// container grows/shrinks like the old textarea did.
+	useEffect(() => {
+		const el = containerRef.current;
 		if (!el) return;
-		const minHeight = text.fontSize * 1.2 + 8;
-		el.style.minHeight = `${minHeight}px`;
-		el.style.height = "auto";
-		el.style.height = `${Math.max(el.scrollHeight, minHeight)}px`;
-	}, [text.fontSize]);
-
-	useEffect(() => {
-		updateHeight();
-	}, [
-		updateHeight,
-		text.text,
-		text.width,
-		widthOverride,
-		text.fontSize,
-		text.bold,
-		text.italic,
-		text.underline,
-		text.strikethrough,
-		text.cardStyle,
-		text.textAlign,
-	]);
-
-	useEffect(() => {
-		updateHeight();
+		const editor = el.querySelector(".ql-editor") as HTMLElement | null;
+		if (!editor) return;
+		const ro = new ResizeObserver(() => {
+			// The container should fit the editor content naturally
+		});
+		ro.observe(editor);
+		return () => ro.disconnect();
 	}, []);
 
 	const textDecoration = [
@@ -48,6 +34,7 @@ export function TextView(props: { text: TextBlock; widthOverride?: number }): JS
 	return (
 		<div
 			className="text-item-container"
+			ref={containerRef}
 			style={{
 				width: `${width}px`,
 				minWidth: `${width}px`,
@@ -62,41 +49,22 @@ export function TextView(props: { text: TextBlock; widthOverride?: number }): JS
 					: {}),
 			}}
 		>
-			<textarea
-				rows={1}
-				ref={textareaRef}
-				value={text.text}
-				onChange={(e) => {
-					if (text.text !== e.target.value) {
-						text.text = e.target.value;
-					}
-				}}
-				onInput={updateHeight}
-				className="text-item-textarea"
+			<div
+				className="text-item-quill-wrapper"
 				data-item-editable
-				spellCheck
 				style={{
-					width: "100%",
-					boxSizing: "border-box",
-					color: text.color,
-					backgroundColor: "transparent",
-					borderRadius: 0,
-					padding: 0,
-					fontFamily: '"Inter", "Segoe UI", system-ui, -apple-system, sans-serif',
-					fontSize: `${text.fontSize}px`,
-					fontWeight: text.bold ? 700 : 400,
-					fontStyle: text.italic ? "italic" : "normal",
-					textDecoration: textDecoration || "none",
-					textAlign:
-						(text.textAlign as "left" | "center" | "right" | undefined) ?? "left",
-					lineHeight: 1.4,
-					resize: "none",
-					overflow: "hidden",
-					outline: "none",
-					backgroundClip: "border-box",
-					boxShadow: "none",
+					textDecoration: textDecoration || undefined,
 				}}
-			/>
+				onPointerDown={(e) => e.stopPropagation()}
+				onMouseDown={(e) => e.stopPropagation()}
+			>
+				<HeadlessQuillEditor
+					textContent={text.textContent}
+					fontSize={text.fontSize}
+					textAlign={(text.textAlign as "left" | "center" | "right" | undefined) ?? "left"}
+					color={text.color || "#111827"}
+				/>
+			</div>
 		</div>
 	);
 }

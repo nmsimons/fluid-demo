@@ -4,9 +4,9 @@
  */
 
 import React, { JSX, useState, useEffect } from "react";
-import { App } from "../../../schema/appSchema.js";
+import { App, Note, TextBlock } from "../../../schema/appSchema.js";
 import "../../../styles/ios-minimal.css";
-import { IFluidContainer } from "fluid-framework";
+import { IFluidContainer, Tree } from "fluid-framework";
 import { asAlpha, type TreeViewAlpha } from "@fluidframework/tree/alpha";
 import { Canvas } from "../canvas/Canvas.js";
 import type { SelectionManager } from "../../../presence/Interfaces/SelectionManager.js";
@@ -50,6 +50,9 @@ import { useToolbarState } from "../../hooks/useToolbarState.js";
 import { useSelectionState } from "../../hooks/useSelectionState.js";
 import { useAiBranchState } from "../../hooks/useAiBranchState.js";
 import { useCommentPane } from "../../hooks/useCommentPane.js";
+import { isNote, isText } from "../../../utils/contentHandlers.js";
+import { createSchemaUser } from "../../../utils/userUtils.js";
+import { TextEditorProvider } from "../../contexts/TextEditorContext.js";
 
 // Context for comment pane actions
 export const CommentPaneContext = React.createContext<{
@@ -198,6 +201,66 @@ export function ReactApp(props: ReactAppProps): JSX.Element {
 
 	useKeyboardShortcuts({ shortcuts });
 
+	useEffect(() => {
+		const url = new URL(window.location.href);
+		const autoTyperEnabled =
+			import.meta.env.VITE_FLUID_CLIENT === "local" && url.searchParams.get("autotyper") === "1";
+
+		if (!autoTyperEnabled) {
+			return;
+		}
+
+		const script = "Collaborative typing test in progress.";
+		let index = 0;
+		let direction: 1 | -1 = 1;
+
+		const ensureTypingTarget = () => {
+			const existingTarget = tree.root.items.find((item) => isText(item) || isNote(item));
+			if (existingTarget) {
+				return existingTarget.content;
+			}
+
+			const currentUser = users.getMyself().value;
+			const schemaUser = createSchemaUser({ id: currentUser.id, name: currentUser.name });
+			const effectiveCanvasSize = {
+				width: canvasSize.width || window.innerWidth || 1200,
+				height: canvasSize.height || window.innerHeight || 800,
+			};
+
+			return tree.root.items.createTextItem(schemaUser, effectiveCanvasSize, {
+				text: "",
+				width: 320,
+			}).content;
+		};
+
+		const interval = window.setInterval(() => {
+			const target = ensureTypingTarget();
+			const nextValue = script.slice(0, index);
+
+			if (Tree.is(target, TextBlock) || Tree.is(target, Note)) {
+				target.setText(nextValue);
+			}
+
+			if (direction === 1) {
+				index++;
+				if (index > script.length) {
+					index = script.length;
+					direction = -1;
+				}
+			} else {
+				index--;
+				if (index < 0) {
+					index = 0;
+					direction = 1;
+				}
+			}
+		}, 150);
+
+		return () => {
+			window.clearInterval(interval);
+		};
+	}, [tree, users, canvasSize.width, canvasSize.height]);
+
 	return (
 		<PresenceContext.Provider
 			value={{
@@ -212,6 +275,7 @@ export function ReactApp(props: ReactAppProps): JSX.Element {
 				connectionDrag,
 			}}
 		>
+			<TextEditorProvider>
 			<CommentPaneContext.Provider value={{ openCommentPaneAndFocus }}>
 				<div
 					id="main"
@@ -330,6 +394,7 @@ export function ReactApp(props: ReactAppProps): JSX.Element {
 					</div>
 				</div>
 			</CommentPaneContext.Provider>
+			</TextEditorProvider>
 		</PresenceContext.Provider>
 	);
 }
