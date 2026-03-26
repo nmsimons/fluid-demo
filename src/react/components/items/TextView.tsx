@@ -40,7 +40,7 @@ export function TextView(props: { text: TextBlock; widthOverride?: number }): JS
 				requestAnimationFrame(focusEditor);
 			}
 		},
-		[isEditing, focusEditor],
+		[isEditing, focusEditor]
 	);
 
 	const exitEditing = useCallback(() => {
@@ -59,14 +59,17 @@ export function TextView(props: { text: TextBlock; widthOverride?: number }): JS
 				exitEditing();
 			}
 		},
-		[exitEditing],
+		[exitEditing]
 	);
 
-	const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-		if (e.key === "Escape") {
-			exitEditing();
-		}
-	}, [exitEditing]);
+	const handleKeyDown = useCallback(
+		(e: React.KeyboardEvent) => {
+			if (e.key === "Escape") {
+				exitEditing();
+			}
+		},
+		[exitEditing]
+	);
 
 	const textDecoration = [
 		text.underline ? "underline" : "",
@@ -112,7 +115,9 @@ export function TextView(props: { text: TextBlock; widthOverride?: number }): JS
 				<HeadlessQuillEditor
 					textContent={text.textContent}
 					fontSize={text.fontSize}
-					textAlign={(text.textAlign as "left" | "center" | "right" | undefined) ?? "left"}
+					textAlign={
+						(text.textAlign as "left" | "center" | "right" | undefined) ?? "left"
+					}
 					color={text.color || "#111827"}
 				/>
 				{/* Transparent overlay blocks Quill from capturing focus until
