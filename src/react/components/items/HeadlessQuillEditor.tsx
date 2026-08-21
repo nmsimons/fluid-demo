@@ -1,5 +1,5 @@
 /**
- * Headless Quill editor that syncs with FormattedTextAsTree.
+ * Headless Quill editor that syncs with FormattedTextDefault.
  *
  * Renders Quill without any toolbar or theme chrome so it looks
  * like a plain contenteditable area.  The bi-directional sync
@@ -13,7 +13,7 @@ import DeltaPackage from "quill-delta";
 // eslint-disable-next-line import/no-unassigned-import, import/no-internal-modules
 import "quill/dist/quill.core.css";
 // eslint-disable-next-line import/no-internal-modules
-import { Tree, TreeAlpha, FormattedTextAsTree } from "@fluidframework/tree/internal";
+import { Tree, TreeAlpha, FormattedTextDefault } from "@fluidframework/tree/internal";
 import { useTextEditorContext } from "../../contexts/TextEditorContext.js";
 
 // quill-delta ships a default export wrapper
@@ -62,18 +62,23 @@ function quillAttributesToFormat(attributes?: Record<string, any>) {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function quillAttributesToPartial(attributes?: Record<string, any>): Partial<FormattedTextAsTree.CharacterFormat> {
+function quillAttributesToPartial(
+	attributes?: Record<string, any>
+): Partial<FormattedTextDefault.CharacterFormat> {
 	if (!attributes) return {};
 	const format: Record<string, unknown> = {};
 	if ("bold" in attributes) format.bold = attributes.bold === true;
 	if ("italic" in attributes) format.italic = attributes.italic === true;
 	if ("underline" in attributes) format.underline = attributes.underline === true;
 	if ("size" in attributes) format.size = parseSize(attributes.size);
-	if ("font" in attributes) format.font = typeof attributes.font === "string" ? attributes.font : defaultFont;
-	return format as Partial<FormattedTextAsTree.CharacterFormat>;
+	if ("font" in attributes)
+		format.font = typeof attributes.font === "string" ? attributes.font : defaultFont;
+	return format as Partial<FormattedTextDefault.CharacterFormat>;
 }
 
-function formatToQuillAttributes(format: FormattedTextAsTree.CharacterFormat): Record<string, unknown> {
+function formatToQuillAttributes(
+	format: FormattedTextDefault.CharacterFormat
+): Record<string, unknown> {
 	const attributes: Record<string, unknown> = {};
 	if (format.bold) attributes.bold = true;
 	if (format.italic) attributes.italic = true;
@@ -90,32 +95,36 @@ function formatToQuillAttributes(format: FormattedTextAsTree.CharacterFormat): R
 /* ------------------------------------------------------------------ */
 const headerToLineTag: Record<number, string> = { 1: "h1", 2: "h2", 3: "h3", 4: "h4", 5: "h5" };
 const lineTagToQuillAttributes: Record<string, Record<string, unknown>> = {
-	h1: { header: 1 }, h2: { header: 2 }, h3: { header: 3 },
-	h4: { header: 4 }, h5: { header: 5 }, li: { list: "bullet" },
+	h1: { header: 1 },
+	h2: { header: 2 },
+	h3: { header: 3 },
+	h4: { header: 4 },
+	h5: { header: 5 },
+	li: { list: "bullet" },
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function parseLineTag(attributes?: Record<string, any>) {
 	if (!attributes) return undefined;
 	if (typeof attributes.header === "number") {
-		const tag = headerToLineTag[attributes.header] ?? "h5" as const;
-		return FormattedTextAsTree.LineTag(tag as "h1" | "h2" | "h3" | "h4" | "h5");
+		const tag = headerToLineTag[attributes.header] ?? ("h5" as const);
+		return FormattedTextDefault.LineTag(tag as "h1" | "h2" | "h3" | "h4" | "h5");
 	}
-	if (attributes.list === "bullet") return FormattedTextAsTree.LineTag("li");
+	if (attributes.list === "bullet") return FormattedTextDefault.LineTag("li");
 	return undefined;
 }
 
-function createLineAtom(lineTag: ReturnType<typeof FormattedTextAsTree.LineTag>) {
-	return new FormattedTextAsTree.StringAtom({
-		content: new FormattedTextAsTree.StringLineAtom({ tag: lineTag }),
-		format: new FormattedTextAsTree.CharacterFormat(quillAttributesToFormat()),
-	});
+function createLineAtom(lineTag: ReturnType<typeof FormattedTextDefault.LineTag>) {
+	return {
+		content: new FormattedTextDefault.StringLineAtom({ tag: lineTag, indent: 0 }),
+		format: new FormattedTextDefault.CharacterFormat(quillAttributesToFormat()),
+	};
 }
 
 /* ------------------------------------------------------------------ */
 /*  Build a Quill delta from the tree (tree → Quill)                  */
 /* ------------------------------------------------------------------ */
-function buildDeltaFromTree(root: FormattedTextAsTree.Tree) {
+function buildDeltaFromTree(root: FormattedTextDefault.Tree) {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	const ops: any[] = [];
 	let text = "";
@@ -132,7 +141,7 @@ function buildDeltaFromTree(root: FormattedTextAsTree.Tree) {
 
 	for (const atom of root.charactersWithFormatting()) {
 		const currentAttributes = formatToQuillAttributes(atom.format);
-		if (atom.content instanceof FormattedTextAsTree.StringLineAtom) {
+		if (atom.content instanceof FormattedTextDefault.StringLineAtom) {
 			const lineTag = atom.content.tag.value;
 			Object.assign(currentAttributes, lineTagToQuillAttributes[lineTag]);
 			pushRun();
@@ -168,7 +177,7 @@ function buildDeltaFromTree(root: FormattedTextAsTree.Tree) {
 /* ------------------------------------------------------------------ */
 
 export interface HeadlessQuillEditorProps {
-	textContent: FormattedTextAsTree.Tree;
+	textContent: FormattedTextDefault.Tree;
 	/** Default font size in px — used to style the Quill editor area. */
 	fontSize?: number;
 	/** Text alignment — applied to the Quill editor root. */
@@ -177,7 +186,12 @@ export interface HeadlessQuillEditorProps {
 	color?: string;
 }
 
-export function HeadlessQuillEditor({ textContent, fontSize, textAlign, color }: HeadlessQuillEditorProps): JSX.Element {
+export function HeadlessQuillEditor({
+	textContent,
+	fontSize,
+	textAlign,
+	color,
+}: HeadlessQuillEditorProps): JSX.Element {
 	const editorRef = useRef<HTMLDivElement>(null);
 	const quillRef = useRef<Quill | null>(null);
 	const isUpdating = useRef(false);
@@ -237,12 +251,16 @@ export function HeadlessQuillEditor({ textContent, fontSize, textAlign, color }:
 								lineTag === undefined &&
 								content[utf16Pos] === "\n" &&
 								root.charactersWithFormatting()[cpPos]?.content instanceof
-									FormattedTextAsTree.StringLineAtom
+									FormattedTextDefault.StringLineAtom
 							) {
 								root.removeRange(cpPos, cpPos + 1);
 								root.insertAt(cpPos, "\n");
 							} else {
-								root.formatRange(cpPos, cpPos + cpCount, quillAttributesToPartial(op.attributes));
+								root.formatRange(
+									cpPos,
+									cpPos + cpCount,
+									quillAttributesToPartial(op.attributes)
+								);
 							}
 						}
 						utf16Pos += retain;
@@ -258,10 +276,13 @@ export function HeadlessQuillEditor({ textContent, fontSize, textAlign, color }:
 						if (lineTag !== undefined && op.insert === "\n") {
 							root.insertWithFormattingAt(cpPos, [createLineAtom(lineTag)]);
 						} else {
-							root.defaultFormat = new FormattedTextAsTree.CharacterFormat(
-								quillAttributesToFormat(op.attributes),
+							root.insertAt(
+								cpPos,
+								op.insert,
+								new FormattedTextDefault.CharacterFormat(
+									quillAttributesToFormat(op.attributes)
+								)
 							);
-							root.insertAt(cpPos, op.insert);
 						}
 						content = content.slice(0, utf16Pos) + op.insert + content.slice(utf16Pos);
 						utf16Pos += op.insert.length;
@@ -282,12 +303,17 @@ export function HeadlessQuillEditor({ textContent, fontSize, textAlign, color }:
 		quill.on("selection-change", (range: { index: number; length: number } | null) => {
 			if (range) {
 				const fmt = quill.getFormat(range.index, range.length);
-				setActive(treeRef.current, quill, {
-					bold: fmt.bold === true,
-					italic: fmt.italic === true,
-					underline: fmt.underline === true,
-					size: fmt.size ? parseSize(fmt.size) : undefined,
-				}, range);
+				setActive(
+					treeRef.current,
+					quill,
+					{
+						bold: fmt.bold === true,
+						italic: fmt.italic === true,
+						underline: fmt.underline === true,
+						size: fmt.size ? parseSize(fmt.size) : undefined,
+					},
+					range
+				);
 			} else {
 				clearActive();
 			}
@@ -299,12 +325,17 @@ export function HeadlessQuillEditor({ textContent, fontSize, textAlign, color }:
 			const range = quill.getSelection();
 			if (range) {
 				const fmt = quill.getFormat(range.index, range.length);
-				setActive(treeRef.current, quill, {
-					bold: fmt.bold === true,
-					italic: fmt.italic === true,
-					underline: fmt.underline === true,
-					size: fmt.size ? parseSize(fmt.size) : undefined,
-				}, range);
+				setActive(
+					treeRef.current,
+					quill,
+					{
+						bold: fmt.bold === true,
+						italic: fmt.italic === true,
+						underline: fmt.underline === true,
+						size: fmt.size ? parseSize(fmt.size) : undefined,
+					},
+					range
+				);
 			}
 		});
 

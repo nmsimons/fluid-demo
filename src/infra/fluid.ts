@@ -25,14 +25,25 @@ export async function loadFluidData<T extends ContainerSchema>(
 	let services: AzureContainerServices | OdspContainerServices;
 
 	// Get or create the document depending if we are running through the create new flow
-	if (containerId.length === 0) {
-		// The client will create a new detached container using the schema
-		// A detached container will enable the app to modify the container before attaching it to the client
-		({ container, services } = await client.createContainer(containerSchema, "2"));
+	if (client instanceof AzureClient) {
+		if (containerId.length === 0) {
+			// A detached container lets the app initialize data before attaching it.
+			({ container, services } = await client.createContainer(containerSchema, "2.0.0"));
+		} else {
+			({ container, services } = await client.getContainer(
+				containerId,
+				containerSchema,
+				"2.0.0"
+			));
+		}
+	} else if (containerId.length === 0) {
+		({ container, services } = await client.createContainer(containerSchema, "2.0.0"));
 	} else {
-		// Use the unique container ID to fetch the container created earlier. It will already be connected to the
-		// collaboration session.
-		({ container, services } = await client.getContainer(containerId, containerSchema, "2"));
+		({ container, services } = await client.getContainer(
+			containerId,
+			containerSchema,
+			"2.0.0"
+		));
 	}
 
 	return { services, container };

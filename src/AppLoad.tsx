@@ -6,7 +6,7 @@ import { App, appTreeConfiguration, Items } from "./schema/appSchema.js";
 import { createUndoRedoStacks } from "./undo/undo.js";
 import { containerSchema } from "./schema/containerSchema.js";
 import { loadFluidData } from "./infra/fluid.js";
-import { IFluidContainer } from "fluid-framework";
+import { getPresence, IFluidContainer } from "fluid-framework";
 import { FluentProvider } from "@fluentui/react-provider";
 import { webLightTheme } from "@fluentui/react-theme";
 import { AuthContext } from "./react/contexts/AuthContext.js";
@@ -42,7 +42,6 @@ const AppLoadingSpinner = () => {
 	);
 };
 
-import { getPresence } from "@fluidframework/presence/beta";
 import { createTypedSelectionManager } from "./presence/selection.js";
 import { createUsersManager } from "./presence/users.js";
 import { UserInfo } from "./presence/Interfaces/UsersManager.js";

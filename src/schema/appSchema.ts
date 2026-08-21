@@ -3,9 +3,9 @@
  * Licensed under the MIT License.
  */
 
-import { TableSchema, SchemaFactoryAlpha, TextAsTree } from "@fluidframework/tree/alpha";
+import { TableSchema, SchemaFactoryAlpha, PlainText } from "@fluidframework/tree/alpha";
 // eslint-disable-next-line import/no-internal-modules
-import { FormattedTextAsTree } from "@fluidframework/tree/internal";
+import { FormattedTextDefault } from "@fluidframework/tree/internal";
 import {
 	SHAPE_MIN_SIZE,
 	SHAPE_MAX_SIZE,
@@ -72,7 +72,10 @@ const instanceOf = <T extends Parameters<typeof typeFactory.instanceOf>[0]>(
 	schema: T
 ): CompatType => compat(typeFactory.instanceOf(schema));
 
-function updateCollaborativeText(textNode: TextAsTree.Tree | FormattedTextAsTree.Tree, value: string): void {
+function updateCollaborativeText(
+	textNode: PlainText.Tree | FormattedTextDefault.Tree,
+	value: string
+): void {
 	const nextCharacters = Array.from(value);
 	const currentCharacters = textNode.charactersCopy();
 	let prefixLength = 0;
@@ -330,7 +333,7 @@ export class Note extends sf.object(
 	// Fields for Notes which SharedTree will store and synchronize across clients.
 	// These fields are exposed as members of instances of the Note class.
 	{
-		textContent: sf.required(TextAsTree.Tree, {
+		textContent: sf.required(PlainText.Tree, {
 			metadata: { description: "The textual content displayed within the sticky note" },
 		}),
 		color: sf.required(sf.string, {
@@ -352,8 +355,10 @@ export class Note extends sf.object(
 }
 
 export class TextBlock extends sf.object("TextBlock", {
-	textContent: sf.required(FormattedTextAsTree.Tree, {
-		metadata: { description: "The rich/formatted textual content displayed within the text item" },
+	textContent: sf.required(FormattedTextDefault.Tree, {
+		metadata: {
+			description: "The rich/formatted textual content displayed within the text item",
+		},
 	}),
 	color: sf.required(sf.string, {
 		metadata: {
@@ -957,7 +962,7 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 		color: NoteColor = DEFAULT_NOTE_COLOR
 	): Item {
 		const note = new Note({
-			textContent: TextAsTree.Tree.fromString(""),
+			textContent: PlainText.Tree.fromString(""),
 			color,
 		});
 
@@ -1042,7 +1047,7 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 	 */
 	createTextBlockItem(canvasSize: { width: number; height: number }, user: User): Item {
 		const textBlock = new TextBlock({
-			textContent: FormattedTextAsTree.Tree.fromString(""),
+			textContent: FormattedTextDefault.Tree.fromString(""),
 			color: TEXT_DEFAULT_COLOR,
 			width: TEXT_DEFAULT_WIDTH,
 			fontSize: TEXT_DEFAULT_FONT_SIZE,
@@ -1224,12 +1229,12 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 			});
 		} else if (Tree.is(item.content, Note)) {
 			duplicatedContent = new Note({
-				textContent: TextAsTree.Tree.fromString(item.content.text),
+				textContent: PlainText.Tree.fromString(item.content.text),
 				color: item.content.color ?? DEFAULT_NOTE_COLOR,
 			});
 		} else if (Tree.is(item.content, TextBlock)) {
 			duplicatedContent = new TextBlock({
-				textContent: FormattedTextAsTree.Tree.fromString(item.content.text),
+				textContent: FormattedTextDefault.Tree.fromString(item.content.text),
 				color: item.content.color,
 				width: clampTextWidth(item.content.width),
 				fontSize: item.content.fontSize,
@@ -1361,7 +1366,7 @@ export class Items extends sf.arrayRecursive("Items", [Item]) {
 	): Item {
 		const width = clampTextWidth(props?.width ?? TEXT_DEFAULT_WIDTH);
 		const textBlock = new TextBlock({
-			textContent: FormattedTextAsTree.Tree.fromString(props?.text ?? "New text"),
+			textContent: FormattedTextDefault.Tree.fromString(props?.text ?? "New text"),
 			color: props?.color ?? TEXT_DEFAULT_COLOR,
 			width,
 			fontSize: props?.fontSize ?? TEXT_DEFAULT_FONT_SIZE,

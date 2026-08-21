@@ -14,8 +14,9 @@ import { Pane } from "./Pane.js";
 import { TreeViewAlpha } from "@fluidframework/tree/alpha";
 import {
 	createContext,
-	SharedTreeSemanticAgent,
+	createTreeAgent,
 	type AsynchronousEditor,
+	type TreeAgent,
 } from "@fluidframework/tree-agent/alpha";
 import { createLangchainChatModel } from "@fluidframework/tree-agent-langchain/alpha";
 import { App } from "../../../schema/appSchema.js";
@@ -37,7 +38,7 @@ export function AIPane(props: {
 	const { hidden, setHidden, main, branch, setRenderView } = props;
 	const [localBranch, setLocalBranch] = useState<typeof main | undefined>(undefined);
 	const [chats, setChats] = useState<string[]>([]);
-	const [agent, setAgent] = useState<SharedTreeSemanticAgent<typeof App> | undefined>();
+	const [agent, setAgent] = useState<TreeAgent | undefined>();
 	const { msalInstance } = useContext(AuthContext);
 
 	// Model selection - parse available models from env and use localStorage for persistence
@@ -103,6 +104,23 @@ export function AIPane(props: {
 
 	useEffect(() => {
 		if (localBranch !== undefined) {
+			let cancelled = false;
+			const installAgent = (model: Parameters<typeof createTreeAgent>[0]) => {
+				const nextAgent = createTreeAgent(model, localBranch, {
+					logger: { log: (msg: unknown) => console.log(msg) },
+					domainHints,
+					editor: debuggingEditor,
+				});
+				if (cancelled) {
+					nextAgent.dispose();
+					return;
+				}
+				setAgent((currentAgent) => {
+					currentAgent?.dispose();
+					return nextAgent;
+				});
+			};
+
 			const setupAgent = async () => {
 				console.log("Setting up AI agent...");
 				const endpoint = `${import.meta.env.VITE_OPENAI_BASE_URL}/api/v1`;
@@ -219,13 +237,7 @@ export function AIPane(props: {
 						// Log the model's edit tool name
 						console.log(model.editToolName);
 
-						setAgent(
-							new SharedTreeSemanticAgent(model, localBranch, {
-								logger: { log: (msg: unknown) => console.log(msg) },
-								domainHints,
-								editor: debuggingEditor,
-							})
-						);
+						installAgent(model);
 
 						console.log(
 							"AI agent successfully created with middle-tier OpenAI endpoint"
@@ -278,13 +290,7 @@ export function AIPane(props: {
 
 						const model = createLangchainChatModel(chatOpenAI);
 
-						setAgent(
-							new SharedTreeSemanticAgent(model, localBranch, {
-								logger: { log: (msg: unknown) => console.log(msg) },
-								domainHints,
-								editor: debuggingEditor,
-							})
-						);
+						installAgent(model);
 
 						console.log("AI agent successfully created with manual token");
 						return;
@@ -325,13 +331,7 @@ export function AIPane(props: {
 
 					console.log(model.editToolName);
 
-					setAgent(
-						new SharedTreeSemanticAgent(model, localBranch, {
-							logger: { log: (msg: unknown) => console.log(msg) },
-							domainHints,
-							editor: debuggingEditor,
-						})
-					);
+					installAgent(model);
 
 					console.log("AI agent successfully created with ZUMO authentication");
 				} catch (error) {
@@ -344,6 +344,13 @@ export function AIPane(props: {
 			};
 
 			setupAgent().catch(console.error);
+			return () => {
+				cancelled = true;
+				setAgent((currentAgent) => {
+					currentAgent?.dispose();
+					return undefined;
+				});
+			};
 		}
 	}, [localBranch, msalInstance, selectedModel]);
 
@@ -352,7 +359,7 @@ export function AIPane(props: {
 			setChats([...chats, `${prompt}`, `.`]);
 
 			// Execute the AI query
-			const response = await agent.query(prompt);
+			const response = await agent.message(prompt);
 
 			setChats((prev) => [...prev.slice(0, -1), `${response ?? "LLM query failed!"}`]);
 		}

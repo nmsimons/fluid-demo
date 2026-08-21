@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useCallback, useRef, useState } from "react";
 // eslint-disable-next-line import/no-internal-modules
-import { FormattedTextAsTree } from "@fluidframework/tree/internal";
+import { FormattedTextDefault } from "@fluidframework/tree/internal";
 import type Quill from "quill";
 
 /**
@@ -24,22 +24,27 @@ export interface SelectionFormat {
  * "last known" tree + quill + selection that persists briefly after blur.
  */
 export interface TextEditorContextValue {
-	/** The FormattedTextAsTree node backing the focused editor, or null. */
-	activeTree: FormattedTextAsTree.Tree | null;
+	/** The FormattedTextDefault node backing the focused editor, or null. */
+	activeTree: FormattedTextDefault.Tree | null;
 	/** The Quill instance of the focused editor, or null. */
 	activeQuill: Quill | null;
 	/**
 	 * The last known tree + quill. Survives blur long enough
 	 * for toolbar handlers to consume it.
 	 */
-	lastTree: FormattedTextAsTree.Tree | null;
+	lastTree: FormattedTextDefault.Tree | null;
 	lastQuill: Quill | null;
 	/** Last known Quill selection range — survives blur for toolbar restore. */
 	lastSelection: { index: number; length: number } | null;
 	/** Character-level format at the current cursor / selection. */
 	selectionFormat: SelectionFormat;
 	/** Register focus: called by HeadlessQuillEditor on Quill selection-change. */
-	setActive: (tree: FormattedTextAsTree.Tree, quill: Quill, format: SelectionFormat, range?: { index: number; length: number }) => void;
+	setActive: (
+		tree: FormattedTextDefault.Tree,
+		quill: Quill,
+		format: SelectionFormat,
+		range?: { index: number; length: number }
+	) => void;
 	/** Clear focus: called on blur. */
 	clearActive: () => void;
 }
@@ -62,22 +67,30 @@ export function useTextEditorContext(): TextEditorContextValue {
 }
 
 export function TextEditorProvider({ children }: { children: React.ReactNode }): React.JSX.Element {
-	const [activeTree, setActiveTree] = useState<FormattedTextAsTree.Tree | null>(null);
+	const [activeTree, setActiveTree] = useState<FormattedTextDefault.Tree | null>(null);
 	const [selectionFormat, setSelectionFormat] = useState<SelectionFormat>(emptyFormat);
 	const quillRef = useRef<Quill | null>(null);
-	const lastTreeRef = useRef<FormattedTextAsTree.Tree | null>(null);
+	const lastTreeRef = useRef<FormattedTextDefault.Tree | null>(null);
 	const lastQuillRef = useRef<Quill | null>(null);
 
 	const lastSelectionRef = useRef<{ index: number; length: number } | null>(null);
 
-	const setActive = useCallback((tree: FormattedTextAsTree.Tree, quill: Quill, format: SelectionFormat, range?: { index: number; length: number }) => {
-		setActiveTree(tree);
-		setSelectionFormat(format);
-		quillRef.current = quill;
-		lastTreeRef.current = tree;
-		lastQuillRef.current = quill;
-		if (range) lastSelectionRef.current = range;
-	}, []);
+	const setActive = useCallback(
+		(
+			tree: FormattedTextDefault.Tree,
+			quill: Quill,
+			format: SelectionFormat,
+			range?: { index: number; length: number }
+		) => {
+			setActiveTree(tree);
+			setSelectionFormat(format);
+			quillRef.current = quill;
+			lastTreeRef.current = tree;
+			lastQuillRef.current = quill;
+			if (range) lastSelectionRef.current = range;
+		},
+		[]
+	);
 
 	const clearActive = useCallback(() => {
 		setActiveTree(null);
@@ -96,9 +109,5 @@ export function TextEditorProvider({ children }: { children: React.ReactNode }):
 		clearActive,
 	};
 
-	return (
-		<TextEditorContext.Provider value={value}>
-			{children}
-		</TextEditorContext.Provider>
-	);
+	return <TextEditorContext.Provider value={value}>{children}</TextEditorContext.Provider>;
 }
